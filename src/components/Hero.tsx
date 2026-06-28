@@ -64,13 +64,18 @@ function HeroCall() {
       style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22 }}
     >
       <Text
-        style={{
-          fontFamily: 'Inter',
-          fontWeight: '600',
-          fontSize: 15,
-          color: '#0576cc', // var(--accent) -> var(--ncsw-primary)
-          textDecorationLine: 'underline',
-        }}
+        style={
+          {
+            fontFamily: 'Inter',
+            fontWeight: '600',
+            fontSize: 15,
+            color: '#0576cc', // var(--accent) -> var(--ncsw-primary)
+            textDecorationLine: 'underline',
+            // .hero-call: text-underline-offset:4px; text-decoration-thickness:1px (web)
+            textUnderlineOffset: 4,
+            textDecorationThickness: 1,
+          } as any
+        }
       >
         Call (216) 555-0114 →
       </Text>
