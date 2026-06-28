@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React from 'react'
 import { Linking, Platform, Pressable, Text, View, Image } from 'react-native'
 
 // Hero. Web: two-column full-viewport grid — wordmark + tagline + call CTA on the
-// left, a cycling install video on the right. Native: a simple vertical stack with
-// a dark placeholder block instead of video.
+// left, a row of install videos (all playing at once, looping) on the right.
+// Native: a simple vertical stack with a dark placeholder block instead of video.
 
 const TAGLINE =
   "North Coast Soundworks is Cleveland's MECP-certified car audio specialist. " +
@@ -61,39 +61,32 @@ function CallCta() {
   )
 }
 
-// Web-only cycling background video.
-function CyclingVideo() {
-  const ref = useRef<any>(null)
-  const [idx, setIdx] = useState(0)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const onEnded = () => setIdx((i) => (i + 1) % HERO_VIDEOS.length)
-    el.addEventListener('ended', onEnded)
-    el.play?.().catch(() => {})
-    return () => el.removeEventListener('ended', onEnded)
-  }, [idx])
-
-  // Use React.createElement to avoid JSX intrinsic <video> on native typings.
-  return Platform.OS === 'web'
-    ? (React.createElement('video', {
-        ref,
-        src: HERO_VIDEOS[idx],
+// Web-only: all install videos side-by-side in a row, each autoplaying,
+// muted, and looping endlessly. createElement avoids JSX intrinsic <video>
+// typings (no DOM JSX in the React Native type set).
+function VideoRow() {
+  if (Platform.OS !== 'web') return null
+  return React.createElement(
+    'div',
+    { style: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'row' } },
+    HERO_VIDEOS.map((src) =>
+      React.createElement('video', {
+        key: src,
+        src,
         autoPlay: true,
         muted: true,
-        loop: false,
+        loop: true,
         playsInline: true,
         style: {
-          position: 'absolute',
-          inset: 0,
+          flex: 1,
           width: '100%',
           height: '100%',
           objectFit: 'cover',
           opacity: 0.75,
         },
-      }) as any)
-    : null
+      })
+    )
+  ) as any
 }
 
 export function Hero() {
@@ -167,7 +160,7 @@ export function Hero() {
 
       {/* RIGHT COLUMN */}
       <View style={{ position: 'relative', backgroundColor: '#09080e', overflow: 'hidden' }}>
-        <CyclingVideo />
+        <VideoRow />
         <View style={{ position: 'absolute', bottom: 32, left: 32 }}>
           <Text
             style={{
