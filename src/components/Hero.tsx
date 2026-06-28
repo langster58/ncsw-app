@@ -1,15 +1,28 @@
 import React from 'react'
-import { Linking, Platform, Pressable, Text, View, Image } from 'react-native'
+import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 
-// Hero. Web: two-column full-viewport grid — wordmark + tagline + call CTA on the
-// left, a row of install videos (all playing at once, looping) on the right.
-// Native: a simple vertical stack with a dark placeholder block instead of video.
+// Hero — values taken verbatim from the source tokens.css / home.css:
+//   .hero { padding: 64px 0 0 }
+//   .container { max-width: 1410px; margin: 0 auto; padding: 0 40px }  (0 22px mobile)
+//   .hero-wordmark { display:block; width:100%; max-width:760px; height:auto }
+//   .hero-statement { display:grid; grid-template-columns:1fr; gap:28px; margin-top:24px }
+//   .hero-lede { max-width:760px; font-size:22px; line-height:1.45; font-weight:400; color:#09080e }
+//   .hero-call { display:none; ->inline-flex <=900px; color:#0576cc; Inter 15/600; underline }
+//   .montage { margin-top:56px }
+//   .montage-grid { grid; repeat(4,1fr); gap:1px; background:#1b1b1b; overflow:hidden }  (1fr 1fr mobile)
+//   .montage-cell { aspect-ratio:3/4; overflow:hidden; background:#000 }
+//   .montage-cell video { object-fit:cover; filter:grayscale(.35) contrast(1.05) }
+//   .montage-cell::after { linear-gradient(to top, rgba(0,0,0,.6) 0%, rgba(0,0,0,0) 42%) }
 
-const TAGLINE =
-  "North Coast Soundworks is Cleveland's MECP-certified car audio specialist. " +
-  'We provide factory-integrated audio system design, fabrication, and tuning.'
+// .hero-lede content (verbatim from Hero.jsx STATEMENT).
+const STATEMENT =
+  "North Coast Soundworks is Cleveland's MECP-certified car audio specialist. We provide " +
+  'factory-integrated audio system design, fabrication, and tuning. This work includes hands-free signal ' +
+  'integration, amplifier and speaker installation, subwoofer enclosure fabrication, and ' +
+  'measurement-based digital signal processor tuning.'
 
-const HERO_VIDEOS = [
+// MONTAGE order from Hero.jsx: audison(01), bmw(02), alfa(03), kia(04).
+const MONTAGE = [
   '/video/install-audison.mp4',
   '/video/install-bmw.mp4',
   '/video/install-alfa.mp4',
@@ -25,156 +38,171 @@ function callShop() {
   }
 }
 
-function Tagline() {
+// .hero-lede
+function HeroLede() {
   return (
     <Text
       style={{
+        maxWidth: 760,
         fontFamily: 'Inter',
-        fontSize: 15,
+        fontSize: 22,
+        lineHeight: 31.9, // 1.45 * 22
         fontWeight: '400',
-        color: '#33353c',
-        lineHeight: 24, // 1.6 * 15
-        maxWidth: 460,
+        color: '#09080e', // var(--fg-1) -> var(--ncsw-ink)
       }}
     >
-      {TAGLINE}
+      {STATEMENT}
     </Text>
   )
 }
 
-function CallCta() {
+// .hero-call (shown <=900px / on native)
+function HeroCall() {
   return (
-    <Pressable onPress={callShop} style={{ marginTop: 16 }}>
+    <Pressable
+      onPress={callShop}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22 }}
+    >
       <Text
         style={{
-          fontFamily: 'Creato Display',
-          fontSize: 12,
-          fontWeight: '800',
-          letterSpacing: 1.2, // 0.1em * 12
-          textTransform: 'uppercase',
-          color: '#09080e',
+          fontFamily: 'Inter',
+          fontWeight: '600',
+          fontSize: 15,
+          color: '#0576cc', // var(--accent) -> var(--ncsw-primary)
+          textDecorationLine: 'underline',
         }}
       >
-        Call (216) 555-0114
+        Call (216) 555-0114 →
       </Text>
     </Pressable>
   )
 }
 
-// Web-only: all install videos side-by-side in a row, each autoplaying,
-// muted, and looping endlessly. createElement avoids JSX intrinsic <video>
-// typings (no DOM JSX in the React Native type set).
-function VideoRow() {
-  if (Platform.OS !== 'web') return null
-  return React.createElement(
-    'div',
-    { style: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'row' } },
-    HERO_VIDEOS.map((src) =>
-      React.createElement('video', {
-        key: src,
+// One .montage-cell with its <video> and the ::after gradient overlay (web).
+function MontageCell({ src }: { src: string }) {
+  return (
+    <View
+      style={{
+        position: 'relative',
+        aspectRatio: 3 / 4,
+        overflow: 'hidden',
+        backgroundColor: '#000',
+      }}
+    >
+      {React.createElement('video', {
         src,
         autoPlay: true,
         muted: true,
         loop: true,
         playsInline: true,
         style: {
-          flex: 1,
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          opacity: 0.75,
+          display: 'block',
+          filter: 'grayscale(.35) contrast(1.05)',
         },
-      })
-    )
-  ) as any
+      })}
+      {/* .montage-cell::after */}
+      <View
+        style={
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'linear-gradient(to top, rgba(0,0,0,.6) 0%, rgba(0,0,0,0) 42%)',
+          } as any
+        }
+      />
+    </View>
+  )
 }
 
 export function Hero() {
-  // ---- Native layout: vertical stack ----
-  if (Platform.OS !== 'web') {
-    return (
-      <View style={{ paddingHorizontal: 24, paddingVertical: 48, gap: 24 }}>
-        {/* Native wordmark: text fallback (SVG <Image> needs react-native-svg). */}
-        <Text
-          style={{
-            fontFamily: 'Creato Display',
-            fontSize: 40,
-            fontWeight: '800',
-            letterSpacing: -1.3,
-            color: '#09080e',
-          }}
-        >
-          NORTH COAST SOUNDWORKS
-        </Text>
-        <Tagline />
-        <CallCta />
-        <View
-          style={{
-            width: '100%',
-            aspectRatio: 16 / 9,
-            backgroundColor: '#09080e',
-            borderRadius: 16,
-          }}
-        />
-      </View>
-    )
-  }
+  const { width } = useWindowDimensions()
+  const isWeb = Platform.OS === 'web'
+  const narrow = width <= 760
+  const showCall = !isWeb || width <= 900
+  const cols = isWeb && !narrow ? 4 : 2
+  const containerPadX = narrow ? 22 : 40
 
-  // ---- Web layout: two-column full-viewport grid ----
-  const gridStyle: any = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    minHeight: '100vh',
-  }
+  // ---- Native fallback: text wordmark (SVG <Image> needs react-native-svg) ----
+  const Wordmark = isWeb ? (
+    <View style={{ lineHeight: 0 } as any}>
+      {React.createElement('img', {
+        src: '/brand/NCSW-wordmark-full.svg',
+        alt: 'North Coast Soundworks',
+        style: { display: 'block', width: '100%', maxWidth: 760, height: 'auto' },
+      })}
+    </View>
+  ) : (
+    <Text
+      style={{
+        fontFamily: 'Creato Display',
+        fontSize: 40,
+        fontWeight: '700',
+        letterSpacing: -1.4,
+        color: '#09080e',
+      }}
+    >
+      NORTH COAST SOUNDWORKS
+    </Text>
+  )
+
+  const Container = ({ children }: { children: React.ReactNode }) => (
+    <View
+      style={{
+        width: '100%',
+        maxWidth: 1410,
+        marginHorizontal: 'auto',
+        paddingHorizontal: containerPadX,
+      }}
+    >
+      {children}
+    </View>
+  )
 
   return (
-    <View style={gridStyle}>
-      {/* LEFT COLUMN */}
-      <View
-        style={{
-          borderRightWidth: 1,
-          borderRightColor: '#ececec',
-          paddingHorizontal: 48,
-          paddingTop: 96,
-          paddingBottom: 64,
-          justifyContent: 'space-between',
-        }}
-      >
-        {/* Top: spacer for nav */}
-        <View style={{ height: 24 }} />
-
-        {/* Middle: wordmark */}
-        {/* eslint-disable-next-line jsx-a11y/alt-text */}
-        <Image
-          source={{ uri: '/brand/NCSW-wordmark-full.svg' }}
-          style={{ width: '100%', height: 180 }}
-          resizeMode="contain"
-        />
-
-        {/* Bottom: tagline + CTA */}
-        <View>
-          <Tagline />
-          <CallCta />
+    <View style={{ paddingTop: 64 }}>
+      {/* .hero > .container : wordmark + statement */}
+      <Container>
+        <View>{Wordmark}</View>
+        <View style={{ marginTop: 24, gap: 28 }}>
+          <HeroLede />
+          {showCall ? <HeroCall /> : null}
         </View>
-      </View>
+      </Container>
 
-      {/* RIGHT COLUMN */}
-      <View style={{ position: 'relative', backgroundColor: '#09080e', overflow: 'hidden' }}>
-        <VideoRow />
-        <View style={{ position: 'absolute', bottom: 32, left: 32 }}>
-          <Text
-            style={{
-              fontFamily: 'Creato Display',
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 1.32, // 0.12em * 11
-              textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.4)',
-            }}
+      {/* .montage > .container > .montage-grid */}
+      <View style={{ marginTop: 56 }}>
+        <Container>
+          <View
+            style={
+              {
+                display: isWeb ? 'grid' : 'flex',
+                gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                gap: 1,
+                backgroundColor: '#1b1b1b',
+                overflow: 'hidden',
+                ...(isWeb ? {} : { flexDirection: 'row', flexWrap: 'wrap' }),
+              } as any
+            }
           >
-            Installation · Process · Craft
-          </Text>
-        </View>
+            {MONTAGE.map((src) =>
+              isWeb ? (
+                <MontageCell key={src} src={src} />
+              ) : (
+                // Native: dark placeholder cell (no web <video>), 2-up, aspect 3/4.
+                <View
+                  key={src}
+                  style={{ width: '50%', aspectRatio: 3 / 4, backgroundColor: '#000' }}
+                />
+              )
+            )}
+          </View>
+        </Container>
       </View>
     </View>
   )
