@@ -59,6 +59,49 @@ function NavLink({ label, href }: { label: string; href: string }) {
   )
 }
 
+// .nav-cta — white outline button; hover -> bg #fafbfc, border #b8b8b8 (.btn:hover).
+function NavCta() {
+  const [hovered, setHovered] = useState(false)
+  const hoverProps: any =
+    Platform.OS === 'web'
+      ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
+      : {}
+  return (
+    <Pressable
+      onPress={() => openHref('tel:+12165550114')}
+      {...hoverProps}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 9,
+        minHeight: 36,
+        borderWidth: 1,
+        borderColor: hovered ? '#b8b8b8' : '#dcdcdc',
+        borderRadius: 8, // var(--radius-sm)
+        backgroundColor: hovered ? '#fafbfc' : '#ffffff',
+        paddingVertical: 7,
+        paddingHorizontal: 14,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: 'Inter',
+          textTransform: 'uppercase',
+          letterSpacing: 1.2, // .12em * 10
+          fontSize: 10,
+          lineHeight: 10,
+          fontWeight: '600',
+          color: '#09080e',
+        }}
+      >
+        Call now
+      </Text>
+      <Text style={{ fontSize: 10, lineHeight: 10, color: '#09080e' }}>→</Text>
+    </Pressable>
+  )
+}
+
 // .nav-brand img.word (height 23) — text fallback on native.
 function Brand() {
   if (Platform.OS === 'web') {
@@ -135,39 +178,7 @@ export function Nav() {
         {/* right group: .nav-cta + .nav-burger (gap 14) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           {/* .nav-cta (hidden <=900) */}
-          {!narrow ? (
-            <Pressable
-              onPress={() => openHref('tel:+12165550114')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 9,
-                minHeight: 36,
-                borderWidth: 1,
-                borderColor: '#dcdcdc',
-                borderRadius: 8, // var(--radius-sm)
-                backgroundColor: '#ffffff',
-                paddingVertical: 7,
-                paddingHorizontal: 14,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: 'Inter',
-                  textTransform: 'uppercase',
-                  letterSpacing: 1.2, // .12em * 10
-                  fontSize: 10,
-                  lineHeight: 10,
-                  fontWeight: '600',
-                  color: '#09080e',
-                }}
-              >
-                Call now
-              </Text>
-              <Text style={{ fontSize: 10, lineHeight: 10, color: '#09080e' }}>→</Text>
-            </Pressable>
-          ) : null}
+          {!narrow ? <NavCta /> : null}
 
           {/* .nav-burger (shown <=900) */}
           {narrow ? (

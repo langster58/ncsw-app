@@ -14,3 +14,26 @@
   --ncsw-radius-control: 8px;
   --ncsw-radius-pill: 100px;
 }
+
+/* ===== Page transitions — exact from source tokens.css (cross-document view transitions) ===== */
+@view-transition { navigation: auto; }
+@keyframes pt-in  { from { opacity: 0; transform: translateY(150px) scale(1, 1.004); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pt-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(150px) scale(1, 1.004); } }
+::view-transition-old(root)            { animation: pt-out .7s cubic-bezier(.83, 0, .17, 1) .3s both; }
+::view-transition-new(root),
+html.first-load body                   { animation: pt-in  .7s cubic-bezier(.83, 0, .17, 1) .3s both; }
+
+/* ===== Scroll-triggered section reveal: slide up 24px + fade in (expo-out) ===== */
+.ncsw-reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s cubic-bezier(.16, 1, .3, 1), transform .7s cubic-bezier(.16, 1, .3, 1); will-change: opacity, transform; }
+.ncsw-reveal.is-in { opacity: 1; transform: translateY(0); }
+
+/* ===== Hero wordmark entrance: translateY 40 -> 0 + fade, after preloader ===== */
+@keyframes ncsw-hero-word { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+.ncsw-hero-word { animation: ncsw-hero-word .6s cubic-bezier(.16, 1, .3, 1) .25s both; }
+
+/* ===== Reduced motion: instant, no movement ===== */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root), html.first-load body { animation: none; }
+  .ncsw-reveal { opacity: 1; transform: none; transition: none; }
+  .ncsw-hero-word { animation: none; }
+}
