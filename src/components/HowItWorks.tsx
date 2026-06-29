@@ -9,7 +9,7 @@ import { Platform, Text, View, useWindowDimensions } from 'react-native'
 //      placeholder View), then the .mc-doors grid of per-stage doors.
 //
 // Resolved design tokens (literal values, from tokens.css):
-//   ink #09080e  gray #656565  line #ececec  shape/surface #f5f5f5  white #ffffff
+//   ink #09080e  gray #333333  line #ececec  shape/surface #f5f5f5  white #ffffff
 //   accent #0576cc  sky #3ba8e2  fg-1=ink  fg-2=gray  bg-2=shape  --radius-md 12px
 //   fonts: display "Creato Display", body "Inter", mono "IBM Plex Mono"
 // Section/container (home.css):
@@ -262,7 +262,7 @@ function MethodDoor({
             fontFamily: 'Inter',
             fontSize: 13.5,
             lineHeight: 20.52, // 1.52 * 13.5
-            color: '#656565', // var(--fg-2)
+            color: '#333333', // var(--fg-2)
           }}
         >
           {copy}
@@ -303,7 +303,7 @@ function HowItWorksIntro() {
             fontFamily: 'Inter',
             fontSize: 17, // 1.0625rem
             lineHeight: 26.86, // 1.58 * 17
-            color: '#656565', // var(--fg-2)
+            color: '#333333', // var(--fg-2)
             maxWidth: '66.6%',
           }}
         >
@@ -359,7 +359,7 @@ function MethodologyHub() {
                 fontFamily: 'Inter',
                 fontSize: 13.5,
                 lineHeight: 20.52, // 1.52 * 13.5
-                color: '#656565', // var(--fg-2)
+                color: '#333333', // var(--fg-2)
               }}
             >
               {SUBS_BODY}

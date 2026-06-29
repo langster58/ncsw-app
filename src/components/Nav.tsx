@@ -10,7 +10,7 @@ import React from 'react'
 //   .nav-brand { display:flex; align-items:center; gap:12px } ; img.word { height:23px; width:auto }
 //   .nav-menu { display:flex; gap:26px; align-items:center } (display:none <=900)
 //   .nav-link { Inter; uppercase; letter-spacing:.12em; font-size:11px; weight:600;
-//          color:#09080e; padding-bottom:3px } :hover { color:#656565 }
+//          color:#09080e; padding-bottom:3px } :hover { color:#333333 }
 //   .nav-cta (.btn) { inline-flex; center; gap:9px; min-height:36px; border:1px solid #dcdcdc;
 //          border-radius:8px; background:#fff; color:#09080e; padding:7px 14px; Inter;
 //          uppercase; letter-spacing:.12em; font-size:10px; line-height:1; weight:600 } (none <=900)
@@ -50,7 +50,7 @@ function NavLink({ label, href }: { label: string; href: string }) {
           letterSpacing: 1.32, // .12em * 11
           fontSize: 11,
           fontWeight: '600',
-          color: hovered ? '#656565' : '#09080e', // :hover -> var(--fg-2)
+          color: hovered ? '#333333' : '#09080e', // :hover -> var(--fg-2)
         }}
       >
         {label}

@@ -25,7 +25,7 @@ import {
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
 const INK = '#09080e'; // --ncsw-ink / --fg-1
-const GRAY = '#656565'; // --ncsw-gray / --fg-2
+const GRAY = '#333333'; // --ncsw-gray / --fg-2
 const LINE = '#ececec'; // --ncsw-line / --border
 const WHITE = '#ffffff'; // --ncsw-white
 const ACCENT = '#0576cc'; // --accent / --data / --ncsw-primary

@@ -48,7 +48,7 @@ function HeroLede() {
         fontSize: 22,
         lineHeight: 31.9, // 1.45 * 22
         fontWeight: '400',
-        color: '#09080e', // var(--fg-1) -> var(--ncsw-ink)
+        color: '#333333', // body text
       }}
     >
       {STATEMENT}

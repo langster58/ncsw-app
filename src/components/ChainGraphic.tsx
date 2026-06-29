@@ -5,7 +5,7 @@ import { Platform, Text, View, useWindowDimensions } from 'react-native'
 // Ported from ChainGraphic.jsx (CHAIN_NODES) and home.css (.chainband .flow / .gnode).
 //
 // Resolved tokens (literal):
-//   --ncsw-ink  #09080e   --ncsw-gray #656565   --ncsw-line #ececec
+//   --ncsw-ink  #09080e   --ncsw-gray #333333   --ncsw-line #ececec
 //   --accent    #0576cc (var(--ncsw-primary))   white #ffffff
 //   --font-mono "IBM Plex Mono"
 //

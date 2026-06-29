@@ -11,14 +11,14 @@ import {
    Collections — "Sub-stage / collections" section
    Ported faithfully from Collections.jsx + home.css/tokens.css.
    Tokens (literal values):
-     ink   #09080e (--fg-1)        gray   #656565 (--fg-2)
+     ink   #09080e (--fg-1)        gray   #333333 (--fg-2)
      line  #ececec (--ncsw-line)   shape  #f5f5f5 (--ncsw-shape)
      white #ffffff                 accent #0576cc (--accent)
      radius-lg 16
    ============================================================ */
 
 const INK = '#09080e';
-const GRAY = '#656565';
+const GRAY = '#333333';
 const LINE = '#ececec';
 const SHAPE = '#f5f5f5';
 const ACCENT = '#0576cc';
