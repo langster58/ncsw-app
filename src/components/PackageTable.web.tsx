@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+// @ts-ignore — react-dom has no bundled types here; it resolves at runtime via react-native-web (web only).
+import { createPortal } from 'react-dom'
 import { Pressable, Text, View } from 'react-native'
 
 // PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
@@ -25,7 +27,6 @@ const ACCENT_SOFT = '#e6f1fb'
 const WHITE = '#ffffff'
 const FONT = 'Inter'
 const MONO = 'IBM Plex Mono'
-const GX = 20 // px-[var(--gx)]
 
 /* ---------------- DATA (exact from PackagesTable.jsx) ---------------- */
 const SUBS = [
@@ -430,11 +431,23 @@ export function PackageTable() {
   }
 
   return (
-    <View style={{ backgroundColor: WHITE, width: '100%', overflow: 'hidden' } as any}>
+    // Constrained to the site container (max 1410, centered, 40px gutters) like every
+    // other section; the table itself is wider than the inner width and scrolls
+    // horizontally *within* the container.
+    <View
+      style={
+        {
+          width: '100%',
+          maxWidth: 1410,
+          marginHorizontal: 'auto',
+          paddingHorizontal: 40,
+          backgroundColor: WHITE,
+        } as any
+      }
+    >
       {/* ============ TOP CHROME: vehicle selector + Sort & Filter ============ */}
       <View
         style={{
-          paddingHorizontal: GX,
           paddingTop: 12,
           paddingBottom: 12,
           borderBottomWidth: 1,
@@ -533,7 +546,7 @@ export function PackageTable() {
         {
           ref: regionRef,
           onScroll,
-          style: { height: REGION_H, overflow: 'auto', paddingLeft: GX, paddingRight: GX },
+          style: { height: REGION_H, overflow: 'auto', width: '100%' },
         },
         <View style={{ width: TABLE_W } as any}>
           {/* header row */}
@@ -610,11 +623,12 @@ export function PackageTable() {
       )}
 
       {/* ============ FILTER + SORT SHEET (createPortal -> fixed overlay) ============ */}
-      {sheet
-        ? React.createElement(
-            'div',
-            { style: { position: 'fixed', inset: 0, zIndex: 200 } },
-            <>
+      {sheet && typeof document !== 'undefined'
+        ? createPortal(
+            React.createElement(
+              'div',
+              { style: { position: 'fixed', inset: 0, zIndex: 200 } },
+              <>
               <Pressable
                 onPress={() => setSheet(false)}
                 style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(16,24,29,0.42)' } as any}
@@ -623,13 +637,12 @@ export function PackageTable() {
                 style={
                   {
                     position: 'absolute',
-                    right: 0,
                     top: 0,
+                    left: 0,
+                    right: 0,
                     bottom: 0,
-                    width: 'min(420px, 100%)',
                     backgroundColor: WHITE,
                     flexDirection: 'column',
-                    boxShadow: '0 -8px 40px rgba(16,24,40,.18)',
                   } as any
                 }
               >
@@ -796,6 +809,8 @@ export function PackageTable() {
                 </View>
               </View>
             </>,
+            ),
+            document.body,
           )
         : null}
     </View>
