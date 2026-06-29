@@ -561,8 +561,10 @@ export function Editorial() {
         <Door label="All articles" />
       </View>
 
-      {/* .section-intro — heading + lede, max-width ~70ch. */}
-      <View style={{ maxWidth: '66.6%', marginBottom: gutter }}>
+      {/* .section-intro — heading + lede, max-width ~70ch.
+          maxWidth lives on the inner <Text>s; nesting it on the wrapper would
+          compound to ~44% of the container. */}
+      <View style={{ marginBottom: gutter }}>
         <Text
           style={{
             fontFamily: FONT_DISPLAY,

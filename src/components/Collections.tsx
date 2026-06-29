@@ -206,8 +206,10 @@ export function Collections() {
           </Pressable>
         </View>
 
-        {/* SectionIntro — heading + lead */}
-        <View style={{ maxWidth: '66.6%', marginBottom: gutter }}>
+        {/* SectionIntro — heading + lead.
+            maxWidth lives on the inner <Text>s; nesting it on the wrapper would
+            compound to ~44% of the container. */}
+        <View style={{ marginBottom: gutter }}>
           <Text
             style={{
               fontFamily: FONT_DISPLAY,

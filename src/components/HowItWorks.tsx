@@ -295,8 +295,10 @@ function HowItWorksIntro() {
         {HOWTO_HEADING_L2}
       </Text>
 
-      {/* .howto-cols { column-count:1; max-width:70ch; margin-top:20px } */}
-      <View style={{ maxWidth: '66.6%', marginTop: 20 }}>
+      {/* .howto-cols { column-count:1; max-width:70ch; margin-top:20px }
+          maxWidth lives on the inner <Text> (line ~307) so nesting it here would
+          compound to ~44% of the container — kept off the wrapper deliberately. */}
+      <View style={{ marginTop: 20 }}>
         {/* .howto .lead { 1.0625rem -> 17px; lh 1.58; color var(--fg-2); max-width 70ch } */}
         <Text
           style={{
