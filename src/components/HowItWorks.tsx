@@ -1,5 +1,6 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
+import { Container, Heading, Lead, Section } from '@/ui'
 
 // HowItWorks — methodology / "how it works" section, ported from HowItWorks.jsx.
 // Builds two blocks faithfully:
@@ -273,45 +274,17 @@ function MethodDoor({
   )
 }
 
-// HowItWorksIntro — .howto.howto-intro : opener heading + lede column(s).
+// HowItWorksIntro — .howto.howto-intro : opener heading + lede column.
+// Thin composition on the design primitives in src/ui.
 function HowItWorksIntro() {
   return (
-    // .howto { padding-top: 4px } ; .howto-intro { padding-top: 4px }
-    <View style={{ paddingTop: 4 }}>
-      {/* .howto h2 : Creato 800; clamp(2.3rem,4.8vw,3.4rem)->~54.4px; lh 1.04; ls -.02em; max-width 32ch */}
-      <Text
-        style={{
-          fontFamily: 'Creato Display',
-          fontWeight: '800',
-          fontSize: 54, // clamp upper bound 3.4rem
-          lineHeight: 56.16, // 1.04 * 54
-          letterSpacing: -1.08, // -.02em * 54
-          color: '#09080e', // var(--fg-1)
-          maxWidth: '66.6%',
-        }}
-      >
+    <View style={{ paddingTop: 4, gap: 20 }}>
+      <Heading level="h2">
         {HOWTO_HEADING_L1}
         {'\n'}
         {HOWTO_HEADING_L2}
-      </Text>
-
-      {/* .howto-cols { column-count:1; max-width:70ch; margin-top:20px }
-          maxWidth lives on the inner <Text> (line ~307) so nesting it here would
-          compound to ~44% of the container — kept off the wrapper deliberately. */}
-      <View style={{ marginTop: 20 }}>
-        {/* .howto .lead { 1.0625rem -> 17px; lh 1.58; color var(--fg-2); max-width 70ch } */}
-        <Text
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 17, // 1.0625rem
-            lineHeight: 26.86, // 1.58 * 17
-            color: '#333333', // var(--fg-2)
-            maxWidth: '66.6%',
-          }}
-        >
-          {HOWTO_LEAD}
-        </Text>
-      </View>
+      </Heading>
+      <Lead>{HOWTO_LEAD}</Lead>
     </View>
   )
 }
@@ -408,26 +381,12 @@ function MethodologyHub() {
 // HowItWorks — the full methodology section: .section > .container wrapper around
 // the intro opener and the methodology hub.
 export function HowItWorks() {
-  const { width } = useWindowDimensions()
-  const isWeb = Platform.OS === 'web'
-  const narrow = isWeb ? width <= 760 : true
-  const containerPadX = narrow ? 22 : 40 // .container padding (22 mobile / 40 desktop)
-
   return (
-    // .section { padding-top: 96px }
-    <View style={{ paddingTop: 96 }}>
-      {/* .container { max-width: 1410; margin: 0 auto; padding: 0 40px } */}
-      <View
-        style={{
-          width: '100%',
-          maxWidth: 1410,
-          marginHorizontal: 'auto',
-          paddingHorizontal: containerPadX,
-        }}
-      >
+    <Section>
+      <Container>
         <HowItWorksIntro />
         <MethodologyHub />
-      </View>
-    </View>
+      </Container>
+    </Section>
   )
 }

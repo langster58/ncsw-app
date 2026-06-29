@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
+import { Container, Heading, Lead, Opener, Section } from '@/ui';
 
 /* ============================================================
    Collections — "Sub-stage / collections" section
@@ -112,134 +113,21 @@ function CardImage({ src, alt }: { src: string; alt: string }) {
 export function Collections() {
   const { width } = useWindowDimensions();
   const isMobile = width < 760; // home.css collapses .coll-grid to 1fr at narrow widths
-  const containerPad = width <= 700 ? 22 : 40; // .container padding: 0 40px (22 mobile)
   const gutter = 32; // --ncsw-grid-gutter clamp(20px, 1.7vw, 32px)
 
   return (
-    <View
-      style={{
-        backgroundColor: '#ffffff',
-        paddingTop: 96, // .section padding-top: 96px
-      }}
-    >
-      <View
-        style={{
-          maxWidth: 1410, // .container max-width: 1410px
-          width: '100%',
-          alignSelf: 'center',
-          paddingHorizontal: containerPad,
-        }}
-      >
-        {/* SectionFrame opener — index="04" label="Sub-stage" action="All alignments" */}
-        <View
-          style={
-            {
-              ...(IS_WEB
-                ? {
-                    display: 'grid',
-                    gridTemplateColumns: 'auto 1fr auto',
-                    alignItems: 'center',
-                    gap: '18px',
-                  }
-                : {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }),
-              borderTopWidth: 1,
-              borderTopColor: INK,
-              paddingTop: 14,
-              marginBottom: 48,
-            } as any
-          }
-        >
-          <Text
-            style={{
-              fontFamily: FONT_MONO,
-              fontSize: 12,
-              fontWeight: '500',
-              letterSpacing: 0.48, // .04em * 12
-              color: GRAY,
-            }}
-          >
-            04
-          </Text>
-          <Text
-            style={{
-              flex: IS_WEB ? undefined : 1,
-              fontFamily: FONT_BODY,
-              textTransform: 'uppercase',
-              letterSpacing: 1.56, // .13em * 12 (eyebrow scale)
-              fontSize: 12,
-              fontWeight: '600',
-              color: INK,
-              marginLeft: IS_WEB ? 0 : 14,
-            }}
-          >
-            Sub-stage
-          </Text>
-          <Pressable
-            style={
-              {
-                ...(IS_WEB ? { gridColumn: 3, justifySelf: 'end' } : {}),
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderBottomWidth: 1,
-                borderBottomColor: 'transparent',
-                paddingBottom: 3,
-              } as any
-            }
-          >
-            <Text
-              style={{
-                fontFamily: FONT_BODY,
-                textTransform: 'uppercase',
-                letterSpacing: 1.32, // .12em * 11
-                fontSize: 11,
-                fontWeight: '600',
-                color: INK,
-                marginRight: 9, // .door gap: 9px
-              }}
-            >
-              All alignments
-            </Text>
-            <IconArrow />
-          </Pressable>
-        </View>
-
-        {/* SectionIntro — heading + lead.
-            maxWidth lives on the inner <Text>s; nesting it on the wrapper would
-            compound to ~44% of the container. */}
-        <View style={{ marginBottom: gutter }}>
-          <Text
-            style={{
-              fontFamily: FONT_DISPLAY,
-              fontSize: 42, // clamp(28px, 3.2vw, 42px)
-              fontWeight: '700',
-              letterSpacing: -0.84, // -.02em * 42
-              lineHeight: 42 * 1.05,
-              color: INK,
-              maxWidth: '66.6%',
-            }}
-          >
-            Sub-stage fabrication &amp; alignment
-          </Text>
-          <View style={{ marginTop: 16 }}>
-            <Text
-              style={{
-                fontFamily: FONT_BODY,
-                fontSize: 17, // 1.0625rem
-                lineHeight: 17 * 1.58,
-                color: GRAY,
-                maxWidth: '66.6%',
-              }}
-            >
-              The sub-stage is defined as much by where the driver lives as by the
-              driver itself. Most vehicles resolve to one of a few alignments, each a
-              different trade between output, space, and how the enclosure is built.
-              These are the three we fabricate most; the full breakdown lives on the
-              enclosure methodology page.
-            </Text>
-          </View>
+    <Section>
+      <Container>
+        <Opener index="04" label="Sub-stage" doorLabel="All alignments" />
+        <View style={{ marginBottom: gutter, gap: 16 }}>
+          <Heading level="h2sm">Sub-stage fabrication &amp; alignment</Heading>
+          <Lead>
+            The sub-stage is defined as much by where the driver lives as by the
+            driver itself. Most vehicles resolve to one of a few alignments, each a
+            different trade between output, space, and how the enclosure is built.
+            These are the three we fabricate most; the full breakdown lives on the
+            enclosure methodology page.
+          </Lead>
         </View>
 
         {/* CardGrid .coll-grid — repeat(3, minmax(0,1fr)) gap gutter */}
@@ -419,7 +307,7 @@ export function Collections() {
             </View>
           ))}
         </View>
-      </View>
-    </View>
+      </Container>
+    </Section>
   );
 }

@@ -20,7 +20,7 @@ import {
 //   - maxWidth        → tokens.copyMaxWidth
 //   - fluid sizing    → tokens.type[level]
 
-type Level = 'hero' | 'h2' | 'h3' | 'h4'
+type Level = 'hero' | 'h2' | 'h2sm' | 'h3' | 'h4'
 
 export function Heading({ level = 'h2', children }: { level?: Level; children: ReactNode }) {
   const fontSize = useFluidPx(type[level])

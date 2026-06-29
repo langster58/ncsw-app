@@ -22,6 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { Container, Heading, Lead, Opener, Section } from '@/ui';
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
 const INK = '#09080e'; // --ncsw-ink / --fg-1
@@ -500,100 +501,31 @@ function PieceCard({ piece, cardWidth }: { piece: Piece; cardWidth: number | und
 export function Editorial() {
   const { width } = useWindowDimensions();
 
-  // .section.container → padding-top 96; max-width 1410; padding 0 40 (22 mobile @<=900).
   const isNarrow = width <= 900;
   const horizontalPadding = isNarrow ? 22 : 40;
 
   // --ncsw-grid-gutter: clamp(20px, 1.7vw, 32px)
   const gutter = Math.max(20, Math.min(32, width * 0.017));
 
-  // .section-intro h2 → clamp(28px, 3.2vw, 42px), lh 1.05, ls -.02em.
-  const headingFontSize = Math.max(28, Math.min(42, width * 0.032));
-  const headingLineHeight = Math.round(headingFontSize * 1.05);
-
-  // .section-intro p → 1.0625rem (17px), line-height 1.58.
-  const leadFontSize = 17;
-  const leadLineHeight = Math.round(leadFontSize * 1.58);
-
   // .edit-grid → 3 cols on web wide; single column @<=900 (mobile breakpoint).
-  // Resolve a concrete card width on web so the grid is even; native uses a
-  // horizontal ScrollView rail with fixed-width cards.
   const containerInner = Math.min(1410, width) - horizontalPadding * 2;
   const webCardWidth = isNarrow
     ? undefined
     : (containerInner - gutter * 2) / 3;
 
   return (
-    <View
-      style={{
-        paddingTop: 96,
-        paddingHorizontal: horizontalPadding,
-        maxWidth: 1410,
-        marginHorizontal: 'auto',
-        width: '100%',
-      }}
-    >
-      {/* .opener — index/label + "All articles" door, top hairline rule. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 18,
-          borderTopWidth: 1,
-          borderTopColor: INK,
-          paddingTop: 14,
-          marginBottom: 48,
-        } as any}
-      >
-        <Text
-          style={{
-            fontFamily: FONT_MONO,
-            fontVariant: ['tabular-nums'],
-            fontSize: 12,
-            fontWeight: '500',
-            letterSpacing: 0.04 * 12, // .04em @ 12px
-            color: GRAY,
-          }}
-        >
-          06 / Editorial
-        </Text>
-        <Door label="All articles" />
-      </View>
-
-      {/* .section-intro — heading + lede, max-width ~70ch.
-          maxWidth lives on the inner <Text>s; nesting it on the wrapper would
-          compound to ~44% of the container. */}
-      <View style={{ marginBottom: gutter }}>
-        <Text
-          style={{
-            fontFamily: FONT_DISPLAY,
-            fontSize: headingFontSize,
-            fontWeight: '700',
-            letterSpacing: -(headingFontSize * 0.02),
-            lineHeight: headingLineHeight,
-            color: INK,
-            maxWidth: '66.6%',
-          }}
-        >
-          We publish the reasoning.
-        </Text>
-        <View style={{ marginTop: 16 }}>
-          <Text
-            style={{
-              fontSize: leadFontSize,
-              lineHeight: leadLineHeight,
-              color: GRAY,
-              maxWidth: '66.6%',
-            }}
-          >
+    <Section>
+      <Container>
+        <Opener index="06" label="Editorial" doorLabel="All articles" />
+        <View style={{ marginBottom: gutter, gap: 16 }}>
+          <Heading level="h2sm">We publish the reasoning.</Heading>
+          <Lead>
             Every engineering call we make, from which subwoofer to how much
             amplifier to why a DSP, comes from measurement, not opinion. These
             write-ups walk the tests we run, the data behind the rankings, and
             the trade-offs we'd want explained if it were our own car.
-          </Text>
+          </Lead>
         </View>
-      </View>
 
       {/* .edit-grid — 3-up on web, horizontal card rail on native/narrow. */}
       {IS_WEB && !isNarrow ? (
@@ -627,6 +559,7 @@ export function Editorial() {
           ))}
         </ScrollView>
       )}
-    </View>
+      </Container>
+    </Section>
   );
 }
