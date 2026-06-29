@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 // @ts-ignore — react-dom has no bundled types here; it resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
 import { Pressable, Text, View } from 'react-native'
@@ -14,6 +14,7 @@ const LINE = '#e7e9ee'
 const LINES = '#d3d7e0'
 const ACCENT = '#0576cc'
 const ACCENT_SOFT = '#e6f1fb'
+const HOV = '#f3f6fb'
 const WHITE = '#ffffff'
 const FONT = 'Inter'
 const MONO = 'IBM Plex Mono'
@@ -140,7 +141,82 @@ function RangeSlider({
           'aria-label': 'Maximum price',
         })}
       </View>
+      {/* tick marks — exact from source: 5 ticks, $k labels, edge-hugging first/last */}
+      {React.createElement(
+        'div',
+        { style: { position: 'relative', marginTop: 8, height: 16 } },
+        [0, 0.25, 0.5, 0.75, 1].map((t, i, arr) => {
+          const v = Math.round((min + t * (max - min)) / 100) * 100
+          const isFirst = i === 0
+          const isLast = i === arr.length - 1
+          const xt = isFirst ? 'translateX(0)' : isLast ? 'translateX(-100%)' : 'translateX(-50%)'
+          const align = isFirst ? 'flex-start' : isLast ? 'flex-end' : 'center'
+          return React.createElement(
+            'div',
+            {
+              key: i,
+              style: {
+                position: 'absolute',
+                left: `${t * 100}%`,
+                transform: xt,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: align,
+              },
+            },
+            React.createElement('div', { style: { width: 1, height: 6, background: LINES, marginBottom: 4 } }),
+            React.createElement(
+              'span',
+              { style: { fontFamily: MONO, fontSize: 10, color: INK3, whiteSpace: 'nowrap' } },
+              '$' + (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k',
+            ),
+          )
+        }),
+      )}
     </View>
+  )
+}
+
+// Reset / Show packages — exact: mono 12 / medium / uppercase / tracking-wide (.025em -> .3),
+// rounded-lg (8), px-5 (20) py-2.5 (10). Hover: primary -> #0569b7; secondary -> ink3 border + hov bg.
+function SheetButton({
+  label,
+  variant,
+  onPress,
+}: {
+  label: string
+  variant: 'primary' | 'secondary'
+  onPress: () => void
+}) {
+  const [h, setH] = useState(false)
+  const primary = variant === 'primary'
+  const hoverProps: any = { onHoverIn: () => setH(true), onHoverOut: () => setH(false) }
+  return (
+    <Pressable
+      onPress={onPress}
+      {...hoverProps}
+      style={{
+        borderRadius: 8,
+        borderWidth: 1,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderColor: primary ? (h ? '#0569b7' : ACCENT) : h ? INK3 : LINES,
+        backgroundColor: primary ? (h ? '#0569b7' : ACCENT) : h ? HOV : WHITE,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: MONO,
+          fontSize: 12,
+          fontWeight: '500',
+          letterSpacing: 0.3, // tracking-wide .025em * 12
+          textTransform: 'uppercase',
+          color: primary ? WHITE : INK,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   )
 }
 
@@ -340,7 +416,9 @@ export function PackageTableModal(props: Props) {
                 gap: 8,
               }}
             >
-              <Pressable
+              <SheetButton
+                label="Reset"
+                variant="secondary"
                 onPress={() => {
                   setTier('All')
                   setTopo('All')
@@ -356,52 +434,8 @@ export function PackageTableModal(props: Props) {
                   setSortKey('price')
                   setSortDir(1)
                 }}
-                style={{
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: LINES,
-                  backgroundColor: WHITE,
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 12,
-                    fontWeight: '500',
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                    color: INK,
-                  }}
-                >
-                  Reset
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={onClose}
-                style={{
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: ACCENT,
-                  backgroundColor: ACCENT,
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 12,
-                    fontWeight: '500',
-                    letterSpacing: 0.6,
-                    textTransform: 'uppercase',
-                    color: WHITE,
-                  }}
-                >
-                  Show packages
-                </Text>
-              </Pressable>
+              />
+              <SheetButton label="Show packages" variant="primary" onPress={onClose} />
             </View>
           </View>
         </View>
