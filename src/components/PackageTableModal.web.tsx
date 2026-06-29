@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-// @ts-ignore — react-dom has no bundled types here; it resolves at runtime via react-native-web (web only).
-import { createPortal } from 'react-dom'
 import { Pressable, Text, View } from 'react-native'
+import { Modal } from '@/ui'
 
 // Sort & Filter modal — ported from PackagesTable.jsx (the ReactDOM.createPortal sheet
 // plus its Facet and RangeSlider helpers). Web only; full-screen, portaled to
@@ -297,152 +296,80 @@ export function PackageTableModal(props: Props) {
     SUBAMPS,
   } = props
 
-  if (typeof document === 'undefined') return null
-
-  return createPortal(
-    React.createElement(
-      'div',
-      { style: { position: 'fixed', inset: 0, zIndex: 200 } },
-      <>
-        <Pressable
-          onPress={onClose}
-          style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(16,24,29,0.42)' } as any}
-        />
-        <View
-          style={
-            {
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: WHITE,
-              flexDirection: 'column',
-            } as any
-          }
-        >
-          {/* header — the whole bar is the close surface */}
-          <Pressable
-            onPress={onClose}
+  return (
+    <Modal open onClose={onClose} title="Sort & Filter">
+      <Modal.Body>
+        <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE }}>
+          <Text
             style={{
-              height: 56,
-              paddingHorizontal: 24,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderBottomWidth: 1,
-              borderBottomColor: LINE,
+              fontFamily: MONO,
+              fontSize: 10.5,
+              fontWeight: '500',
+              letterSpacing: 0.735,
+              textTransform: 'uppercase',
+              color: INK3,
+              marginBottom: 10,
             }}
           >
-            <Text
-              style={{
-                fontFamily: MONO,
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 1.32, // .12em * 11
-                textTransform: 'uppercase',
-                color: INK,
-              }}
-            >
-              Sort & Filter
-            </Text>
-            <Text style={{ color: INK, fontSize: 18 }}>✕</Text>
-          </Pressable>
-
-          {/* body */}
-          {React.createElement(
-            'div',
-            { style: { flex: 1, minHeight: 0, overflowY: 'auto' } },
-            <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-              <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE }}>
-                <Text
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 10.5,
-                    fontWeight: '500',
-                    letterSpacing: 0.735,
-                    textTransform: 'uppercase',
-                    color: INK3,
-                    marginBottom: 10,
-                  }}
-                >
-                  Price range
-                </Text>
-                <RangeSlider
-                  min={PMIN}
-                  max={PMAX}
-                  lo={priceMin}
-                  hi={priceMax}
-                  onChange={(a, b) => {
-                    setPriceMin(a)
-                    setPriceMax(b)
-                  }}
-                />
-              </View>
-              <Facet label="Tier" value={tier} opts={['All', 'Entry', 'Mid', 'Upper', 'Reference', 'Beyond']} onPick={setTier} />
-              <Facet label="Topology" value={topo} opts={['All', '2-way', '3-way']} onPick={setTopo} />
-              <Facet label="Input signal" value={signal} opts={['NCSW Pick', ...SIGNALS]} pick="NCSW Pick" onPick={setSignal} />
-              <Facet label="Component set" value={cset} opts={['NCSW Pick', ...FRONTS]} pick="NCSW Pick" onPick={setCset} />
-              <Facet label="Component amp" value={camp} opts={['NCSW Pick', ...COMPAMPS]} pick="NCSW Pick" onPick={setCamp} />
-              <Facet label="Subwoofer" value={sub} opts={['NCSW Pick', ...SUBOPTS]} pick="NCSW Pick" onPick={setSub} />
-              <Facet label="Sub amp" value={samp} opts={['NCSW Pick', ...SUBAMPS]} pick="NCSW Pick" onPick={setSamp} />
-              <Facet label="Sub count" value={count} opts={['All', 'Single', 'Dual']} onPick={setCount} />
-              <Facet label="Sub size" value={size} opts={['All', '10"', '12"', '15"', '18"']} onPick={setSize} />
-              <Facet
-                label="Sort by"
-                value={sortKey === 'price' ? (sortDir === 1 ? 'Price: low to high' : 'Price: high to low') : 'Tier'}
-                opts={['Price: low to high', 'Price: high to low', 'Tier']}
-                onPick={(v) => {
-                  if (v === 'Tier') {
-                    setSortKey('tier')
-                    setSortDir(1)
-                  } else {
-                    setSortKey('price')
-                    setSortDir(v.includes('low to high') ? 1 : -1)
-                  }
-                }}
-              />
-            </View>,
-          )}
-
-          {/* footer */}
-          <View style={{ paddingHorizontal: 24 }}>
-            <View
-              style={{
-                paddingVertical: 12,
-                borderTopWidth: 1,
-                borderTopColor: LINE,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: 8,
-              }}
-            >
-              <SheetButton
-                label="Reset"
-                variant="secondary"
-                onPress={() => {
-                  setTier('All')
-                  setTopo('All')
-                  setCount('All')
-                  setSize('All')
-                  setSignal('NCSW Pick')
-                  setCset('NCSW Pick')
-                  setCamp('NCSW Pick')
-                  setSub('NCSW Pick')
-                  setSamp('NCSW Pick')
-                  setPriceMin(PMIN)
-                  setPriceMax(PMAX)
-                  setSortKey('price')
-                  setSortDir(1)
-                }}
-              />
-              <SheetButton label="Show packages" variant="primary" onPress={onClose} />
-            </View>
-          </View>
+            Price range
+          </Text>
+          <RangeSlider
+            min={PMIN}
+            max={PMAX}
+            lo={priceMin}
+            hi={priceMax}
+            onChange={(a, b) => {
+              setPriceMin(a)
+              setPriceMax(b)
+            }}
+          />
         </View>
-      </>,
-    ),
-    document.body,
+        <Facet label="Tier" value={tier} opts={['All', 'Entry', 'Mid', 'Upper', 'Reference', 'Beyond']} onPick={setTier} />
+        <Facet label="Topology" value={topo} opts={['All', '2-way', '3-way']} onPick={setTopo} />
+        <Facet label="Input signal" value={signal} opts={['NCSW Pick', ...SIGNALS]} pick="NCSW Pick" onPick={setSignal} />
+        <Facet label="Component set" value={cset} opts={['NCSW Pick', ...FRONTS]} pick="NCSW Pick" onPick={setCset} />
+        <Facet label="Component amp" value={camp} opts={['NCSW Pick', ...COMPAMPS]} pick="NCSW Pick" onPick={setCamp} />
+        <Facet label="Subwoofer" value={sub} opts={['NCSW Pick', ...SUBOPTS]} pick="NCSW Pick" onPick={setSub} />
+        <Facet label="Sub amp" value={samp} opts={['NCSW Pick', ...SUBAMPS]} pick="NCSW Pick" onPick={setSamp} />
+        <Facet label="Sub count" value={count} opts={['All', 'Single', 'Dual']} onPick={setCount} />
+        <Facet label="Sub size" value={size} opts={['All', '10"', '12"', '15"', '18"']} onPick={setSize} />
+        <Facet
+          label="Sort by"
+          value={sortKey === 'price' ? (sortDir === 1 ? 'Price: low to high' : 'Price: high to low') : 'Tier'}
+          opts={['Price: low to high', 'Price: high to low', 'Tier']}
+          onPick={(v) => {
+            if (v === 'Tier') {
+              setSortKey('tier')
+              setSortDir(1)
+            } else {
+              setSortKey('price')
+              setSortDir(v.includes('low to high') ? 1 : -1)
+            }
+          }}
+        />
+      </Modal.Body>
+      <Modal.Footer>
+        <SheetButton
+          label="Reset"
+          variant="secondary"
+          onPress={() => {
+            setTier('All')
+            setTopo('All')
+            setCount('All')
+            setSize('All')
+            setSignal('NCSW Pick')
+            setCset('NCSW Pick')
+            setCamp('NCSW Pick')
+            setSub('NCSW Pick')
+            setSamp('NCSW Pick')
+            setPriceMin(PMIN)
+            setPriceMax(PMAX)
+            setSortKey('price')
+            setSortDir(1)
+          }}
+        />
+        <SheetButton label="Show packages" variant="primary" onPress={onClose} />
+      </Modal.Footer>
+    </Modal>
   )
 }
