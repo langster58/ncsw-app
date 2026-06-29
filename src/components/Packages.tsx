@@ -37,6 +37,7 @@ export function Packages() {
     <View
       style={{
         paddingTop: 96,
+        paddingBottom: 32, // gap between the intro lede and the table chrome below
         paddingHorizontal: horizontalPadding,
         maxWidth: 1410,
         marginHorizontal: 'auto',
@@ -86,7 +87,10 @@ export function Packages() {
             lineHeight: headingLineHeight,
             letterSpacing: headingLetterSpacing,
             color: INK,
-            maxWidth: 560, // .howto h2 max-width: 32ch
+            // .howto h2 max-width: 32ch — at 54px Creato that's ~865px. The previous
+            // 560 cap forced "Select from thousands" to wrap before the explicit \n,
+            // producing 4 lines instead of the intended 2.
+            maxWidth: Math.max(560, Math.round(headingFontSize * 16)),
           }}
         >
           {'Select from thousands of\nNCSW engineered systems'}

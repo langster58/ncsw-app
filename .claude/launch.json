@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dist-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-s", "dist", "-l", "4599"],
+      "port": 4599
+    }
+  ]
+}
