@@ -92,8 +92,9 @@ export const tracking = {
   wide: '0.04em',
 }
 
-// ── Colors (resolved from tokens.css) ───────────────────────────────────────
+// ── Colors (resolved from tokens.css + source state palettes) ────────────────
 export const colors = {
+  // base
   ink: '#09080e', // headings — --ncsw-ink / --fg-1
   body: '#333333', // body copy
   gray: '#656565', // labels, meta — --ncsw-gray / --fg-2
@@ -102,7 +103,31 @@ export const colors = {
   white: '#ffffff',
   black: '#000000',
   accent: '#0576cc', // --accent / --ncsw-primary
+  accentHover: '#0569b7', // primary button :hover
+  accentPressed: '#045fa6', // primary button :active
+  accentSoft: '#e6f1fb', // chip selected bg
+  accentSoftPressed: '#d8eaf9', // chip selected :active bg
   sky: '#3ba8e2', // --accent-sky
+
+  // ink scale (denser-UI variants from the table palette)
+  inkSoft: '#5b6270', // chip inactive text
+  inkFaint: '#8b92a1', // labels, placeholders
+
+  // button / control borders + hover surfaces
+  borderStrong: '#dcdcdc',
+  borderStrongHover: '#b8b8b8',
+  borderStrongActive: '#aeb3b8',
+  surfaceHover: '#fafbfc', // button :hover bg
+  surfacePressed: '#f2f3f4', // button :active bg
+  surfaceHoverNeutral: '#f3f6fb', // chip / nav neutral hover
+
+  // disabled
+  disabledFg: '#a8a8a8',
+  disabledBorder: '#e4e4e4',
+  disabledBg: '#f5f5f5',
+
+  // focus
+  focusRing: '#0576cc',
 }
 
 // ── Fonts ───────────────────────────────────────────────────────────────────
