@@ -127,7 +127,8 @@ function RangeSlider({
           step: 10,
           value: lo,
           onChange: (e: any) => onChange(Math.min(+e.target.value, hi - 10), hi),
-          style: { position: 'absolute', left: 0, top: 0, width: '100%', background: 'transparent' },
+          className: 'rng',
+          style: { position: 'absolute', left: 0, top: 0, width: '100%', height: 16, background: 'transparent' },
           'aria-label': 'Minimum price',
         })}
         {React.createElement('input', {
@@ -137,7 +138,8 @@ function RangeSlider({
           step: 10,
           value: hi,
           onChange: (e: any) => onChange(lo, Math.max(+e.target.value, lo + 10)),
-          style: { position: 'absolute', left: 0, top: 0, width: '100%', background: 'transparent' },
+          className: 'rng',
+          style: { position: 'absolute', left: 0, top: 0, width: '100%', height: 16, background: 'transparent' },
           'aria-label': 'Maximum price',
         })}
       </View>
