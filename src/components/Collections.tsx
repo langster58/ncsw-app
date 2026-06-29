@@ -216,6 +216,7 @@ export function Collections() {
               letterSpacing: -0.84, // -.02em * 42
               lineHeight: 42 * 1.05,
               color: INK,
+              maxWidth: '66.6%',
             }}
           >
             Sub-stage fabrication &amp; alignment
@@ -227,6 +228,7 @@ export function Collections() {
                 fontSize: 17, // 1.0625rem
                 lineHeight: 17 * 1.58,
                 color: GRAY,
+                maxWidth: '66.6%',
               }}
             >
               The sub-stage is defined as much by where the driver lives as by the

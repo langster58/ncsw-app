@@ -571,6 +571,7 @@ export function Editorial() {
             letterSpacing: -(headingFontSize * 0.02),
             lineHeight: headingLineHeight,
             color: INK,
+            maxWidth: '66.6%',
           }}
         >
           We publish the reasoning.
