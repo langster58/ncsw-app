@@ -7,7 +7,7 @@ import { Text, View } from 'react-native'
 export function PackageTable() {
   return (
     <View style={{ paddingVertical: 48, paddingHorizontal: 24, alignItems: 'center' }}>
-      <Text style={{ fontFamily: 'Inter', fontSize: 14, color: '#656565', textAlign: 'center' }}>
+      <Text style={{ fontFamily: 'Inter', fontSize: 14, color: '#333333', textAlign: 'center' }}>
         Package table is available on web. The native layout is planned for a later session.
       </Text>
     </View>
