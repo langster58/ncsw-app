@@ -1,69 +1,160 @@
-// PackageTable.web.tsx — WEB-ONLY render of the dense package/pricing table.
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
+
+// PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
+// source + the inline Tailwind token map. Tailwind tokens (exact):
+//   ink #16181d · ink2 #5b6270 · ink3 #8b92a1 · line #e7e9ee · lineS #d3d7e0
+//   zebra #fafbfc · accent #0576cc · accentSoft #e6f1fb · hov #f3f6fb
+// Fonts: text = Inter, mono = IBM Plex Mono.
 //
-// This is the project's known web/native split point (see CLAUDE.md §4). The
-// native variant (PackageTable.native.tsx) presents the same data as a card /
-// master-detail list. This file is the full dense grid and is NEVER bundled on
-// native.
-//
-// Ported faithfully from the source "PackagesTable.jsx". Styling/spacing of the
-// table chrome (filter chrome, column headers, sticky price column, zebra rows)
-// is prioritized over data completeness.
-//
-// IMPORTANT — DEFERRED / FAKE:
-//   * Real data comes from a Directus CMS. The SAMPLE_ROWS below are ~7
-//     REPRESENTATIVE rows only, hardcoded purely so the chrome has something to
-//     frame. Wire these to the CMS feed when available.
-//   * Filtering/sorting is VISUAL ONLY. The chips and segmented toggles track
-//     active state with useState and restyle themselves, but they do NOT filter
-//     or reorder SAMPLE_ROWS. Real query wiring is deferred.
-//   * The year selector is a static control surface (no vehicle list bound).
+// Faithful adaptations (DOM APIs have no RN equivalent — flagged, not approximated values):
+//   - MODE="scroll" infinite list: real scroll container (div) + onScroll lazy window (+40).
+//   - Custom HScrollbar drag, ResizeObserver fill mechanic -> native overflow scroll.
+//   - ReactDOM.createPortal sheet -> fixed-position overlay div in-component.
+//   - YMMT vehicle selector reads window.NCSW_VEHICLES (external/CMS); not present here,
+//     so the vehicle control row renders its exact chrome but has no options (flagged).
 
-import React from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+const INK = '#16181d'
+const INK2 = '#5b6270'
+const INK3 = '#8b92a1'
+const LINE = '#e7e9ee'
+const LINES = '#d3d7e0'
+const ZEBRA = '#fafbfc'
+const ACCENT = '#0576cc'
+const ACCENT_SOFT = '#e6f1fb'
+const WHITE = '#ffffff'
+const FONT = 'Inter'
+const MONO = 'IBM Plex Mono'
+const GX = 20 // px-[var(--gx)]
 
-/* ------------------------------------------------------------------ tokens */
-const C = {
-  ink: '#09080e',
-  ink2: '#3a3a3f', // cell body text (text-ink2)
-  ink3: '#656565', // labels / headers (text-ink3 == --fg-2 gray)
-  line: '#ececec',
-  lineS: '#d8d8d8', // control / chip borders
-  surface: '#f5f5f5',
-  white: '#ffffff',
-  accent: '#0576cc',
-  accentSoft: '#eef4fb', // active chip fill (bg-accentSoft)
-  accentPressed: '#d8eaf9',
-  zebra: '#fafbfc', // odd-row background
-  rowHover: '#f3f6fb',
-  rowActive: '#e9f0fa',
-  divider: '#e7e9ee', // sticky-column shadow line
-  trackBg: '#eef0f3',
-  thumbBg: '#cdd2da',
-} as const;
+/* ---------------- DATA (exact from PackagesTable.jsx) ---------------- */
+const SUBS = [
+  { brand: 'Crescendo Forte v2', sizes: ['10"', '12"'], tier: 'Entry', base: 1690 },
+  { brand: 'Sundown SA Classic', sizes: ['10"', '12"', '15"'], tier: 'Mid', base: 1990 },
+  { brand: 'Fi Car Audio HC', sizes: ['12"', '15"'], tier: 'Upper', base: 2790 },
+  { brand: 'Sundown ZV6', sizes: ['12"', '15"', '18"'], tier: 'Reference', base: 4490 },
+  { brand: 'Adire Kali', sizes: ['15"', '18"'], tier: 'Reference', base: 5290 },
+  { brand: 'NVX VCW v3', sizes: ['10"', '12"', '15"'], tier: 'Entry', base: 1740 },
+  { brand: 'DD Audio 700', sizes: ['12"', '15"'], tier: 'Mid', base: 2240 },
+  { brand: 'Skar EVL', sizes: ['12"', '15"'], tier: 'Mid', base: 2090 },
+  { brand: 'Adire Maelstrom X', sizes: ['15"', '18"'], tier: 'Beyond', base: 6800 },
+]
+const TOPO = ['2-way', '3-way']
+const FRONTS = ['Stevens + SEAS MB6', 'Hybrid Audio Mirus', 'Audiofrog GB60 / GB15']
+const SIGNALS = ['Zapco HB 46 II 4A', 'Helix Mini MK2', 'Helix Pro MK3']
+const SUBAMPS = ['Helix Amplify 206', 'Helix DSP Ultra', 'Sundown SAE-1000', 'DS18 FRP 3.5K']
+const COMPAMPS = ['Helix MINI', 'Helix DSP.3', 'Helix Amplify 206', 'Zapco ST-4X']
+const COUNTS = ['Single', 'Dual']
+const TIER_ORDER: Record<string, number> = { Entry: 0, Mid: 1, Upper: 2, Reference: 3, Beyond: 4 }
+const sizeAdd: Record<string, number> = { '10"': 0, '12"': 260, '15"': 720, '18"': 1280 }
+const dollars = (n: number) => '$' + n.toLocaleString('en-US')
+const seed = (n: number) => {
+  const x = Math.sin((n + 1) * 99.137) * 10000
+  return x - Math.floor(x)
+}
+const FRONT_SUBS = ['Stevens MB-8', 'SEAS L16', 'Dayton RSS']
+const ENC_TYPES = ['Sealed', 'Ported', 'Infinite baffle']
+const encVol: Record<string, number> = { '10"': 0.6, '12"': 0.9, '15"': 1.4, '18"': 2.2 }
+const monoWattsOf: Record<string, number> = {
+  'Helix Amplify 206': 600,
+  'Helix DSP Ultra': 950,
+  'Sundown SAE-1000': 1000,
+  'DS18 FRP 3.5K': 3500,
+}
 
-const FONT_BODY = 'Inter, -apple-system, "SF Pro Text", "Segoe UI", sans-serif';
-const FONT_MONO = '"IBM Plex Mono", ui-monospace, "SF Mono", monospace';
+type Row = {
+  id: number
+  tier: string
+  topo: string
+  sub: string
+  size: string
+  count: string
+  subCount: number
+  front: string
+  frontSub: string
+  signal: string
+  camp: string
+  subamp: string
+  enclosure: string
+  vscore: number
+  monoWatts: number
+  price: number
+}
 
-const GX = 40; // container gutter (--gx ≈ container padding 0 40px)
+const CATALOG_FULL: Row[] = (() => {
+  const rows: Row[] = []
+  let i = 0
+  for (const s of SUBS)
+    for (const size of s.sizes)
+      for (const topo of TOPO)
+        for (let f = 0; f < FRONTS.length; f++)
+          for (let sg = 0; sg < SIGNALS.length; sg++)
+            for (let ca = 0; ca < COMPAMPS.length; ca++)
+              for (let a = 0; a < SUBAMPS.length; a++)
+                for (const count of COUNTS) {
+                  const price =
+                    s.base + sizeAdd[size] + f * 180 + a * 150 + ca * 120 + (count === 'Dual' ? 900 : 0) + sg * 90
+                  const cnt = count === 'Dual' ? 2 : 1
+                  const encType = ENC_TYPES[Math.floor(seed(i * 3 + 1) * ENC_TYPES.length)]
+                  const enclosure =
+                    encType === 'Infinite baffle' ? 'IB' : encType + ' · ' + (encVol[size] * cnt).toFixed(1) + ' ft³'
+                  const vscore = Math.max(
+                    38,
+                    Math.min(99, Math.round(50 + TIER_ORDER[s.tier] * 10 + (seed(i * 7 + 3) - 0.5) * 22)),
+                  )
+                  rows.push({
+                    id: i,
+                    tier: s.tier,
+                    topo,
+                    sub: s.brand + ' ' + size.replace('"', ''),
+                    size,
+                    count,
+                    subCount: cnt,
+                    front: FRONTS[f],
+                    frontSub: topo === '3-way' ? FRONT_SUBS[Math.floor(seed(i * 11 + 4) * FRONT_SUBS.length)] : '—',
+                    signal: SIGNALS[sg],
+                    camp: COMPAMPS[ca],
+                    subamp: SUBAMPS[a],
+                    enclosure,
+                    vscore,
+                    monoWatts: (monoWattsOf[SUBAMPS[a]] || 600) * cnt,
+                    price,
+                  })
+                  i++
+                }
+  return rows
+})()
+const CATALOG = CATALOG_FULL.slice(0, 1738)
+const PMIN = Math.floor(Math.min(...CATALOG.map((r) => r.price)) / 100) * 100
+const PMAX = Math.ceil(Math.max(...CATALOG.map((r) => r.price)) / 100) * 100
+const SUBOPTS = [...new Set(CATALOG.map((r) => r.sub))].sort()
 
-// em letter-spacing → points. base font sizes for the mono labels are ~10–11px.
-// 0.04em * 11px = 0.44pt ; 0.07em * 10.5px = 0.735pt ; 0.12em * 11px = 1.32pt
-const LS_HEADER = 0.04 * 11; // header columns: tracking-[0.04em]
-const LS_FACET_LABEL = 0.07 * 10.5; // facet labels: tracking-[0.07em]
-const LS_BTN = 0.12 * 11.5; // "Sort & Filter" button mono uppercase
+const PICKS: Row[] = (() => {
+  const out: Row[] = []
+  for (const s of SUBS)
+    for (const size of s.sizes.slice(0, 2)) {
+      const sub = s.brand + ' ' + size.replace('"', '')
+      const topo = s.tier === 'Entry' ? '2-way' : '3-way'
+      const row = CATALOG_FULL.find(
+        (r) =>
+          r.sub === sub &&
+          r.count === 'Single' &&
+          r.topo === topo &&
+          r.front === FRONTS[0] &&
+          r.signal === SIGNALS[0] &&
+          r.camp === COMPAMPS[0] &&
+          r.subamp === SUBAMPS[0],
+      )
+      if (row) out.push(row)
+    }
+  return out.sort((a, b) => a.price - b.price)
+})()
 
-/* ------------------------------------------------------------------ columns
-   EXACT labels from the source COLS array. `w` matches the source widths. */
-type Col = { key: string; label: string; w: number; mono?: boolean };
+type Col = { key: string; label: string; w: number; stickyLeft?: boolean; sort?: string }
 const COLS: Col[] = [
-  { key: 'price', label: 'Price', w: 108, mono: true },
-  { key: 'tier', label: 'Tier', w: 104 },
-  { key: 'vscore', label: 'Value Score', w: 116, mono: true },
+  { key: 'price', label: 'Price', w: 108, stickyLeft: true, sort: 'price' },
+  { key: 'tier', label: 'Tier', w: 104, sort: 'tier' },
+  { key: 'vscore', label: 'Value Score', w: 116, sort: 'vscore' },
   { key: 'signal', label: 'Signal Processor', w: 158 },
   { key: 'cset', label: 'Component Set', w: 198 },
   { key: 'frontSub', label: 'Front Sub', w: 128 },
@@ -71,483 +162,642 @@ const COLS: Col[] = [
   { key: 'subamp', label: 'Mono Amp', w: 158 },
   { key: 'sub', label: 'Subwoofer', w: 192 },
   { key: 'enclosure', label: 'Enclosure', w: 150 },
-  { key: 'size', label: 'Sub Size', w: 88, mono: true },
+  { key: 'size', label: 'Sub Size', w: 88 },
   { key: 'count', label: 'Sub Count', w: 96 },
-  { key: 'monoWatts', label: 'Mono Amp Watts', w: 138, mono: true },
-];
-const PRICE_W = COLS[0].w; // sticky-left column width
-const TOTAL_W = COLS.reduce((a, c) => a + c.w, 0);
+  { key: 'monoWatts', label: 'Mono Amp Watts', w: 138 },
+]
+const TABLE_W = COLS.reduce((a, c) => a + c.w, 0)
+const ROW_H = 52
+const HEAD_H = 38
+const REGION_H = 39 + 10 * 52
 
-/* --------------------------------------------------------- representative data
-   ~7 sample rows. REAL DATA COMES FROM DIRECTUS — do not extend this set. */
-type Row = {
-  id: number;
-  price: string;
-  tier: string;
-  vscore: number;
-  signal: string;
-  cset: string;
-  frontSub: string;
-  camp: string;
-  subamp: string;
-  sub: string;
-  enclosure: string;
-  size: string;
-  count: string;
-  monoWatts: string;
-};
-const SAMPLE_ROWS: Row[] = [
-  { id: 0, price: '$1,690', tier: 'Entry', vscore: 58, signal: 'Zapco HB 46 II 4A', cset: 'Stevens + SEAS MB6', frontSub: '—', camp: 'Helix MINI', subamp: 'Helix Amplify 206', sub: 'Crescendo Forte v2 10', enclosure: 'Sealed · 0.6 ft³', size: '10"', count: 'Single', monoWatts: '600 W' },
-  { id: 1, price: '$1,740', tier: 'Entry', vscore: 61, signal: 'Zapco HB 46 II 4A', cset: 'Stevens + SEAS MB6', frontSub: '—', camp: 'Helix MINI', subamp: 'Helix Amplify 206', sub: 'NVX VCW v3 10', enclosure: 'Ported · 0.9 ft³', size: '10"', count: 'Single', monoWatts: '600 W' },
-  { id: 2, price: '$1,990', tier: 'Mid', vscore: 67, signal: 'Helix Mini MK2', cset: 'Hybrid Audio Mirus', frontSub: 'Stevens MB-8', camp: 'Helix DSP.3', subamp: 'Helix DSP Ultra', sub: 'Sundown SA Classic 12', enclosure: 'Sealed · 0.9 ft³', size: '12"', count: 'Single', monoWatts: '950 W' },
-  { id: 3, price: '$2,240', tier: 'Mid', vscore: 71, signal: 'Helix Mini MK2', cset: 'Hybrid Audio Mirus', frontSub: 'SEAS L16', camp: 'Helix Amplify 206', subamp: 'Sundown SAE-1000', sub: 'DD Audio 700 12', enclosure: 'Ported · 0.9 ft³', size: '12"', count: 'Single', monoWatts: '1,000 W' },
-  { id: 4, price: '$2,790', tier: 'Upper', vscore: 78, signal: 'Helix Pro MK3', cset: 'Audiofrog GB60 / GB15', frontSub: 'Dayton RSS', camp: 'Zapco ST-4X', subamp: 'Sundown SAE-1000', sub: 'Fi Car Audio HC 12', enclosure: 'Ported · 0.9 ft³', size: '12"', count: 'Single', monoWatts: '1,000 W' },
-  { id: 5, price: '$4,490', tier: 'Reference', vscore: 88, signal: 'Helix Pro MK3', cset: 'Audiofrog GB60 / GB15', frontSub: 'Dayton RSS', camp: 'Zapco ST-4X', subamp: 'DS18 FRP 3.5K', sub: 'Sundown ZV6 15', enclosure: 'IB', size: '15"', count: 'Single', monoWatts: '3,500 W' },
-  { id: 6, price: '$6,800', tier: 'Beyond', vscore: 99, signal: 'Helix Pro MK3', cset: 'Audiofrog GB60 / GB15', frontSub: 'Dayton RSS', camp: 'Zapco ST-4X', subamp: 'DS18 FRP 3.5K', sub: 'Adire Maelstrom X 18', enclosure: 'Ported · 4.4 ft³', size: '18"', count: 'Dual', monoWatts: '7,000 W' },
-];
+/* ---------------- cell renderer (exact column logic) ---------------- */
+function Cell({ col, r }: { col: Col; r: Row }) {
+  const base = { fontFamily: FONT, color: INK2, fontSize: 13.5 } as const
+  if (col.key === 'price') {
+    return <Text style={{ fontFamily: FONT, fontWeight: '600', color: INK, fontSize: 14 }}>{dollars(r.price)}</Text>
+  }
+  if (col.key === 'vscore') {
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={base}>{r.vscore}</Text>
+        <View style={{ width: 34, height: 4, borderRadius: 9999, backgroundColor: LINE, overflow: 'hidden' }}>
+          <View
+            style={{ height: '100%', borderRadius: 9999, backgroundColor: ACCENT, width: (`${r.vscore}%` as any) }}
+          />
+        </View>
+      </View>
+    )
+  }
+  const map: Record<string, string> = {
+    tier: r.tier,
+    signal: r.signal,
+    cset: r.front,
+    frontSub: r.frontSub,
+    camp: r.camp,
+    subamp: r.subamp,
+    sub: r.sub,
+    enclosure: r.enclosure,
+    size: r.size,
+    count: r.count,
+    monoWatts: r.monoWatts.toLocaleString('en-US') + ' W',
+  }
+  return <Text style={base}>{map[col.key]}</Text>
+}
 
-/* ------------------------------------------------------------------ controls
-   EXACT control sets requested. Size + tier are multi-select chip groups; the
-   year selector is a single static surface. */
-const SIZES = ['8"', '10"', '12"', '15"', '18"'];
-const TIERS = ['entry', 'mid', 'upper-mid', 'reference'];
+function stickyCell(col: Col, zebra: boolean): any {
+  if (!col.stickyLeft) return {}
+  const bg = zebra ? ZEBRA : WHITE
+  return { position: 'sticky', left: 0, zIndex: 10, backgroundColor: bg, boxShadow: '1px 0 0 ' + LINE }
+}
 
-/* ------------------------------------------------------------------ chip
-   active  : bg accentSoft, text accent, border accent, weight 600
-   inactive: bg white, text ink2, border lineS, weight 400 */
-function Chip({
+/* ---------------- Sort & Filter sheet pieces ---------------- */
+function Facet({
   label,
-  active,
-  onPress,
+  value,
+  opts,
+  onPick,
+  pick,
 }: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
+  label: string
+  value: string
+  opts: string[]
+  onPick: (v: string) => void
+  pick?: string
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={
-        {
-          borderRadius: 100,
-          borderWidth: 1,
-          paddingHorizontal: 14,
-          paddingVertical: 6,
-          backgroundColor: active ? C.accentSoft : C.white,
-          borderColor: active ? C.accent : C.lineS,
-        } as any
-      }
-    >
+    <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE }}>
       <Text
         style={{
-          fontFamily: FONT_BODY,
-          fontSize: 13.5,
-          color: active ? C.accent : C.ink2,
-          fontWeight: active ? '600' : '400',
+          fontFamily: MONO,
+          fontSize: 10.5,
+          fontWeight: '500',
+          letterSpacing: 0.735, // .07em * 10.5
+          textTransform: 'uppercase',
+          color: INK3,
+          marginBottom: 10,
         }}
       >
         {label}
       </Text>
-    </Pressable>
-  );
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {opts.map((o) => {
+          const on = o === value
+          const isPick = !!pick && o === pick
+          const bg = on ? ACCENT_SOFT : WHITE
+          const color = on ? ACCENT : isPick ? ACCENT : INK2
+          const border = on ? ACCENT : LINES
+          return (
+            <Pressable
+              key={o}
+              onPress={() => onPick(o)}
+              style={{
+                borderRadius: 9999,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderWidth: 1,
+                borderColor: border,
+                backgroundColor: bg,
+              }}
+            >
+              <Text style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: on ? '600' : isPick ? '500' : '400', color }}>
+                {o}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
 }
 
-/* facet label (mono, uppercase, tracked) */
-function FacetLabel({ children }: { children: string }) {
+function RangeSlider({
+  min,
+  max,
+  lo,
+  hi,
+  onChange,
+}: {
+  min: number
+  max: number
+  lo: number
+  hi: number
+  onChange: (a: number, b: number) => void
+}) {
+  const money = (v: number) => '$' + v.toLocaleString('en-US')
+  const pct = (v: number) => ((v - min) / (max - min)) * 100
   return (
-    <Text
-      style={
-        {
-          fontFamily: FONT_MONO,
-          fontSize: 10.5,
-          fontWeight: '500',
-          color: C.ink3,
-          textTransform: 'uppercase',
-          letterSpacing: LS_FACET_LABEL,
-          marginBottom: 10,
-        } as any
-      }
-    >
-      {children}
-    </Text>
-  );
+    <View style={{ paddingTop: 4 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
+        <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: '600', color: INK }}>{money(lo)}</Text>
+        <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: '600', color: INK }}>
+          {hi >= max ? money(hi) + '+' : money(hi)}
+        </Text>
+      </View>
+      <View style={{ position: 'relative', height: 16 } as any}>
+        <View
+          style={
+            { position: 'absolute', left: 0, right: 0, top: 6, height: 3, borderRadius: 9999, backgroundColor: LINES } as any
+          }
+        />
+        <View
+          style={
+            {
+              position: 'absolute',
+              top: 6,
+              height: 3,
+              borderRadius: 9999,
+              backgroundColor: ACCENT,
+              left: `${pct(lo)}%`,
+              right: `${100 - pct(hi)}%`,
+            } as any
+          }
+        />
+        {React.createElement('input', {
+          type: 'range',
+          min,
+          max,
+          step: 10,
+          value: lo,
+          onChange: (e: any) => onChange(Math.min(+e.target.value, hi - 10), hi),
+          style: { position: 'absolute', left: 0, top: 0, width: '100%', background: 'transparent' },
+          'aria-label': 'Minimum price',
+        })}
+        {React.createElement('input', {
+          type: 'range',
+          min,
+          max,
+          step: 10,
+          value: hi,
+          onChange: (e: any) => onChange(lo, Math.max(+e.target.value, lo + 10)),
+          style: { position: 'absolute', left: 0, top: 0, width: '100%', background: 'transparent' },
+          'aria-label': 'Maximum price',
+        })}
+      </View>
+    </View>
+  )
 }
 
-/* ================================================================ component */
+/* ---------------- main table ---------------- */
 export function PackageTable() {
-  // Visual-only filter state (does not actually filter SAMPLE_ROWS — deferred).
-  const [year, setYear] = React.useState<string>('');
-  const [sizes, setSizes] = React.useState<Record<string, boolean>>({});
-  const [tiers, setTiers] = React.useState<Record<string, boolean>>({});
+  const [tier, setTier] = useState('All')
+  const [topo, setTopo] = useState('All')
+  const [count, setCount] = useState('All')
+  const [size, setSize] = useState('All')
+  const [signal, setSignal] = useState('NCSW Pick')
+  const [cset, setCset] = useState('NCSW Pick')
+  const [camp, setCamp] = useState('NCSW Pick')
+  const [sub, setSub] = useState('NCSW Pick')
+  const [samp, setSamp] = useState('NCSW Pick')
+  const [priceMin, setPriceMin] = useState(PMIN)
+  const [priceMax, setPriceMax] = useState(PMAX)
+  const [sortKey, setSortKey] = useState('price')
+  const [sortDir, setSortDir] = useState(1)
+  const [sheet, setSheet] = useState(false)
+  const [visible, setVisible] = useState(40)
+  const regionRef = useRef<any>(null)
 
-  const toggle =
-    (set: React.Dispatch<React.SetStateAction<Record<string, boolean>>>) =>
-    (key: string) =>
-      set((m) => ({ ...m, [key]: !m[key] }));
+  const allPicks =
+    signal === 'NCSW Pick' && cset === 'NCSW Pick' && camp === 'NCSW Pick' && sub === 'NCSW Pick' && samp === 'NCSW Pick'
 
+  const rows = useMemo(() => {
+    let set = allPicks ? PICKS : CATALOG
+    set = set.filter(
+      (r) =>
+        (tier === 'All' || r.tier === tier) &&
+        (topo === 'All' || r.topo === topo) &&
+        (count === 'All' || r.count === count) &&
+        (size === 'All' || r.size === size) &&
+        (signal === 'NCSW Pick' || r.signal === signal) &&
+        (cset === 'NCSW Pick' || r.front === cset) &&
+        (camp === 'NCSW Pick' || r.camp === camp) &&
+        (sub === 'NCSW Pick' || r.sub === sub) &&
+        (samp === 'NCSW Pick' || r.subamp === samp) &&
+        r.price >= priceMin &&
+        r.price <= priceMax,
+    )
+    const dir = sortDir
+    set = [...set].sort((a, b) => {
+      let av: number, bv: number
+      if (sortKey === 'tier') {
+        av = TIER_ORDER[a.tier]
+        bv = TIER_ORDER[b.tier]
+        if (av === bv) {
+          av = a.price
+          bv = b.price
+        }
+      } else if (sortKey === 'vscore') {
+        av = a.vscore
+        bv = b.vscore
+        if (av === bv) {
+          av = a.price
+          bv = b.price
+        }
+      } else {
+        av = a.price
+        bv = b.price
+      }
+      return av < bv ? -dir : av > bv ? dir : 0
+    })
+    return set
+  }, [allPicks, tier, topo, count, size, signal, cset, camp, sub, samp, priceMin, priceMax, sortKey, sortDir])
+
+  useEffect(() => {
+    setVisible(40)
+  }, [rows])
+
+  const onScroll = useCallback(() => {
+    const el = regionRef.current
+    if (!el) return
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 400) {
+      setVisible((v) => Math.min(rows.length, v + 40))
+    }
+  }, [rows.length])
+
+  const bodyRows = rows.slice(0, visible)
   const activeCount =
-    Object.values(sizes).filter(Boolean).length +
-    Object.values(tiers).filter(Boolean).length +
-    (year ? 1 : 0);
+    [tier, topo, count, size].filter((x) => x !== 'All').length +
+    [signal, cset, camp, sub, samp].filter((x) => x !== 'NCSW Pick').length +
+    (priceMin > PMIN || priceMax < PMAX ? 1 : 0)
+
+  const headLabel = {
+    fontFamily: MONO,
+    fontSize: 11,
+    fontWeight: '500' as const,
+    letterSpacing: 0.44, // .04em * 11
+    textTransform: 'uppercase' as const,
+    color: INK3,
+  }
 
   return (
-    <View
-      style={{
-        backgroundColor: C.white,
-        flex: 1,
-        overflow: 'hidden',
-      }}
-    >
-      {/* ============================ TOP CHROME / FILTER BAR ============= */}
+    <View style={{ backgroundColor: WHITE, width: '100%', overflow: 'hidden' } as any}>
+      {/* ============ TOP CHROME: vehicle selector + Sort & Filter ============ */}
       <View
         style={{
           paddingHorizontal: GX,
-          paddingTop: 16,
-          paddingBottom: 16,
+          paddingTop: 12,
+          paddingBottom: 12,
           borderBottomWidth: 1,
-          borderBottomColor: C.line,
-          gap: 16,
+          borderBottomColor: LINE,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
-        {/* Row 1: Year selector (static surface) + Sort & Filter */}
-        <View
+        {['Year', 'Make', 'Model', 'Trim'].map((label, i) => (
+          <View
+            key={label}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: LINES,
+              backgroundColor: WHITE,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              opacity: i === 0 ? 1 : 0.35, // Make/Model/Trim disabled until prior chosen (no vehicle data)
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: MONO,
+                fontSize: 10.5,
+                fontWeight: '500',
+                letterSpacing: 0.735,
+                textTransform: 'uppercase',
+                color: INK3,
+              }}
+            >
+              {label}
+            </Text>
+            <Text style={{ fontFamily: MONO, fontSize: 13, color: INK3 }}>⌄</Text>
+          </View>
+        ))}
+        <View style={{ width: 12 }} />
+        <Pressable
+          onPress={() => setSheet(true)}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 12,
+            gap: 8,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: LINES,
+            backgroundColor: WHITE,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
           }}
         >
-          {/* Year selector — single static control surface */}
-          <Pressable
-            onPress={() => setYear((y) => (y ? '' : '2024'))}
-            style={
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: C.lineS,
-                backgroundColor: C.white,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                minWidth: 180,
-              } as any
-            }
+          <View style={{ gap: 3 }}>
+            <View style={{ width: 16, height: 2, backgroundColor: INK2 }} />
+            <View style={{ width: 12, height: 2, backgroundColor: INK2, alignSelf: 'center' }} />
+            <View style={{ width: 8, height: 2, backgroundColor: INK2, alignSelf: 'center' }} />
+          </View>
+          <Text
+            style={{
+              fontFamily: MONO,
+              fontSize: 11.5,
+              fontWeight: '500',
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              color: INK,
+            }}
           >
+            Sort & Filter
+          </Text>
+          {activeCount > 0 ? (
             <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
-            >
-              <Text
-                style={
-                  {
-                    fontFamily: FONT_MONO,
-                    fontSize: 10.5,
-                    fontWeight: '500',
-                    color: C.ink3,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.07 * 10.5,
-                  } as any
-                }
-              >
-                Year
-              </Text>
-              {year ? (
-                <Text
-                  style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: C.ink,
-                  }}
-                >
-                  {year}
-                </Text>
-              ) : null}
-            </View>
-            <Text style={{ color: C.ink3, fontSize: 11 }}>▾</Text>
-          </Pressable>
-
-          {/* Sort & Filter button */}
-          <Pressable
-            style={
-              {
-                flexDirection: 'row',
+              style={{
+                minWidth: 16,
+                height: 16,
+                paddingHorizontal: 4,
+                borderRadius: 9999,
+                backgroundColor: ACCENT,
                 alignItems: 'center',
-                gap: 8,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: C.lineS,
-                backgroundColor: C.white,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-              } as any
-            }
-          >
-            {/* filter glyph (three stacked lines) */}
-            <View style={{ width: 14, height: 12, justifyContent: 'space-between' }}>
-              <View style={{ height: 2, borderRadius: 1, backgroundColor: C.ink2, width: 14 }} />
-              <View style={{ height: 2, borderRadius: 1, backgroundColor: C.ink2, width: 10, alignSelf: 'center' }} />
-              <View style={{ height: 2, borderRadius: 1, backgroundColor: C.ink2, width: 5, alignSelf: 'center' }} />
-            </View>
-            <Text
-              style={
-                {
-                  fontFamily: FONT_MONO,
-                  fontSize: 11.5,
-                  fontWeight: '500',
-                  color: C.ink,
-                  textTransform: 'uppercase',
-                  letterSpacing: LS_BTN,
-                } as any
-              }
+                justifyContent: 'center',
+              }}
             >
-              Sort &amp; Filter
-            </Text>
-            {activeCount > 0 ? (
-              <View
-                style={{
-                  minWidth: 16,
-                  height: 16,
-                  paddingHorizontal: 4,
-                  borderRadius: 100,
-                  backgroundColor: C.accent,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color: C.white,
-                  }}
-                >
-                  {activeCount}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-        </View>
-
-        {/* Row 2: Sub size chips (8" / 10" / 12" / 15" / 18") */}
-        <View style={{ gap: 8 }}>
-          <FacetLabel>Sub size</FacetLabel>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {SIZES.map((s) => (
-              <Chip
-                key={s}
-                label={s}
-                active={!!sizes[s]}
-                onPress={() => toggle(setSizes)(s)}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Row 3: Tier chips (entry / mid / upper-mid / reference) */}
-        <View style={{ gap: 8 }}>
-          <FacetLabel>Tier</FacetLabel>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {TIERS.map((t) => (
-              <Chip
-                key={t}
-                label={t}
-                active={!!tiers[t]}
-                onPress={() => toggle(setTiers)(t)}
-              />
-            ))}
-          </View>
-        </View>
+              <Text style={{ fontFamily: MONO, fontSize: 10, fontWeight: '600', color: WHITE }}>{activeCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
-      {/* ============================ TABLE REGION ======================== */}
-      {/* Horizontal scroll for the body; the Price column is rendered sticky
-          via a CSS-grid + position:sticky cell (web-only). */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ paddingHorizontal: GX }}
-        contentContainerStyle={{ minWidth: TOTAL_W }}
-      >
-        <View style={{ width: TOTAL_W }}>
-          {/* -------- header row -------- */}
+      {/* ============ TABLE REGION (sticky header + price col, infinite scroll) ============ */}
+      {React.createElement(
+        'div',
+        {
+          ref: regionRef,
+          onScroll,
+          style: { height: REGION_H, overflow: 'auto', paddingLeft: GX, paddingRight: GX },
+        },
+        <View style={{ width: TABLE_W } as any}>
+          {/* header row */}
           <View
             style={
               {
-                display: 'grid',
-                gridTemplateColumns: COLS.map((c) => `${c.w}px`).join(' '),
+                flexDirection: 'row',
+                height: HEAD_H,
                 position: 'sticky',
                 top: 0,
-                zIndex: 20,
-                backgroundColor: C.white,
+                zIndex: 30,
+                backgroundColor: WHITE,
+                borderBottomWidth: 1,
+                borderBottomColor: LINES,
               } as any
             }
           >
-            {COLS.map((c, ci) => (
-              <View
-                key={c.key}
-                style={
-                  {
-                    height: 38,
-                    paddingHorizontal: 14,
-                    justifyContent: 'center',
-                    borderBottomWidth: 1,
-                    borderBottomColor: C.lineS,
-                    backgroundColor: C.white,
-                    ...(ci === 0
-                      ? {
-                          position: 'sticky',
-                          left: 0,
-                          zIndex: 30,
-                          boxShadow: `1px 0 0 ${C.divider}`,
+            {COLS.map((c) => {
+              const sortable = !!c.sort
+              const sty = c.stickyLeft
+                ? ({ position: 'sticky', left: 0, zIndex: 31, backgroundColor: WHITE } as any)
+                : {}
+              return (
+                <Pressable
+                  key={c.key}
+                  onPress={
+                    sortable
+                      ? () => {
+                          if (sortKey === c.sort) setSortDir((d) => -d)
+                          else {
+                            setSortKey(c.sort as string)
+                            setSortDir(1)
+                          }
                         }
-                      : {}),
-                  } as any
-                }
-              >
-                <Text
-                  style={
-                    {
-                      fontFamily: FONT_MONO,
-                      fontSize: 11,
-                      fontWeight: '500',
-                      color: C.ink3,
-                      textTransform: 'uppercase',
-                      letterSpacing: LS_HEADER,
-                    } as any
+                      : undefined
                   }
-                  numberOfLines={1}
+                  style={{ width: c.w, paddingHorizontal: 14, justifyContent: 'center', ...sty }}
                 >
-                  {c.label}
-                </Text>
-              </View>
-            ))}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={headLabel}>{c.label}</Text>
+                    {sortable && sortKey === c.sort ? (
+                      <Text style={{ color: ACCENT, fontSize: 11 }}>{sortDir === 1 ? '▾' : '▴'}</Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              )
+            })}
           </View>
 
-          {/* -------- body rows -------- */}
-          {SAMPLE_ROWS.map((r, ri) => {
-            const zebra = ri % 2 === 1;
-            const rowBg = zebra ? C.zebra : C.white;
+          {/* body rows */}
+          {bodyRows.map((r, ri) => {
+            const zebra = ri % 2 === 1
             return (
+              <View key={r.id} style={{ flexDirection: 'row', height: ROW_H, backgroundColor: zebra ? ZEBRA : WHITE }}>
+                {COLS.map((c) => (
+                  <View
+                    key={c.key}
+                    style={{
+                      width: c.w,
+                      paddingHorizontal: 14,
+                      justifyContent: 'center',
+                      borderBottomWidth: 1,
+                      borderBottomColor: LINE,
+                      ...stickyCell(c, zebra),
+                    }}
+                  >
+                    <Cell col={c} r={r} />
+                  </View>
+                ))}
+              </View>
+            )
+          })}
+        </View>,
+      )}
+
+      {/* ============ FILTER + SORT SHEET (createPortal -> fixed overlay) ============ */}
+      {sheet
+        ? React.createElement(
+            'div',
+            { style: { position: 'fixed', inset: 0, zIndex: 200 } },
+            <>
+              <Pressable
+                onPress={() => setSheet(false)}
+                style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(16,24,29,0.42)' } as any}
+              />
               <View
-                key={r.id}
                 style={
                   {
-                    display: 'grid',
-                    gridTemplateColumns: COLS.map((c) => `${c.w}px`).join(' '),
-                    minHeight: 52,
+                    position: 'absolute',
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 'min(420px, 100%)',
+                    backgroundColor: WHITE,
+                    flexDirection: 'column',
+                    boxShadow: '0 -8px 40px rgba(16,24,40,.18)',
                   } as any
                 }
               >
-                {COLS.map((c, ci) => {
-                  const isPrice = ci === 0;
-                  const value = (r as unknown as Record<string, unknown>)[
-                    c.key
-                  ];
-                  return (
-                    <View
-                      key={c.key}
-                      style={
-                        {
-                          minHeight: 52,
-                          paddingHorizontal: 14,
-                          justifyContent: 'center',
-                          borderBottomWidth: 1,
-                          borderBottomColor: C.line,
-                          backgroundColor: rowBg,
-                          ...(isPrice
-                            ? {
-                                position: 'sticky',
-                                left: 0,
-                                zIndex: 10,
-                                boxShadow: `1px 0 0 ${C.divider}`,
-                              }
-                            : {}),
-                        } as any
-                      }
-                    >
-                      {c.key === 'vscore' ? (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 8,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: FONT_MONO,
-                              fontSize: 13.5,
-                              color: C.ink2,
-                            }}
-                          >
-                            {String(value)}
-                          </Text>
-                          {/* value-score meter */}
-                          <View
-                            style={{
-                              width: 34,
-                              height: 4,
-                              borderRadius: 100,
-                              backgroundColor: C.line,
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <View
-                              style={{
-                                height: 4,
-                                borderRadius: 100,
-                                backgroundColor: C.accent,
-                                width: `${r.vscore}%`,
-                              }}
-                            />
-                          </View>
-                        </View>
-                      ) : (
-                        <Text
-                          style={{
-                            fontFamily: isPrice || c.mono ? FONT_MONO : FONT_BODY,
-                            fontSize: isPrice ? 14 : 13.5,
-                            fontWeight: isPrice ? '600' : '400',
-                            color: isPrice ? C.ink : C.ink2,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {String(value)}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
+                {/* header */}
+                <Pressable
+                  onPress={() => setSheet(false)}
+                  style={{
+                    height: 56,
+                    paddingHorizontal: 24,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottomWidth: 1,
+                    borderBottomColor: LINE,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 11,
+                      fontWeight: '600',
+                      letterSpacing: 1.32, // .12em * 11
+                      textTransform: 'uppercase',
+                      color: INK,
+                    }}
+                  >
+                    Sort & Filter
+                  </Text>
+                  <Text style={{ color: INK, fontSize: 18 }}>✕</Text>
+                </Pressable>
 
-      {/* ============================ FOOTER NOTE ======================== */}
-      <View
-        style={{
-          paddingHorizontal: GX,
-          paddingVertical: 12,
-          borderTopWidth: 1,
-          borderTopColor: C.line,
-          backgroundColor: C.white,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: FONT_MONO,
-            fontSize: 11,
-            color: C.ink3,
-          }}
-        >
-          Showing {SAMPLE_ROWS.length} sample rows — full catalog served from CMS.
-        </Text>
-      </View>
+                {/* body */}
+                {React.createElement(
+                  'div',
+                  { style: { flex: 1, minHeight: 0, overflowY: 'auto' } },
+                  <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+                    <View style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE }}>
+                      <Text
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 10.5,
+                          fontWeight: '500',
+                          letterSpacing: 0.735,
+                          textTransform: 'uppercase',
+                          color: INK3,
+                          marginBottom: 10,
+                        }}
+                      >
+                        Price range
+                      </Text>
+                      <RangeSlider
+                        min={PMIN}
+                        max={PMAX}
+                        lo={priceMin}
+                        hi={priceMax}
+                        onChange={(a, b) => {
+                          setPriceMin(a)
+                          setPriceMax(b)
+                        }}
+                      />
+                    </View>
+                    <Facet label="Tier" value={tier} opts={['All', 'Entry', 'Mid', 'Upper', 'Reference', 'Beyond']} onPick={setTier} />
+                    <Facet label="Topology" value={topo} opts={['All', '2-way', '3-way']} onPick={setTopo} />
+                    <Facet label="Input signal" value={signal} opts={['NCSW Pick', ...SIGNALS]} pick="NCSW Pick" onPick={setSignal} />
+                    <Facet label="Component set" value={cset} opts={['NCSW Pick', ...FRONTS]} pick="NCSW Pick" onPick={setCset} />
+                    <Facet label="Component amp" value={camp} opts={['NCSW Pick', ...COMPAMPS]} pick="NCSW Pick" onPick={setCamp} />
+                    <Facet label="Subwoofer" value={sub} opts={['NCSW Pick', ...SUBOPTS]} pick="NCSW Pick" onPick={setSub} />
+                    <Facet label="Sub amp" value={samp} opts={['NCSW Pick', ...SUBAMPS]} pick="NCSW Pick" onPick={setSamp} />
+                    <Facet label="Sub count" value={count} opts={['All', 'Single', 'Dual']} onPick={setCount} />
+                    <Facet label="Sub size" value={size} opts={['All', '10"', '12"', '15"', '18"']} onPick={setSize} />
+                    <Facet
+                      label="Sort by"
+                      value={sortKey === 'price' ? (sortDir === 1 ? 'Price: low to high' : 'Price: high to low') : 'Tier'}
+                      opts={['Price: low to high', 'Price: high to low', 'Tier']}
+                      onPick={(v) => {
+                        if (v === 'Tier') {
+                          setSortKey('tier')
+                          setSortDir(1)
+                        } else {
+                          setSortKey('price')
+                          setSortDir(v.includes('low to high') ? 1 : -1)
+                        }
+                      }}
+                    />
+                  </View>,
+                )}
+
+                {/* footer */}
+                <View style={{ paddingHorizontal: 24 }}>
+                  <View
+                    style={{
+                      paddingVertical: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: LINE,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      gap: 8,
+                    }}
+                  >
+                    <Pressable
+                      onPress={() => {
+                        setTier('All')
+                        setTopo('All')
+                        setCount('All')
+                        setSize('All')
+                        setSignal('NCSW Pick')
+                        setCset('NCSW Pick')
+                        setCamp('NCSW Pick')
+                        setSub('NCSW Pick')
+                        setSamp('NCSW Pick')
+                        setPriceMin(PMIN)
+                        setPriceMax(PMAX)
+                        setSortKey('price')
+                        setSortDir(1)
+                      }}
+                      style={{
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: LINES,
+                        backgroundColor: WHITE,
+                        paddingHorizontal: 20,
+                        paddingVertical: 10,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 12,
+                          fontWeight: '500',
+                          letterSpacing: 0.6,
+                          textTransform: 'uppercase',
+                          color: INK,
+                        }}
+                      >
+                        Reset
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setSheet(false)}
+                      style={{
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: ACCENT,
+                        backgroundColor: ACCENT,
+                        paddingHorizontal: 20,
+                        paddingVertical: 10,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: MONO,
+                          fontSize: 12,
+                          fontWeight: '500',
+                          letterSpacing: 0.6,
+                          textTransform: 'uppercase',
+                          color: WHITE,
+                        }}
+                      >
+                        Show packages
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </>,
+          )
+        : null}
     </View>
-  );
+  )
 }
