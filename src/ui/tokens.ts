@@ -57,10 +57,26 @@ export const type = {
 }
 
 // ── Line heights (unitless multipliers, source-accurate) ────────────────────
+// These are MULTIPLIERS, like CSS `line-height: 1.04`. React Native's
+// `lineHeight` prop is absolute (points), so we always resolve these against
+// the rendered fontSize via fluidLineHeight() below.
 export const lineHeight = {
   tight: 1.04, // display headlines
   snug: 1.1,
   body: 1.58, // .lead / .ncsw-prose
+}
+
+// Resolve a unitless multiplier against a fluid fontSize.
+// - Web: fontSize is a clamp() string → return calc(<clamp> * <mult>).
+// - Native: fontSize is a number → return number * multiplier.
+export function fluidLineHeight(
+  fontSize: number | string,
+  multiplier: number,
+): number | string {
+  if (typeof fontSize === 'string') {
+    return `calc(${fontSize} * ${multiplier})` as unknown as number
+  }
+  return fontSize * multiplier
 }
 
 // ── Letter spacing helpers (CSS em → RN points are font-size-dependent) ─────
