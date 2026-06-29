@@ -7,6 +7,7 @@ import { PackageTable } from '@/components/PackageTable'
 import { HowItWorks } from '@/components/HowItWorks'
 import { Collections } from '@/components/Collections'
 import { Editorial } from '@/components/Editorial'
+import { Location } from '@/components/Location'
 import { Footer } from '@/components/Footer'
 import { Reveal } from '@/components/Reveal'
 
@@ -34,6 +35,9 @@ export default function HomeScreen() {
         </Reveal>
         <Reveal>
           <Editorial />
+        </Reveal>
+        <Reveal>
+          <Location />
         </Reveal>
         <Reveal>
           <Footer />

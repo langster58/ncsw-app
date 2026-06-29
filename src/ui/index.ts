@@ -14,5 +14,6 @@ export { Link } from './Link'
 export { Dropdown } from './Dropdown'
 export { Card } from './Card'
 export { Meta } from './Meta'
+export { Mono } from './Mono'
 
 export * from './tokens'
