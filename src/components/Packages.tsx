@@ -93,14 +93,17 @@ export function Packages() {
           {'Select from thousands of\nNCSW engineered systems'}
         </Text>
 
-        {/* .howto-cols → .howto .lead (single lede paragraph) */}
-        <View style={{ maxWidth: '66.6%', marginTop: 20 }}>
+        {/* .howto-cols → .howto .lead (single lede paragraph).
+            maxWidth lives directly on the inner <Text> so it isn't compounded
+            by a wrapper percentage. */}
+        <View style={{ marginTop: 20 }}>
           <Text
             style={{
               fontFamily: FONT_BODY,
               fontSize: leadFontSize,
               lineHeight: leadLineHeight,
               color: GRAY,
+              maxWidth: '66.6%',
             }}
           >
             We evaluate individual audio components and determine their
