@@ -12,5 +12,7 @@ export { Button } from './Button'
 export { Chip } from './Chip'
 export { Link } from './Link'
 export { Dropdown } from './Dropdown'
+export { Card } from './Card'
+export { Meta } from './Meta'
 
 export * from './tokens'
