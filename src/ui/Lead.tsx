@@ -17,7 +17,7 @@ import {
 //   - maxWidth  → tokens.copyMaxWidth
 //   - size      → tokens.type.lead | .body
 
-type Size = 'lead' | 'body'
+type Size = 'heroLead' | 'lead' | 'body'
 
 export function Lead({ size = 'lead', children }: { size?: Size; children: ReactNode }) {
   const fontSize = useFluidPx(type[size])

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
+import { Container, Lead, Section } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
 //   .hero { padding: 64px 0 0 }
@@ -38,22 +39,10 @@ function callShop() {
   }
 }
 
-// .hero-lede
+// .hero-lede — uses the Lead primitive at heroLead size (22px ref) so
+// body color / max-width / line-height flow from tokens.
 function HeroLede() {
-  return (
-    <Text
-      style={{
-        maxWidth: '66.6%',
-        fontFamily: 'Inter',
-        fontSize: 22,
-        lineHeight: 31.9, // 1.45 * 22
-        fontWeight: '400',
-        color: '#333333', // body text
-      }}
-    >
-      {STATEMENT}
-    </Text>
-  )
+  return <Lead size="heroLead">{STATEMENT}</Lead>
 }
 
 // .hero-call (shown <=900px / on native)
@@ -131,7 +120,6 @@ export function Hero() {
   const narrow = width <= 760
   const showCall = !isWeb || width <= 900
   const cols = isWeb && !narrow ? 4 : 2
-  const containerPadX = narrow ? 22 : 40
 
   // ---- Native fallback: text wordmark (SVG <Image> needs react-native-svg) ----
   const Wordmark = isWeb ? (
@@ -157,21 +145,9 @@ export function Hero() {
     </Text>
   )
 
-  const Container = ({ children }: { children: React.ReactNode }) => (
-    <View
-      style={{
-        width: '100%',
-        maxWidth: 1410,
-        marginHorizontal: 'auto',
-        paddingHorizontal: containerPadX,
-      }}
-    >
-      {children}
-    </View>
-  )
-
   return (
-    <View style={{ paddingTop: 64 }}>
+    // .hero { padding: 64px 0 0 } — Section primitive owns the top spacing.
+    <Section top={64}>
       {/* .hero > .container : wordmark + statement */}
       <Container>
         <View>{Wordmark}</View>
@@ -210,6 +186,6 @@ export function Hero() {
           </View>
         </Container>
       </View>
-    </View>
+    </Section>
   )
 }

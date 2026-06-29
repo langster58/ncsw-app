@@ -55,6 +55,7 @@ export const type = {
   h2sm: fluid(42, 28, 50), // section headings (medium) — .section-intro h2
   h3: fluid(30, 22, 36), // sub-headings
   h4: fluid(22, 18, 26), // card titles
+  heroLead: fluid(22, 17, 26), // hero statement — source: .hero-lede 22/1.45
   lead: fluid(17, 15, 20), // section lede
   body: fluid(15, 14, 18), // body / card descriptions — 14px WCAG floor
   meta: fluid(11, 11, 13), // mono uppercase eyebrows / labels
