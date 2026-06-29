@@ -87,17 +87,14 @@ export function Packages() {
             lineHeight: headingLineHeight,
             letterSpacing: headingLetterSpacing,
             color: INK,
-            // .howto h2 max-width: 32ch — at 54px Creato that's ~865px. The previous
-            // 560 cap forced "Select from thousands" to wrap before the explicit \n,
-            // producing 4 lines instead of the intended 2.
-            maxWidth: Math.max(560, Math.round(headingFontSize * 16)),
+            maxWidth: '66.6%',
           }}
         >
           {'Select from thousands of\nNCSW engineered systems'}
         </Text>
 
         {/* .howto-cols → .howto .lead (single lede paragraph) */}
-        <View style={{ maxWidth: 640, marginTop: 20 }}>
+        <View style={{ maxWidth: '66.6%', marginTop: 20 }}>
           <Text
             style={{
               fontFamily: FONT_BODY,

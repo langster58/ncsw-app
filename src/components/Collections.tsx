@@ -207,7 +207,7 @@ export function Collections() {
         </View>
 
         {/* SectionIntro — heading + lead */}
-        <View style={{ maxWidth: 700 /* ~70ch */, marginBottom: gutter }}>
+        <View style={{ maxWidth: '66.6%', marginBottom: gutter }}>
           <Text
             style={{
               fontFamily: FONT_DISPLAY,

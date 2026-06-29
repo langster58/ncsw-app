@@ -287,7 +287,7 @@ function HowItWorksIntro() {
           lineHeight: 56.16, // 1.04 * 54
           letterSpacing: -1.08, // -.02em * 54
           color: '#09080e', // var(--fg-1)
-          maxWidth: 540, // ~32ch
+          maxWidth: '66.6%',
         }}
       >
         {HOWTO_HEADING_L1}
@@ -296,7 +296,7 @@ function HowItWorksIntro() {
       </Text>
 
       {/* .howto-cols { column-count:1; max-width:70ch; margin-top:20px } */}
-      <View style={{ maxWidth: 720, marginTop: 20 }}>
+      <View style={{ maxWidth: '66.6%', marginTop: 20 }}>
         {/* .howto .lead { 1.0625rem -> 17px; lh 1.58; color var(--fg-2); max-width 70ch } */}
         <Text
           style={{
@@ -304,7 +304,7 @@ function HowItWorksIntro() {
             fontSize: 17, // 1.0625rem
             lineHeight: 26.86, // 1.58 * 17
             color: '#656565', // var(--fg-2)
-            maxWidth: 720, // ~70ch
+            maxWidth: '66.6%',
           }}
         >
           {HOWTO_LEAD}

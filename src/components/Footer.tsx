@@ -121,7 +121,7 @@ export function Footer() {
                 fontSize: 14,
                 lineHeight: 14 * 1.6,
                 marginTop: 22,
-                maxWidth: 320,
+                maxWidth: '66.6%',
               }}
             >
               {BRAND_COPY}

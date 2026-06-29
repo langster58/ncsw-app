@@ -43,7 +43,7 @@ function HeroLede() {
   return (
     <Text
       style={{
-        maxWidth: 760,
+        maxWidth: '66.6%',
         fontFamily: 'Inter',
         fontSize: 22,
         lineHeight: 31.9, // 1.45 * 22

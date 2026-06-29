@@ -562,7 +562,7 @@ export function Editorial() {
       </View>
 
       {/* .section-intro — heading + lede, max-width ~70ch. */}
-      <View style={{ maxWidth: 760, marginBottom: gutter }}>
+      <View style={{ maxWidth: '66.6%', marginBottom: gutter }}>
         <Text
           style={{
             fontFamily: FONT_DISPLAY,
@@ -581,7 +581,7 @@ export function Editorial() {
               fontSize: leadFontSize,
               lineHeight: leadLineHeight,
               color: GRAY,
-              maxWidth: 760,
+              maxWidth: '66.6%',
             }}
           >
             Every engineering call we make, from which subwoofer to how much
