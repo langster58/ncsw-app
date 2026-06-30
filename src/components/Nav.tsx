@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import React from 'react'
 import { space, useFluidPx } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
@@ -134,13 +133,15 @@ export function Nav() {
   const navY = narrow ? 14 : 16
   const padX = useFluidPx(space.containerPadX)
 
+  // Sits as the first row of the page's flex column (see app/index.tsx);
+  // the ScrollView below it is what scrolls. No sticky positioning needed,
+  // and the scrolled-state background swap (which depended on window.scrollY)
+  // is gone since the window no longer scrolls.
   const navStyle: any = {
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    ...(Platform.OS === 'web'
-      ? { position: 'sticky', top: 0, zIndex: 80, backdropFilter: 'blur(12px)' }
-      : null),
+    ...(Platform.OS === 'web' ? { zIndex: 80 } : null),
   }
 
   return (
