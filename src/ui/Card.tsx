@@ -12,18 +12,22 @@ import { colors, fonts, radius, tracking } from './tokens'
 //        <Card.Footer><Link variant="door" icon={…}>Read the analysis</Link></Card.Footer>
 //      </Card>
 //
-//   2. Featured build card (split: image left, content right)
+//   2. Featured build card (split: image left, content right). Media takes
+//      the left 5fr column; Body and Footer stack in the right 4fr column
+//      with the footer pinned to the bottom of the image's height.
 //      <Card layout="split">
-//        <Card.Media>
+//        <Card.Media aspectRatio={4 / 3}>
 //          <img .../>
 //          <Card.MediaTag>IN THE BAY · 2018 GOLF ALLTRACK</Card.MediaTag>
 //        </Card.Media>
 //        <Card.Body>
 //          <Eyebrow>2018 VW GOLF ALLTRACK · INFINITE-BAFFLE BUILD</Eyebrow>
-//          <Heading level="h2sm">Reference-tier bass…</Heading>
+//          <Heading level="h3">Reference-tier bass…</Heading>
 //          <Lead>…</Lead>
-//          <Meta cols={2} items={[...]} />
 //        </Card.Body>
+//        <Card.Footer>
+//          <Link variant="door" icon={…}>Read the build</Link>
+//        </Card.Footer>
 //      </Card>
 //
 //   3. Collection card (stack + media-top + meta + footer link)
@@ -35,13 +39,12 @@ import { colors, fonts, radius, tracking } from './tokens'
 //        <Card.Body>
 //          <Heading level="h4">Cargo Infinite Baffle</Heading>
 //          <Lead>…</Lead>
-//          <Meta cols={2} items={[…]} />
 //        </Card.Body>
 //        <Card.Footer><Link variant="door">See the alignment</Link></Card.Footer>
 //      </Card>
 //
 // Default layout is "stack" (media stacks above body). "split" puts media left and
-// body right (50/50 on wide, stacked on narrow).
+// body right (5fr/4fr on wide, stacked on narrow).
 
 type Layout = 'stack' | 'split'
 
@@ -50,28 +53,69 @@ type CardProps = {
   layout?: Layout
 }
 
+// Context lets nested slots (Body, Footer) adapt their padding for split
+// without callers needing to pass the layout down.
+const CardLayoutContext = React.createContext<Layout>('stack')
+
 function CardRoot({ children, layout = 'stack' }: CardProps) {
   const isWeb = Platform.OS === 'web'
+
+  if (layout === 'split' && isWeb) {
+    // Split layout: peel Media out as the left grid cell; everything else
+    // (Body, Footer, ...) stacks in the right cell with space-between so
+    // headline-area lives at top and the affordance pins to the bottom.
+    const kids = React.Children.toArray(children)
+    const mediaIdx = kids.findIndex(
+      (c) => React.isValidElement(c) && (c.type === CardMedia),
+    )
+    const media = mediaIdx >= 0 ? kids[mediaIdx] : null
+    const rest = mediaIdx >= 0 ? kids.filter((_, i) => i !== mediaIdx) : kids
+
+    return (
+      <CardLayoutContext.Provider value="split">
+        <View
+          style={
+            {
+              borderWidth: 1,
+              borderColor: colors.line,
+              borderRadius: radius.lg,
+              backgroundColor: colors.white,
+              overflow: 'hidden',
+              display: 'grid',
+              gridTemplateColumns: '5fr 4fr',
+              alignItems: 'stretch',
+            } as any
+          }
+        >
+          {media}
+          <View
+            style={{ flexDirection: 'column', justifyContent: 'space-between' } as any}
+          >
+            {rest}
+          </View>
+        </View>
+      </CardLayoutContext.Provider>
+    )
+  }
+
   return (
-    <View
-      style={
-        {
-          borderWidth: 1,
-          borderColor: colors.line,
-          borderRadius: radius.lg,
-          backgroundColor: colors.white,
-          overflow: 'hidden',
-          ...(layout === 'split' && isWeb
-            ? { display: 'grid', gridTemplateColumns: '1fr 1fr' }
-            : null),
-          ...(layout === 'split' && !isWeb
-            ? { flexDirection: 'column' } // native: stack the split until we add layout breakpoints
-            : null),
-        } as any
-      }
-    >
-      {children}
-    </View>
+    <CardLayoutContext.Provider value={layout}>
+      <View
+        style={
+          {
+            borderWidth: 1,
+            borderColor: colors.line,
+            borderRadius: radius.lg,
+            backgroundColor: colors.white,
+            overflow: 'hidden',
+            // native split: stack until we wire a layout breakpoint there
+            ...(layout === 'split' && !isWeb ? { flexDirection: 'column' } : null),
+          } as any
+        }
+      >
+        {children}
+      </View>
+    </CardLayoutContext.Provider>
   )
 }
 
@@ -148,21 +192,26 @@ function CardMediaTag({
   )
 }
 
-// Padded content area. Default gap of 16 between children (Eyebrow + Heading + Lead + Meta stack).
+// Padded content area. Split-layout cards get more horizontal/vertical room
+// since the right column is narrower than a full-bleed stacked card body.
 function CardBody({ children, gap = 16 }: { children: React.ReactNode; gap?: number }) {
+  const layout = React.useContext(CardLayoutContext)
+  const pad = layout === 'split' ? 32 : 22
   return (
-    <View style={{ paddingHorizontal: 22, paddingVertical: 22, gap } as any}>{children}</View>
+    <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap } as any}>{children}</View>
   )
 }
 
 // Top row inside the card — typically eyebrow/index on the left and an optional
 // right slot (e.g. "8 MIN READ"). Used in Editorial cards.
 function CardHeader({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
+  const layout = React.useContext(CardLayoutContext)
+  const pad = layout === 'split' ? 32 : 22
   return (
     <View
       style={{
-        paddingHorizontal: 22,
-        paddingTop: 22,
+        paddingHorizontal: pad,
+        paddingTop: pad,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -177,10 +226,12 @@ function CardHeader({ children, right }: { children: React.ReactNode; right?: Re
 
 // Footer row — typically a door link. Has a top hairline divider.
 function CardFooter({ children }: { children: React.ReactNode }) {
+  const layout = React.useContext(CardLayoutContext)
+  const padX = layout === 'split' ? 32 : 22
   return (
     <View
       style={{
-        paddingHorizontal: 22,
+        paddingHorizontal: padX,
         paddingVertical: 18,
         borderTopWidth: 1,
         borderTopColor: colors.line,

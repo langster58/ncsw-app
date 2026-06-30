@@ -101,6 +101,44 @@ function Row({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Small label/value spec strip used in the build-log card demo. Not a
+// general primitive — kept inline so the demo can show what a real
+// build-log card body looks like alongside the headline + lede.
+function BuildSpecs({ items }: { items: [string, string][] }) {
+  return (
+    <View
+      style={
+        (Platform.OS === 'web'
+          ? {
+              display: 'grid',
+              gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+              gap: 16,
+              paddingTop: 4,
+            }
+          : { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingTop: 4 }) as any
+      }
+    >
+      {items.map(([label, value]) => (
+        <View key={label} style={{ gap: 6 }}>
+          <Text
+            style={{
+              fontFamily: fonts.mono,
+              fontSize: 10,
+              fontWeight: '600',
+              letterSpacing: 1.2, // .12em @ 10
+              textTransform: 'uppercase',
+              color: colors.inkFaint,
+            }}
+          >
+            {label}
+          </Text>
+          <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.ink }}>{value}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 // One ScoreMeter wired to a live slider — proves the bar+value track the
 // `value` prop. There aren't multiple meter variants; just one component.
 function ScoreMeterDemo() {
@@ -426,20 +464,30 @@ export default function ComponentsPage() {
             <Mono size="sm" tone="gray">Card is a single component; shown three-up here so the grid behavior is visible.</Mono>
           </Block>
 
-          <Block title="Card — split layout (image left)">
+          <Block title="Card — split layout (build log)">
             <Card layout="split">
-              <Card.Media>
+              <Card.Media aspectRatio={4 / 3}>
                 <Image src="/images/build-golf-alltrack.jpg" fill objectFit="cover" alt="" />
                 <Card.MediaTag>IN THE BAY · 2018 GOLF ALLTRACK</Card.MediaTag>
               </Card.Media>
-              <Card.Body>
+              <Card.Body gap={20}>
                 <Eyebrow>2018 VW Golf Alltrack · Infinite-baffle build</Eyebrow>
-                <Heading level="h2sm">Reference-tier bass that keeps the cargo floor flat.</Heading>
+                <Heading level="h3">Reference-tier bass that keeps the cargo floor flat.</Heading>
                 <Lead size="body">
-                  No enclosure — a single Adire Kali 18 is mounted infinite-baffle, using the cargo
-                  area as its back chamber for effortless, low-distortion extension.
+                  No enclosure: a single Adire Kali 18 mounts infinite-baffle, using the cargo area
+                  as its back chamber for effortless, low-distortion extension.
                 </Lead>
+                <BuildSpecs
+                  items={[
+                    ['Vehicle', '2018 Alltrack'],
+                    ['Driver', 'Adire Kali 18'],
+                    ['Topology', 'Infinite-baffle'],
+                  ]}
+                />
               </Card.Body>
+              <Card.Footer>
+                <Link variant="door" href="#" icon={<IconArrow size={15} />}>Read the build</Link>
+              </Card.Footer>
             </Card>
           </Block>
 
