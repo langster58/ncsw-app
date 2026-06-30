@@ -17,17 +17,19 @@ const COLS: Col[] = [
 const BRAND_COPY =
   "Cleveland's MECP-certified car-audio installation specialist. Factory-integrated systems, engineered for one vehicle and priced installed.";
 
-// Verbatim from the reference site's home.css (.footer-top + its two
-// @media breakpoints). Real CSS media queries decide the column count —
-// not a JS width check — so the browser resolves it directly with nothing
-// that can get stuck on first paint of a static export.
+// footer-top: brand block (sized to its own content) on one side, the
+// three link columns grouped tightly together on the other. The empty
+// space between them is exactly what justify-content: space-between
+// fills — not a grid track's leftover width. Real CSS media queries
+// (no JS width check) handle the narrow collapse.
 const FOOTER_TOP_CSS = `
-.ncsw-footer-top { display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
+.ncsw-footer-top { display:flex; flex-direction:row; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:48px; }
+.ncsw-footer-navcols { display:flex; flex-direction:row; gap:56px; }
 @media (max-width: 900px) {
-  .ncsw-footer-top { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .ncsw-footer-top { flex-direction:column; gap:28px; }
 }
 @media (max-width: 560px) {
-  .ncsw-footer-top { grid-template-columns: 1fr; }
+  .ncsw-footer-navcols { flex-direction:column; gap:24px; }
 }
 `;
 
@@ -110,33 +112,37 @@ function BrandBlock() {
   );
 }
 
+// The tight cluster of three link columns. Web: rendered as one flex row
+// (.ncsw-footer-navcols) so they group together with a reasonable, fixed
+// gap, independent of however much space is left after the brand block.
 function NavColumns() {
-  return (
-    <>
-      {COLS.map((c) => (
-        <View key={c.h}>
-          <Text
-            style={
-              {
-                fontFamily: FONT_BODY,
-                textTransform: 'uppercase',
-                letterSpacing: 0.12 * 11,
-                fontSize: 11,
-                fontWeight: '600',
-                color: 'rgba(255,255,255,0.5)',
-                marginBottom: 18,
-              } as any
-            }
-          >
-            {c.h}
-          </Text>
-          {c.links.map((l) => (
-            <FooterLink key={l} label={l} />
-          ))}
-        </View>
+  const cols = COLS.map((c) => (
+    <View key={c.h}>
+      <Text
+        style={
+          {
+            fontFamily: FONT_BODY,
+            textTransform: 'uppercase',
+            letterSpacing: 0.12 * 11,
+            fontSize: 11,
+            fontWeight: '600',
+            color: 'rgba(255,255,255,0.5)',
+            marginBottom: 18,
+          } as any
+        }
+      >
+        {c.h}
+      </Text>
+      {c.links.map((l) => (
+        <FooterLink key={l} label={l} />
       ))}
-    </>
-  );
+    </View>
+  ));
+
+  if (Platform.OS === 'web') {
+    return React.createElement('div', { className: 'ncsw-footer-navcols' }, <>{cols}</>);
+  }
+  return <View style={{ flexDirection: 'row', gap: 32 }}>{cols}</View>;
 }
 
 // Footer — built exactly as: Section (vertical rhythm + the dark
