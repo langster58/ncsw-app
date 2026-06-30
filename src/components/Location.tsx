@@ -55,16 +55,14 @@ export function Location() {
           <HoursGrid />
         </View>
 
-        {/* Location + Schedule blocks */}
+        {/* Location + Schedule blocks — sized to their own content with a
+            fixed gap between them, not stretched across the full row width
+            via equal 1fr grid tracks (which left huge empty space after the
+            short text in each cell). */}
         <View
           style={
             (Platform.OS === 'web'
-              ? {
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 56,
-                  marginBottom: 56,
-                }
+              ? { flexDirection: 'row', flexWrap: 'wrap', gap: 64, marginBottom: 56 }
               : { flexDirection: 'column', gap: 32, marginBottom: 56 }) as any
           }
         >
@@ -142,17 +140,10 @@ function MapEmbed() {
 function HoursGrid() {
   const isWeb = Platform.OS === 'web'
   return (
-    <View
-      style={
-        (isWeb
-          ? {
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-              gap: 18,
-            }
-          : { flexDirection: 'row', flexWrap: 'wrap', gap: 18 }) as any
-      }
-    >
+    // Each day sized to its own content with a fixed gap — not stretched
+    // across the row as 7 equal-width grid tracks (which left huge empty
+    // space after each short "9am — 5pm" / "Closed" label).
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 32 } as any}>
       {HOURS.map(([day, hours]) => (
         <View key={day} style={{ gap: 8, minWidth: isWeb ? undefined : 84 } as any}>
           <Eyebrow>{day}</Eyebrow>
