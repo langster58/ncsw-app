@@ -1,6 +1,6 @@
 import React from 'react'
 import { Platform, Text, View } from 'react-native'
-import { colors, fonts, space, tracking } from './tokens'
+import { colors, fonts, space, tracking, useFluidPx } from './tokens'
 
 // Footer — dark band site footer with compound slots:
 //   <Footer>
@@ -17,17 +17,19 @@ import { colors, fonts, space, tracking } from './tokens'
 //   </Footer>
 
 function Root({ children }: { children: React.ReactNode }) {
+  const marginTop = useFluidPx(space.sectionTop)
+  const padX = useFluidPx(space.containerPadX)
   return (
-    <View style={{ width: '100%', backgroundColor: colors.ink, marginTop: space.sectionTop }}>
+    <View style={{ width: '100%', backgroundColor: colors.ink, marginTop } as any}>
       <View
-        style={{
-          width: '100%',
-          maxWidth: space.containerMax,
-          marginHorizontal: 'auto',
-          paddingHorizontal: space.containerPadX,
-          paddingTop: 64,
-          paddingBottom: 40,
-        }}
+        style={
+          {
+            width: '100%',
+            paddingHorizontal: padX,
+            paddingTop: 64,
+            paddingBottom: 40,
+          } as any
+        }
       >
         {children}
       </View>

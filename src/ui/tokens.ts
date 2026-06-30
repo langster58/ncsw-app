@@ -137,11 +137,18 @@ export const fonts = {
 }
 
 // ── Spacing / layout ────────────────────────────────────────────────────────
+// Layout spacing scales with the viewport on the same clamp() curve as type.
+// No max-width: the page fills the viewport at every size and grows
+// proportionally past the 1920 anchor up to 2560. Floors protect narrow
+// phones; caps prevent ultra-wide screens from getting absurd values.
+//
+// Resolve fluid spec values via useFluidPx() at the call site (same pattern
+// as the type scale).
 export const space = {
-  sectionTop: 96, // .section { padding-top: 96px }
-  containerMax: 1410, // .container { max-width: 1410px }
-  containerPadX: 40, // .container { padding: 0 40px }
-  containerPadXMobile: 22, // narrow-viewport gutter
+  // .section { padding-top: 96px } @ 1920 anchor
+  sectionTop: fluid(96, 56, 128),
+  // .container { padding: 0 40px } @ 1920 anchor; floor 22 on narrow phones
+  containerPadX: fluid(40, 22, 56),
   blockGap: 28, // gap between heading and lede
   ruleHairline: 1,
 }
@@ -159,8 +166,8 @@ export const radius = {
 // All headings + body paragraphs use this. Single edit point.
 export const copyMaxWidth = '66.6%' as const
 
-// ── Breakpoint for narrow-viewport behavior ─────────────────────────────────
-// Below this we switch container gutter to 22px and stack the source's
-// desktop-only chrome (nav menu hidden, etc.) — matches home.css's
-// @media (max-width: 900px) rule used by source nav/hero.
+// ── Breakpoint for narrow-viewport chrome (nav stack, etc.) ─────────────────
+// Layout sizing is fluid via clamp(); this breakpoint only governs source
+// behaviors that genuinely toggle on/off below it — e.g. the nav menu
+// collapses into a hamburger. Matches home.css's @media (max-width: 900px).
 export const narrowBreakpoint = 900

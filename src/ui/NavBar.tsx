@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Platform, Pressable, View } from 'react-native'
-import { colors, space } from './tokens'
+import { colors, space, useFluidPx } from './tokens'
 
 // NavBar — sticky top chrome with slots for brand / menu / CTA.
 //   <NavBar>
@@ -16,6 +16,7 @@ type NavBarProps = { children: React.ReactNode }
 
 function Root({ children }: NavBarProps) {
   const [scrolled, setScrolled] = useState(false)
+  const padX = useFluidPx(space.containerPadX)
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
@@ -44,17 +45,17 @@ function Root({ children }: NavBarProps) {
   return (
     <View style={[{ width: '100%', height: HEIGHT }, webBarStyle]}>
       <View
-        style={{
-          width: '100%',
-          maxWidth: space.containerMax,
-          marginHorizontal: 'auto',
-          height: HEIGHT,
-          paddingHorizontal: space.containerPadX,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 24,
-        }}
+        style={
+          {
+            width: '100%',
+            height: HEIGHT,
+            paddingHorizontal: padX,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 24,
+          } as any
+        }
       >
         {children}
       </View>

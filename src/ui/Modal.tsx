@@ -106,18 +106,21 @@ function ModalRoot({ open, onClose, title, children }: ModalProps) {
 // Implicit header: title + close ✕. Whole bar is the close surface.
 function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
   const titleSize = useFluidPx(typeScale.meta)
+  const padX = useFluidPx(space.containerPadX)
   return (
     <Pressable
       onPress={onClose}
-      style={{
-        height: 56,
-        paddingHorizontal: space.containerPadX,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottomWidth: 1,
-        borderBottomColor: colors.line,
-      }}
+      style={
+        {
+          height: 56,
+          paddingHorizontal: padX,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottomWidth: 1,
+          borderBottomColor: colors.line,
+        } as any
+      }
     >
       <Text
         style={
@@ -140,15 +143,16 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
 
 // Scrollable middle slot.
 function ModalBody({ children }: { children: React.ReactNode }) {
+  const padX = useFluidPx(space.containerPadX)
   if (Platform.OS === 'web') {
     return React.createElement(
       'div',
       { style: { flex: 1, minHeight: 0, overflowY: 'auto' } },
-      <View style={{ paddingHorizontal: space.containerPadX, paddingVertical: 16 }}>{children}</View>,
+      <View style={{ paddingHorizontal: padX, paddingVertical: 16 } as any}>{children}</View>,
     )
   }
   return (
-    <View style={{ flex: 1, paddingHorizontal: space.containerPadX, paddingVertical: 16 }}>
+    <View style={{ flex: 1, paddingHorizontal: padX, paddingVertical: 16 } as any}>
       {children}
     </View>
   )
@@ -156,18 +160,21 @@ function ModalBody({ children }: { children: React.ReactNode }) {
 
 // Sticky bottom slot for action buttons.
 function ModalFooter({ children }: { children: React.ReactNode }) {
+  const padX = useFluidPx(space.containerPadX)
   return (
     <View
-      style={{
-        paddingHorizontal: space.containerPadX,
-        paddingVertical: 12,
-        borderTopWidth: 1,
-        borderTopColor: colors.line,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        gap: 8,
-      }}
+      style={
+        {
+          paddingHorizontal: padX,
+          paddingVertical: 12,
+          borderTopWidth: 1,
+          borderTopColor: colors.line,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 8,
+        } as any
+      }
     >
       {children}
     </View>
