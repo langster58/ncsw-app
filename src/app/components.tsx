@@ -443,7 +443,7 @@ export default function ComponentsPage() {
               }
             >
               {[0, 1, 2].map((i) => (
-                <Card key={i}>
+                <Card key={i} href="#">
                   <Card.Media aspectRatio={16 / 11}>
                     <Image src="/images/pattern-reference.png" fill objectFit="cover" alt="" />
                     <Card.MediaTag>SUV · HATCH · WAGON</Card.MediaTag>
@@ -456,7 +456,7 @@ export default function ComponentsPage() {
                     </Lead>
                   </Card.Body>
                   <Card.Footer>
-                    <Link variant="door" href="#" icon={<IconArrow size={15} />}>See the alignment</Link>
+                    <Link variant="door" icon={<IconArrow size={15} />}>See the alignment</Link>
                   </Card.Footer>
                 </Card>
               ))}

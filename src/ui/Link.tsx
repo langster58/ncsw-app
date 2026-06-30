@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import { Linking, Platform, Pressable, Text, View } from 'react-native'
+import { HoverContext } from './HoverContext'
 import { colors, fonts, tracking } from './tokens'
 
 // Link — four variants: nav, text, door, cta. Each maps to a source pattern:
@@ -24,6 +25,14 @@ type LinkProps = {
 export function Link({ children, variant = 'text', href, icon, onPress }: LinkProps) {
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
+  const inheritedHover = useContext(HoverContext)
+  // Inherited hover applies to affordances that visually belong to a larger
+  // tap surface (e.g. a door-link inside a clickable Card). For the variants
+  // that look like body-text links (text, cta), only direct hover should
+  // shift the color — otherwise inline links would all light up whenever
+  // their container is hovered.
+  const respondsToInherited = variant === 'door' || variant === 'nav'
+  const effectiveHover = hovered || (respondsToInherited && inheritedHover)
 
   const hoverProps: any =
     Platform.OS === 'web'
@@ -44,7 +53,7 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
     }
   }
 
-  const { fg, underline, font, size, weight, letterSpacing, transform } = resolveLink(variant, hovered)
+  const { fg, underline, font, size, weight, letterSpacing, transform } = resolveLink(variant, effectiveHover)
 
   // On web, render a real <a href> when href is set so cmd-click / middle-click /
   // screen readers all work natively. The Pressable wraps the visual styling.
@@ -96,7 +105,7 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
                 left: 0,
                 bottom: -3,
                 height: 1,
-                width: hovered ? '100%' : 0,
+                width: effectiveHover ? '100%' : 0,
                 backgroundColor: colors.accent,
                 transition: 'width .3s ease',
               } as any
@@ -108,7 +117,7 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
         <View
           style={
             {
-              transform: hovered ? [{ translateX: 2 }] : [],
+              transform: effectiveHover ? [{ translateX: 2 }] : [],
             } as any
           }
         >

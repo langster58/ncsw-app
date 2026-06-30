@@ -1,5 +1,6 @@
-import React from 'react'
-import { Platform, Text, View } from 'react-native'
+import React, { useState } from 'react'
+import { Linking, Platform, Pressable, Text, View } from 'react-native'
+import { HoverContext } from './HoverContext'
 import { colors, fonts, radius, tracking } from './tokens'
 
 // Card — composable container for the three card patterns on the homepage:
@@ -51,14 +52,79 @@ type Layout = 'stack' | 'split'
 type CardProps = {
   children: React.ReactNode
   layout?: Layout
+  /** Click destination. Sets the whole card as the tap surface. */
+  href?: string
+  /** Click handler. Sets the whole card as the tap surface. */
+  onPress?: () => void
 }
 
 // Context lets nested slots (Body, Footer) adapt their padding for split
 // without callers needing to pass the layout down.
 const CardLayoutContext = React.createContext<Layout>('stack')
 
-function CardRoot({ children, layout = 'stack' }: CardProps) {
+// Card resolves its own hover/pressed color cascade (matches the secondary
+// Button treatment so an interactive card and a secondary button hover the
+// same way: white → accentSoft → accentSoftPressed, with the border
+// cascading line → accent → accentPressed).
+function resolveCardColors(state: { hovered: boolean; pressed: boolean }) {
+  return {
+    bg: state.pressed
+      ? colors.accentSoftPressed
+      : state.hovered
+        ? colors.accentSoft
+        : colors.white,
+    border: state.pressed
+      ? colors.accentPressed
+      : state.hovered
+        ? colors.accent
+        : colors.line,
+  }
+}
+
+function CardRoot({ children, layout = 'stack', href, onPress }: CardProps) {
   const isWeb = Platform.OS === 'web'
+  const interactive = !!onPress || !!href
+
+  const [hovered, setHovered] = useState(false)
+  const [pressed, setPressed] = useState(false)
+
+  const { bg, border } = interactive
+    ? resolveCardColors({ hovered, pressed })
+    : { bg: colors.white, border: colors.line }
+
+  const interactiveProps: any = interactive
+    ? {
+        onPress: () => {
+          if (onPress) return onPress()
+          if (!href) return
+          if (Platform.OS === 'web') {
+            if (typeof window !== 'undefined') window.location.href = href
+          } else {
+            Linking.openURL(href).catch(() => {})
+          }
+        },
+        onPressIn: () => setPressed(true),
+        onPressOut: () => setPressed(false),
+        accessibilityRole: 'link',
+        ...(Platform.OS === 'web'
+          ? {
+              onHoverIn: () => setHovered(true),
+              onHoverOut: () => setHovered(false),
+            }
+          : null),
+      }
+    : null
+
+  const baseStyle: any = {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.lg,
+    backgroundColor: bg,
+    overflow: 'hidden',
+    ...(interactive && Platform.OS === 'web'
+      ? { cursor: 'pointer', transition: 'background-color 140ms ease, border-color 140ms ease' }
+      : null),
+  }
 
   if (layout === 'split' && isWeb) {
     // Split layout: peel Media out as the left grid cell; everything else
@@ -71,50 +137,54 @@ function CardRoot({ children, layout = 'stack' }: CardProps) {
     const media = mediaIdx >= 0 ? kids[mediaIdx] : null
     const rest = mediaIdx >= 0 ? kids.filter((_, i) => i !== mediaIdx) : kids
 
+    const splitStyle: any = {
+      ...baseStyle,
+      display: 'grid',
+      gridTemplateColumns: '5fr 4fr',
+      alignItems: 'stretch',
+    }
+
+    const inner = (
+      <>
+        {media}
+        <View style={{ flexDirection: 'column', justifyContent: 'space-between' } as any}>
+          {rest}
+        </View>
+      </>
+    )
+
     return (
       <CardLayoutContext.Provider value="split">
-        <View
-          style={
-            {
-              borderWidth: 1,
-              borderColor: colors.line,
-              borderRadius: radius.lg,
-              backgroundColor: colors.white,
-              overflow: 'hidden',
-              display: 'grid',
-              gridTemplateColumns: '5fr 4fr',
-              alignItems: 'stretch',
-            } as any
-          }
-        >
-          {media}
-          <View
-            style={{ flexDirection: 'column', justifyContent: 'space-between' } as any}
-          >
-            {rest}
-          </View>
-        </View>
+        <HoverContext.Provider value={interactive && hovered}>
+          {interactive ? (
+            <Pressable {...interactiveProps} style={splitStyle}>
+              {inner}
+            </Pressable>
+          ) : (
+            <View style={splitStyle}>{inner}</View>
+          )}
+        </HoverContext.Provider>
       </CardLayoutContext.Provider>
     )
   }
 
+  const stackStyle: any = {
+    ...baseStyle,
+    // native split: stack until we wire a layout breakpoint there
+    ...(layout === 'split' && !isWeb ? { flexDirection: 'column' } : null),
+  }
+
   return (
     <CardLayoutContext.Provider value={layout}>
-      <View
-        style={
-          {
-            borderWidth: 1,
-            borderColor: colors.line,
-            borderRadius: radius.lg,
-            backgroundColor: colors.white,
-            overflow: 'hidden',
-            // native split: stack until we wire a layout breakpoint there
-            ...(layout === 'split' && !isWeb ? { flexDirection: 'column' } : null),
-          } as any
-        }
-      >
-        {children}
-      </View>
+      <HoverContext.Provider value={interactive && hovered}>
+        {interactive ? (
+          <Pressable {...interactiveProps} style={stackStyle}>
+            {children}
+          </Pressable>
+        ) : (
+          <View style={stackStyle}>{children}</View>
+        )}
+      </HoverContext.Provider>
     </CardLayoutContext.Provider>
   )
 }
