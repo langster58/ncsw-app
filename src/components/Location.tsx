@@ -81,7 +81,9 @@ export function Location() {
           </View>
         </View>
 
-        <MapEmbed />
+        <View style={{ marginBottom: 56 }}>
+          <MapEmbed />
+        </View>
       </Container>
     </Section>
   )
