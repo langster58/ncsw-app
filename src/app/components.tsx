@@ -3,7 +3,7 @@
 //
 // Organized as Atoms → Molecules → Components, mirroring src/ui/.
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Image as RNImage, Platform, ScrollView, Text, View } from 'react-native'
 import {
   Accordion,
@@ -97,6 +97,31 @@ function Row({ children }: { children: React.ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
       {children}
+    </View>
+  )
+}
+
+// One ScoreMeter wired to a live slider — proves the bar+value track the
+// `value` prop. There aren't multiple meter variants; just one component.
+function ScoreMeterDemo() {
+  const [value, setValue] = useState(57)
+  return (
+    <View style={{ gap: 16 }}>
+      <ScoreMeter value={value} />
+      {Platform.OS === 'web'
+        ? React.createElement('input', {
+            type: 'range',
+            min: 0,
+            max: 100,
+            value,
+            onChange: (e: any) => setValue(Number(e.target.value)),
+            style: { width: 220, accentColor: colors.accent },
+          })
+        : (
+            <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint }}>
+              Slider available on web
+            </Text>
+          )}
     </View>
   )
 }
@@ -327,12 +352,7 @@ export default function ComponentsPage() {
           </Block>
 
           <Block title="ScoreMeter">
-            <Row>
-              <ScoreMeter value={40} />
-              <ScoreMeter value={57} />
-              <ScoreMeter value={70} />
-              <ScoreMeter value={92} />
-            </Row>
+            <ScoreMeterDemo />
           </Block>
 
           <Block title="Dropdown">
