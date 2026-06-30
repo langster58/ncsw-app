@@ -30,7 +30,6 @@ import {
   Lead,
   Link,
   Modal,
-  Mono,
   NavBar,
   PriceRangeSlider,
   ScoreMeter,
@@ -41,6 +40,25 @@ import {
   fonts,
   space,
 } from '@/ui'
+
+// Mono is a font spec, not a primitive — render inline with the mono token.
+const MONO_SIZES = { sm: 11, md: 14, lg: 17 } as const
+function Mono({
+  children,
+  size = 'md',
+  tone = 'ink',
+}: {
+  children: React.ReactNode
+  size?: keyof typeof MONO_SIZES
+  tone?: 'ink' | 'gray' | 'accent'
+}) {
+  const color = tone === 'gray' ? colors.gray : tone === 'accent' ? colors.accent : colors.ink
+  return (
+    <Text style={{ fontFamily: fonts.mono, fontSize: MONO_SIZES[size], fontWeight: '500', color }}>
+      {children}
+    </Text>
+  )
+}
 
 // ── Page chrome (just for this review page) ───────────────────────────────
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
@@ -198,7 +216,6 @@ export default function ComponentsPage() {
           </Block>
 
           <Block title="Heading">
-            <Heading level="hero">Hero level</Heading>
             <Heading level="h2">H2 — section large</Heading>
             <Heading level="h2sm">H2sm — section small</Heading>
             <Heading level="h3">H3 — sub-heading</Heading>
@@ -219,31 +236,13 @@ export default function ComponentsPage() {
             </Row>
           </Block>
 
-          <Block title="Mono (data text)">
-            <Row>
-              <Mono size="sm">$1,690</Mono>
-              <Mono size="md">(216) 555-0114</Mono>
-              <Mono size="lg">Adire Kali 18 · infinite baffle</Mono>
-            </Row>
-            <Row>
-              <Mono tone="ink">ink</Mono>
-              <Mono tone="gray">gray</Mono>
-              <Mono tone="accent">accent</Mono>
-            </Row>
-          </Block>
-
           <Block title="Button">
             <Row>
               <Button variant="primary">Primary</Button>
               <Button variant="secondary">Secondary</Button>
-              <Button variant="ghost">Ghost</Button>
             </Row>
             <Row>
-              <Button variant="secondary" size="md">md</Button>
-              <Button variant="secondary" size="lg">lg</Button>
-              <Button variant="secondary" icon={<IconArrow size={14} />}>with icon</Button>
-            </Row>
-            <Row>
+              <Button variant="secondary" icon={<IconArrow size={14} />}>With icon</Button>
               <Button variant="primary" disabled>Disabled</Button>
               <Button variant="primary" loading>Loading</Button>
             </Row>
@@ -460,7 +459,7 @@ export default function ComponentsPage() {
                   <Link variant="nav" href="#">Editorial</Link>
                   <Link variant="nav" href="#">Location</Link>
                 </View>
-                <Button variant="secondary" size="md">Call Now</Button>
+                <Button variant="secondary">Call Now</Button>
               </View>
             </View>
             <Mono size="sm" tone="gray">Slots: Brand · Menu · Cta. Sticky on web with scroll-triggered border + blur.</Mono>

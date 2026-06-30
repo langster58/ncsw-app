@@ -2,36 +2,34 @@ import { useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 import { colors, fonts, radius, tracking } from './tokens'
 
-// Button — three variants, all standard states.
+// Button — one size, two variants, standard states.
 //
-//   <Button variant="primary" size="md" onPress={...}>Call now</Button>
-//   <Button variant="secondary" icon={<Arrow />} disabled loading>…</Button>
+//   <Button variant="primary" onPress={...}>Call now</Button>
+//   <Button variant="secondary" disabled>…</Button>
 //
-// Source: .btn / .nav-cta / .btn-primary in home.css. All shape/state values
-// come from the source CSS verbatim.
+// Variants
+//   primary    — filled accent (Call Now, Show packages)
+//   secondary  — white outline (Reset, Cancel, Nav CTA)
+//
+// States (cascade from tokens.colors):
+//   default · hover · pressed · focus · disabled · loading
+//
+// Source dimensions: .btn { min-height:36; padding:7×14; radius:8; font 10/600/uppercase/.12em }
 
-type Variant = 'primary' | 'secondary' | 'ghost'
-type Size = 'md' | 'lg'
+type Variant = 'primary' | 'secondary'
 
 type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
-  size?: Size
   disabled?: boolean
   loading?: boolean
   icon?: React.ReactNode
   onPress?: () => void
 }
 
-const SIZE_MAP: Record<Size, { minHeight: number; paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
-  md: { minHeight: 36, paddingVertical: 7, paddingHorizontal: 14, fontSize: 10 }, // .btn default
-  lg: { minHeight: 48, paddingVertical: 12, paddingHorizontal: 20, fontSize: 12 },
-}
-
 export function Button({
   children,
   variant = 'secondary',
-  size = 'md',
   disabled = false,
   loading = false,
   icon,
@@ -51,7 +49,6 @@ export function Button({
       : {}
 
   const inert = disabled || loading
-  const sz = SIZE_MAP[size]
   const { bg, fg, border } = resolveColors(variant, { hovered, pressed, disabled: inert })
 
   return (
@@ -67,16 +64,15 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 9,
-          minHeight: sz.minHeight,
-          paddingVertical: sz.paddingVertical,
-          paddingHorizontal: sz.paddingHorizontal,
-          borderWidth: variant === 'ghost' ? 0 : 1,
+          minHeight: 36,
+          paddingVertical: 7,
+          paddingHorizontal: 14,
+          borderWidth: 1,
           borderColor: border,
           borderRadius: radius.sm,
           backgroundColor: bg,
           opacity: loading ? 0.6 : 1,
           cursor: inert ? 'not-allowed' : 'pointer',
-          // web-only focus ring
           ...(focused && Platform.OS === 'web'
             ? { outlineWidth: 2, outlineStyle: 'solid', outlineColor: colors.focusRing, outlineOffset: 3 }
             : null),
@@ -88,8 +84,8 @@ export function Button({
         style={
           {
             fontFamily: fonts.body,
-            fontSize: sz.fontSize,
-            lineHeight: sz.fontSize,
+            fontSize: 10,
+            lineHeight: 10,
             fontWeight: '600',
             letterSpacing: tracking.label,
             textTransform: 'uppercase',
@@ -102,10 +98,7 @@ export function Button({
       {icon ? (
         <View
           style={
-            {
-              // Source: icon translateX(2) on hover.
-              transform: hovered && !inert ? [{ translateX: 2 }] : [],
-            } as any
+            { transform: hovered && !inert ? [{ translateX: 2 }] : [] } as any
           }
         >
           {icon}
@@ -123,20 +116,14 @@ function resolveColors(
     return { bg: colors.disabledBg, fg: colors.disabledFg, border: colors.disabledBorder }
   }
   if (variant === 'primary') {
+    // Standard primary: darken by ~5% (hover) / ~10% (pressed) of base accent.
     return {
       bg: state.pressed ? colors.accentPressed : state.hovered ? colors.accentHover : colors.accent,
       fg: colors.white,
       border: state.pressed ? colors.accentPressed : state.hovered ? colors.accentHover : colors.accent,
     }
   }
-  if (variant === 'ghost') {
-    return {
-      bg: 'transparent',
-      fg: state.pressed ? colors.gray : state.hovered ? colors.accent : colors.ink,
-      border: 'transparent',
-    }
-  }
-  // secondary (outline) — source .btn default
+  // Standard secondary (outline): subtle bg fill on hover, slightly darker on pressed.
   return {
     bg: state.pressed ? colors.surfacePressed : state.hovered ? colors.surfaceHover : colors.white,
     fg: colors.ink,
@@ -148,7 +135,6 @@ function resolveColors(
   }
 }
 
-// Tiny spinner — non-animated dot in v1 (animation lives outside the primitive).
 function Spinner({ color }: { color: string }) {
   return (
     <View

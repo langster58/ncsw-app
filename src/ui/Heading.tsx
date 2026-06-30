@@ -11,8 +11,8 @@ import {
   useFluidPx,
 } from './tokens'
 
-// Section heading. One level by default (`h2`, the homepage section heading).
-// `hero` for the hero wordmark size; `h3`/`h4` available for card titles.
+// Section heading. The hero wordmark is an SVG (not text), so there's no
+// `hero` text level — only h2 / h2sm / h3 / h4.
 //
 // Single edit point for ALL headings:
 //   - color           → tokens.colors.ink
@@ -20,7 +20,7 @@ import {
 //   - maxWidth        → tokens.copyMaxWidth
 //   - fluid sizing    → tokens.type[level]
 
-type Level = 'hero' | 'h2' | 'h2sm' | 'h3' | 'h4'
+type Level = 'h2' | 'h2sm' | 'h3' | 'h4'
 
 export function Heading({ level = 'h2', children }: { level?: Level; children: ReactNode }) {
   const fontSize = useFluidPx(type[level])

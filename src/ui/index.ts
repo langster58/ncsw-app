@@ -21,7 +21,6 @@ export { Link } from './Link'
 export { Eyebrow } from './Eyebrow'
 export { Heading } from './Heading'
 export { Lead } from './Lead'
-export { Mono } from './Mono'
 
 // Molecules
 export { Dropdown } from './Dropdown'

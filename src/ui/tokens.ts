@@ -50,7 +50,6 @@ export function useFluidPx(spec: number | string): number | string {
 //   - h2     → .howto h2 (HowItWorks) — clamp(36, 4.8vw, 54)
 //   - h2sm   → .section-intro h2 (Collections, Editorial) — clamp(28, 3.2vw, 42)
 export const type = {
-  hero: fluid(168, 58, 168), // hero wordmark / source: clamp(58, 9.5vw, 168)
   h2: fluid(54, 36, 64), // section headings (large) — .howto h2
   h2sm: fluid(42, 28, 50), // section headings (medium) — .section-intro h2
   h3: fluid(30, 22, 36), // sub-headings

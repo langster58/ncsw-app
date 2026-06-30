@@ -1,12 +1,21 @@
 // NCSW homepage — "08 / Location" section.
 //
-// Chrome (Section + Container + Opener + Heading + Lead) uses the design system
-// primitives. The hours grid, address/schedule blocks, and map are bespoke —
-// they use Eyebrow + Mono for typography so the type system still owns it.
+// Chrome uses the design system (Section, Container, SectionIntro, Eyebrow).
+// Data values use the mono font directly via the fonts token (mono is just a
+// type spec, not a molecule).
 
 import React from 'react'
 import { Platform, Text, View } from 'react-native'
-import { Container, Eyebrow, Mono, Section, SectionIntro, colors } from '@/ui'
+import { Container, Eyebrow, Section, SectionIntro, colors, fonts } from '@/ui'
+
+// Mono data text — small inline helper, since mono is just a font spec.
+function MonoText({ children }: { children: React.ReactNode }) {
+  return (
+    <Text style={{ fontFamily: fonts.mono, fontSize: 14, fontWeight: '500', color: colors.ink }}>
+      {children}
+    </Text>
+  )
+}
 
 // Copy is verbatim from the source homepage; in a real build this would come
 // from Directus / a CMS.
@@ -62,13 +71,13 @@ export function Location() {
           <View style={{ gap: 12 }}>
             <Eyebrow>Location</Eyebrow>
             <View>
-              <Mono>{SHOP_ADDRESS_L1}</Mono>
-              <Mono>{SHOP_ADDRESS_L2}</Mono>
+              <MonoText>{SHOP_ADDRESS_L1}</MonoText>
+              <MonoText>{SHOP_ADDRESS_L2}</MonoText>
             </View>
           </View>
           <View style={{ gap: 12 }}>
             <Eyebrow>Schedule</Eyebrow>
-            <Mono>{SHOP_PHONE}</Mono>
+            <MonoText>{SHOP_PHONE}</MonoText>
           </View>
         </View>
 
@@ -145,7 +154,7 @@ function HoursGrid() {
       {HOURS.map(([day, hours]) => (
         <View key={day} style={{ gap: 8, minWidth: isWeb ? undefined : 84 } as any}>
           <Eyebrow>{day}</Eyebrow>
-          <Mono>{hours}</Mono>
+          <MonoText>{hours}</MonoText>
         </View>
       ))}
     </View>
