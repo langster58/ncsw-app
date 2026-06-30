@@ -69,12 +69,10 @@ export function Footer() {
             width: '100%',
             paddingTop: 64,
             paddingBottom: 40,
-            paddingLeft: padX,
-            paddingRight: padX,
           } as any
         }
       >
-        {/* footer-top */}
+        {/* footer-top — truly flush to the page edges, zero horizontal padding */}
         <View
           style={
             (stacked
@@ -162,7 +160,8 @@ export function Footer() {
           </View>
         </View>
 
-        {/* footer-bot */}
+        {/* footer-bot — own fluid padding so the right-hand cert text clears
+            the page edge (and the scrollbar) instead of running under it */}
         <View
           style={
             {
@@ -173,6 +172,8 @@ export function Footer() {
               gap: 16,
               marginTop: 56,
               paddingTop: 26,
+              paddingLeft: padX,
+              paddingRight: padX,
               borderTopWidth: 1,
               borderTopColor: 'rgba(255,255,255,0.14)',
               flexWrap: 'wrap',
