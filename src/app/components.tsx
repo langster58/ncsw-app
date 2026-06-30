@@ -265,7 +265,6 @@ export default function ComponentsPage() {
             <Row>
               <Button variant="primary">Primary</Button>
               <Button variant="secondary">Secondary</Button>
-              <Button variant="secondary" icon={<IconArrow size={14} />}>With icon</Button>
             </Row>
             <Row>
               <Button variant="primary" disabled>Disabled primary</Button>

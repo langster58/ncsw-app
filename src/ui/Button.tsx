@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Platform, Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text } from 'react-native'
 import { colors, fonts, radius, tracking } from './tokens'
 
 // Button — one size, two variants. Material Design state coverage:
@@ -26,7 +26,6 @@ type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
   disabled?: boolean
-  icon?: React.ReactNode
   onPress?: () => void
 }
 
@@ -34,7 +33,6 @@ export function Button({
   children,
   variant = 'secondary',
   disabled = false,
-  icon,
   onPress,
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false)
@@ -104,15 +102,6 @@ export function Button({
       >
         {children}
       </Text>
-      {icon ? (
-        <View
-          style={
-            { transform: hovered && !disabled ? [{ translateX: 2 }] : [] } as any
-          }
-        >
-          {icon}
-        </View>
-      ) : null}
     </Pressable>
   )
 }
