@@ -8,7 +8,6 @@ import { HowItWorks } from '@/components/HowItWorks'
 import { Collections } from '@/components/Collections'
 import { Editorial } from '@/components/Editorial'
 import { Location } from '@/components/Location'
-import { Footer } from '@/components/Footer'
 
 // Nav is a sibling above the ScrollView, not a child of it, so the scroll
 // region starts below the nav (and the scrollbar tracks only that region,
@@ -46,9 +45,6 @@ export default function HomeScreen() {
           </Reveal>
           <Reveal>
             <Location />
-          </Reveal>
-          <Reveal>
-            <Footer />
           </Reveal>
         </ScrollView>
       </View>
