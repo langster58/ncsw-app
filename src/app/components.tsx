@@ -393,22 +393,37 @@ export default function ComponentsPage() {
           </Block>
 
           <Block title="Card — stack layout (image top)">
-            <Card>
-              <Card.Media aspectRatio={16 / 11}>
-                <Image src="/images/pattern-reference.png" fill objectFit="cover" alt="" />
-                <Card.MediaTag>SUV · HATCH · WAGON</Card.MediaTag>
-              </Card.Media>
-              <Card.Body>
-                <Heading level="h4">Cargo Infinite Baffle</Heading>
-                <Lead size="body">
-                  The driver mounts to a baffle in the cargo floor and fires through it, using the
-                  space behind the seats as a free-air enclosure.
-                </Lead>
-              </Card.Body>
-              <Card.Footer>
-                <Link variant="door" href="#" icon={<IconArrow size={15} />}>See the alignment</Link>
-              </Card.Footer>
-            </Card>
+            <View
+              style={
+                (Platform.OS === 'web'
+                  ? {
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                      gap: 24,
+                    }
+                  : { flexDirection: 'column', gap: 24 }) as any
+              }
+            >
+              {[0, 1, 2].map((i) => (
+                <Card key={i}>
+                  <Card.Media aspectRatio={16 / 11}>
+                    <Image src="/images/pattern-reference.png" fill objectFit="cover" alt="" />
+                    <Card.MediaTag>SUV · HATCH · WAGON</Card.MediaTag>
+                  </Card.Media>
+                  <Card.Body>
+                    <Heading level="h4">Cargo Infinite Baffle</Heading>
+                    <Lead size="body">
+                      The driver mounts to a baffle in the cargo floor and fires through it, using the
+                      space behind the seats as a free-air enclosure.
+                    </Lead>
+                  </Card.Body>
+                  <Card.Footer>
+                    <Link variant="door" href="#" icon={<IconArrow size={15} />}>See the alignment</Link>
+                  </Card.Footer>
+                </Card>
+              ))}
+            </View>
+            <Mono size="sm" tone="gray">Card is a single component; shown three-up here so the grid behavior is visible.</Mono>
           </Block>
 
           <Block title="Card — split layout (image left)">
