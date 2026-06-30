@@ -71,12 +71,20 @@ type ItemProps = {
   __accordionIndex?: number
 }
 
+// Title row geometry: the index sits in a fixed-width column and the title
+// follows after a fixed gap. Body content is offset by the same amount so its
+// left edge lines up with the title's left edge — they share one flush-left.
+const INDEX_COL = 24
+const INDEX_GAP = 24
+const TITLE_OFFSET = INDEX_COL + INDEX_GAP
+
 function Item({ index, title, media, children, __accordionIndex = 0 }: ItemProps) {
   const ctx = React.useContext(AccordionContext)
   const [hovered, setHovered] = useState(false)
   if (!ctx) return null
   const open = ctx.isOpen(__accordionIndex)
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
+  const bodyIndent = index ? TITLE_OFFSET : 0
   return (
     <View
       style={{
@@ -98,7 +106,7 @@ function Item({ index, title, media, children, __accordionIndex = 0 }: ItemProps
           backgroundColor: hovered && !open ? colors.surfaceHover : 'transparent',
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24, flexShrink: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: INDEX_GAP, flexShrink: 1 }}>
           {index ? (
             <Text
               style={
@@ -108,7 +116,7 @@ function Item({ index, title, media, children, __accordionIndex = 0 }: ItemProps
                   fontWeight: '500',
                   letterSpacing: 0.52, // .04em * 13
                   color: colors.accent,
-                  minWidth: 24,
+                  minWidth: INDEX_COL,
                 } as any
               }
             >
@@ -129,17 +137,26 @@ function Item({ index, title, media, children, __accordionIndex = 0 }: ItemProps
         </View>
         {open ? <IconChevronUp size={16} color={colors.inkFaint} /> : <IconChevron size={16} color={colors.inkFaint} />}
       </Pressable>
-      {open ? <ItemBody media={media}>{children}</ItemBody> : null}
+      {open ? <ItemBody media={media} indent={bodyIndent}>{children}</ItemBody> : null}
     </View>
   )
 }
 
-function ItemBody({ media, children }: { media?: React.ReactNode; children?: React.ReactNode }) {
+function ItemBody({
+  media,
+  indent,
+  children,
+}: {
+  media?: React.ReactNode
+  indent: number
+  children?: React.ReactNode
+}) {
   const hasMedia = !!media
   return (
     <View
       style={
         ({
+          paddingLeft: indent,
           paddingBottom: 32,
           ...(hasMedia
             ? {
