@@ -59,12 +59,27 @@ function FooterLink({ label }: { label: string }) {
 
 function BrandBlock() {
   return (
-    <View>
+    <View
+      style={
+        {
+          alignItems: 'flex-start',
+          justifySelf: 'start',
+          width: 'fit-content',
+        } as any
+      }
+    >
       {Platform.OS === 'web' ? (
         React.createElement('img', {
           src: '/brand/NCSW-wordmark.svg',
           alt: 'North Coast Soundworks',
-          style: { height: 26, width: 'auto', filter: 'brightness(0) invert(1)', display: 'block' },
+          style: {
+            height: 26,
+            width: 'auto',
+            filter: 'brightness(0) invert(1)',
+            display: 'block',
+            marginLeft: 0,
+            alignSelf: 'flex-start',
+          },
         })
       ) : (
         <Text
