@@ -4,8 +4,9 @@
 // primitives. The hours grid, address/schedule blocks, and map are bespoke —
 // they use Eyebrow + Mono for typography so the type system still owns it.
 
+import React from 'react'
 import { Platform, Text, View } from 'react-native'
-import { Container, Eyebrow, Heading, Lead, Mono, Opener, Section, colors, space } from '@/ui'
+import { Container, Eyebrow, Heading, Lead, Mono, Opener, Section, colors } from '@/ui'
 
 // Copy is verbatim from the source homepage; in a real build this would come
 // from Directus / a CMS.
@@ -77,25 +78,59 @@ export function Location() {
           </View>
         </View>
 
-        {/* Map placeholder — real map lives in a follow-up. Surface tint + thin
-            line to indicate it's a placeholder, not the final embed. */}
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.line,
-            borderRadius: space.ruleHairline === 1 ? 16 : 0,
-            aspectRatio: 16 / 6,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: colors.gray }}>
-            Map embed — Apple Maps / Mapbox to follow
-          </Text>
-        </View>
+        <MapEmbed />
       </Container>
     </Section>
+  )
+}
+
+// Google Maps iframe — verbatim embed URL from Google Maps for the shop address.
+// Web only (iframes don't exist on native); native shows a placeholder surface
+// until we wire a real map SDK there.
+const MAP_SRC =
+  'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d199.69500286942724!2d-81.53184896443469!3d41.52086731623014!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8830fde42c83abcd%3A0x828e1f4623ea6e6c!2s4117%20Mayfield%20Rd%2C%20South%20Euclid%2C%20OH%2044121!5e0!3m2!1sen!2sus!4v1782779605874!5m2!1sen!2sus'
+
+function MapEmbed() {
+  if (Platform.OS === 'web') {
+    return React.createElement(
+      'div',
+      {
+        style: {
+          width: '100%',
+          aspectRatio: '16 / 6',
+          borderRadius: 16,
+          overflow: 'hidden',
+          border: `1px solid ${colors.line}`,
+        },
+      },
+      React.createElement('iframe', {
+        src: MAP_SRC,
+        width: '100%',
+        height: '100%',
+        style: { border: 0, display: 'block' },
+        allowFullScreen: true,
+        loading: 'lazy',
+        referrerPolicy: 'strict-origin-when-cross-origin',
+        title: 'NCSW shop location — 4117 Mayfield Road, South Euclid, OH 44121',
+      }),
+    )
+  }
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.line,
+        borderRadius: 16,
+        aspectRatio: 16 / 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: colors.gray }}>
+        Map available on web
+      </Text>
+    </View>
   )
 }
 
