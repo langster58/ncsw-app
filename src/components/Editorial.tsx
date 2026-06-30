@@ -22,7 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Container, Heading, Lead, Opener, Section } from '@/ui';
+import { Container, Section, SectionIntro } from '@/ui';
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
 const INK = '#09080e'; // --ncsw-ink / --fg-1
@@ -516,16 +516,15 @@ export function Editorial() {
   return (
     <Section>
       <Container>
-        <Opener index="06" label="Editorial" doorLabel="All articles" />
-        <View style={{ marginBottom: gutter, gap: 16 }}>
-          <Heading level="h2sm">We publish the reasoning.</Heading>
-          <Lead>
-            Every engineering call we make, from which subwoofer to how much
-            amplifier to why a DSP, comes from measurement, not opinion. These
-            write-ups walk the tests we run, the data behind the rankings, and
-            the trade-offs we'd want explained if it were our own car.
-          </Lead>
-        </View>
+        <SectionIntro
+          index="06"
+          label="Editorial"
+          heading="We publish the reasoning."
+          body="Every engineering call we make, from which subwoofer to how much amplifier to why a DSP, comes from measurement, not opinion. These write-ups walk the tests we run, the data behind the rankings, and the trade-offs we'd want explained if it were our own car."
+          actionLabel="All articles"
+          actionHref="#"
+          paddingBottom={gutter}
+        />
 
       {/* .edit-grid — 3-up on web, horizontal card rail on native/narrow. */}
       {IS_WEB && !isNarrow ? (

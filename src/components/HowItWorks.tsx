@@ -1,6 +1,6 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Heading, Lead, Opener, Section } from '@/ui'
+import { Container, Section, SectionIntro } from '@/ui'
 import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
 // HowItWorks — methodology / "how it works" section, ported from HowItWorks.jsx.
@@ -275,20 +275,7 @@ function MethodDoor({
   )
 }
 
-// HowItWorksIntro — .howto.howto-intro : opener heading + lede column.
-// Thin composition on the design primitives in src/ui.
-function HowItWorksIntro() {
-  return (
-    <View style={{ paddingTop: 4, gap: 20 }}>
-      <Heading level="h2">
-        {HOWTO_HEADING_L1}
-        {'\n'}
-        {HOWTO_HEADING_L2}
-      </Heading>
-      <Lead>{HOWTO_LEAD}</Lead>
-    </View>
-  )
-}
+// HowItWorksIntro removed — SectionIntro now owns the eyebrow + heading + lede.
 
 // MethodologyHub — .mc : featured tall Subwoofers door + chart exhibit, then
 // the .mc-doors grid of per-stage doors.
@@ -383,8 +370,13 @@ export function HowItWorks() {
   return (
     <Section>
       <Container>
-        <Opener index="02" label="Our Methodology" />
-        <HowItWorksIntro />
+        <SectionIntro
+          index="02"
+          label="Our Methodology"
+          heading={`${HOWTO_HEADING_L1}\n${HOWTO_HEADING_L2}`}
+          level="h2"
+          body={HOWTO_LEAD}
+        />
         <MethodologyHub />
       </Container>
     </Section>

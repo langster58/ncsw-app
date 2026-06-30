@@ -6,7 +6,7 @@
 
 import React from 'react'
 import { Platform, Text, View } from 'react-native'
-import { Container, Eyebrow, Heading, Lead, Mono, Opener, Section, colors } from '@/ui'
+import { Container, Eyebrow, Mono, Section, SectionIntro, colors } from '@/ui'
 
 // Copy is verbatim from the source homepage; in a real build this would come
 // from Directus / a CMS.
@@ -30,21 +30,15 @@ export function Location() {
   return (
     <Section>
       <Container>
-        <Opener
+        <SectionIntro
           index="08"
           label="Location"
-          doorLabel="Get directions"
-          doorHref="https://maps.apple.com/?address=4117%20Mayfield%20Road,%20South%20Euclid,%20OH%2044118"
+          heading="Visit our Cleveland shop."
+          body="Every build happens here, by appointment. Stop in to talk through your vehicle and hear a reference system."
+          actionLabel="Get directions"
+          actionHref="https://maps.apple.com/?address=4117%20Mayfield%20Road,%20South%20Euclid,%20OH%2044118"
+          paddingBottom={56}
         />
-
-        {/* Heading + lede */}
-        <View style={{ gap: 16, marginBottom: 56 }}>
-          <Heading level="h2sm">Visit our Cleveland shop.</Heading>
-          <Lead>
-            Every build happens here, by appointment. Stop in to talk through
-            your vehicle and hear a reference system.
-          </Lead>
-        </View>
 
         {/* Hours grid */}
         <View style={{ gap: 16, marginBottom: 56 }}>

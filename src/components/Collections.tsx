@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { Container, Heading, Lead, Opener, Section } from '@/ui';
+import { Container, Section, SectionIntro } from '@/ui';
 
 /* ============================================================
    Collections — "Sub-stage / collections" section
@@ -118,17 +118,15 @@ export function Collections() {
   return (
     <Section>
       <Container>
-        <Opener index="04" label="Sub-stage" doorLabel="All alignments" />
-        <View style={{ marginBottom: gutter, gap: 16 }}>
-          <Heading level="h2sm">Sub-stage fabrication &amp; alignment</Heading>
-          <Lead>
-            The sub-stage is defined as much by where the driver lives as by the
-            driver itself. Most vehicles resolve to one of a few alignments, each a
-            different trade between output, space, and how the enclosure is built.
-            These are the three we fabricate most; the full breakdown lives on the
-            enclosure methodology page.
-          </Lead>
-        </View>
+        <SectionIntro
+          index="04"
+          label="Sub-stage"
+          heading="Sub-stage fabrication & alignment"
+          body="The sub-stage is defined as much by where the driver lives as by the driver itself. Most vehicles resolve to one of a few alignments, each a different trade between output, space, and how the enclosure is built. These are the three we fabricate most; the full breakdown lives on the enclosure methodology page."
+          actionLabel="All alignments"
+          actionHref="#"
+          paddingBottom={gutter}
+        />
 
         {/* CardGrid .coll-grid — repeat(3, minmax(0,1fr)) gap gutter */}
         <View

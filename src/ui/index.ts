@@ -26,8 +26,6 @@ export { Mono } from './Mono'
 // Molecules
 export { Dropdown } from './Dropdown'
 export { SectionIntro } from './SectionIntro'
-export { Opener } from './Opener'
-export { Meta } from './Meta'
 export { Tag } from './Tag'
 export { FilterChipGroup } from './FilterChipGroup'
 export { PriceRangeSlider } from './PriceRangeSlider'

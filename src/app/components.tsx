@@ -29,11 +29,9 @@ import {
   Image,
   Lead,
   Link,
-  Meta,
   Modal,
   Mono,
   NavBar,
-  Opener,
   PriceRangeSlider,
   ScoreMeter,
   Section,
@@ -272,8 +270,10 @@ export default function ComponentsPage() {
           {/* ============ MOLECULES ============ */}
           <GroupHeading>Molecules</GroupHeading>
 
-          <Block title="SectionIntro — default">
+          <Block title="SectionIntro">
             <SectionIntro
+              index="06"
+              label="Editorial"
               heading="We publish the reasoning."
               body="Every engineering call we make, from which subwoofer to how much amplifier to why a DSP, comes from measurement, not opinion."
             />
@@ -281,26 +281,12 @@ export default function ComponentsPage() {
 
           <Block title="SectionIntro — with action">
             <SectionIntro
+              index="04"
+              label="Sub-stage"
               heading="Sub-stage fabrication & alignment"
               body="The sub-stage is defined as much by where the driver lives as by the driver itself."
               actionLabel="All alignments"
               actionHref="#"
-            />
-          </Block>
-
-          <Block title="Opener">
-            <Opener index="04" label="Sub-stage" doorLabel="All alignments" doorHref="#" />
-          </Block>
-
-          <Block title="Meta">
-            <Meta
-              cols={2}
-              items={[
-                ['Subwoofer', 'Adire Kali 18 · infinite baffle'],
-                ['Front stage', 'Audiofrog GB60 · GB15 · GS8ND2'],
-                ['Signal', 'Helix M6 DSP'],
-                ['Mono amp', 'DS18 FRP 3.5K'],
-              ]}
             />
           </Block>
 
@@ -400,7 +386,6 @@ export default function ComponentsPage() {
                   The driver mounts to a baffle in the cargo floor and fires through it, using the
                   space behind the seats as a free-air enclosure.
                 </Lead>
-                <Meta cols={2} items={[['Enclosure', 'Free-air'], ['Best for', 'SUV · Hatch']]} />
               </Card.Body>
               <Card.Footer>
                 <Link variant="door" href="#" icon={<IconArrow size={15} />}>See the alignment</Link>
@@ -421,13 +406,6 @@ export default function ComponentsPage() {
                   No enclosure — a single Adire Kali 18 is mounted infinite-baffle, using the cargo
                   area as its back chamber for effortless, low-distortion extension.
                 </Lead>
-                <Meta
-                  cols={2}
-                  items={[
-                    ['Subwoofer', 'Adire Kali 18'],
-                    ['Signal', 'Helix M6 DSP'],
-                  ]}
-                />
               </Card.Body>
             </Card>
           </Block>
