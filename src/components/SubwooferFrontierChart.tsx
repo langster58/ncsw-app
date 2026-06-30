@@ -1,304 +1,465 @@
-import React from 'react'
-import { Platform, Text, View, useWindowDimensions } from 'react-native'
-
-// SubwooferFrontierChart — ported from SubwooferFrontierChart.jsx (canvas value-frontier scatter).
+// SubwooferFrontierChart — faithful port of SubwooferFrontierChart.jsx.
 //
-// SIMPLIFICATIONS (faithful-but-simplified per task brief):
-//   * The original draws on an HTML <canvas> with full interactivity (hover tooltips,
-//     Size/Tier/Price filter chips + range slider, requestAnimationFrame redraws).
-//     Interactivity is DEFERRED — no chips, no slider, no tooltips, no animation.
-//   * The real dataset comes from `window.NCSW_SUBWOOFER_FRONTIER` (a CMS/data feed).
-//     We do NOT hardcode the full dataset. Below are ~10 REPRESENTATIVE sample points
-//     so the frame reads correctly; swap for live data when wired up. FLAGGED as sample.
-//   * Web renders inline raw SVG (react-native-svg is not installed) via
-//     React.createElement('svg'/'circle'/'path'/'line'/'text', ...).
-//   * Native renders a placeholder View (aspectRatio ~16/9) + the title Text.
+// The source uses HTML5 canvas + window.NCSW_SUBWOOFER_FRONTIER (248 rows).
+// We load the same data file via <script src="/subwoofer-frontier-data.js"> in
+// src/app/+html.tsx; this component reads window.NCSW_SUBWOOFER_FRONTIER
+// exactly like the source.
 //
-// Resolved colors carried verbatim from the source JSX constants / tokens:
-const INK = '#09080E' // ink
-const BLUE = '#0576CC' // accent / data — on frontier
-const GRID = '#ECECEC' // axis / grid lines
-const TICK = '#8A8A8E' // numeric tick labels
-const AXIS = '#6B6B70' // axis title labels
-const DOMINATED = 'rgba(9,8,14,0.22)' // dominated points = rgba(INK,0.22)
-const MONO = "'IBM Plex Mono', monospace"
+// Web: canvas implementation ported 1:1 (axis math, draw order, hover hit-test,
+// chips + price slider + tooltip).
+// Native: placeholder (canvas isn't available without react-native-skia).
 
-// Exact axis + legend text from source (lines 125, 129, 267-269):
-const X_AXIS_LABEL = 'PRICE'
-const Y_AXIS_LABEL = 'IMPACT - HC-12 = 1.00'
-const LEGEND = [
-  { kind: 'blue', text: 'On value frontier' },
-  { kind: 'gray', text: 'Dominated' },
-  { kind: 'dash', text: 'Efficient frontier' },
-] as const
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Platform, Text, View } from 'react-native'
 
-// ~10 REPRESENTATIVE sample points (NOT the real CMS dataset — flagged above).
-// price in USD, m = impact multiple (HC-12 = 1.00). `front` marks pareto-frontier members.
-type Pt = { price: number; m: number; front: boolean }
-const SAMPLE: Pt[] = [
-  { price: 90, m: 0.18, front: true },
-  { price: 160, m: 0.32, front: true },
-  { price: 240, m: 0.5, front: true },
-  { price: 360, m: 0.78, front: true },
-  { price: 520, m: 1.0, front: true },
-  { price: 760, m: 1.55, front: true },
-  { price: 1180, m: 2.6, front: true },
-  { price: 1640, m: 4.0, front: true },
-  { price: 300, m: 0.34, front: false },
-  { price: 640, m: 0.62, front: false },
-  { price: 980, m: 1.1, front: false },
-  { price: 1380, m: 1.9, front: false },
-]
+// ── Source constants (verbatim from SubwooferFrontierChart.jsx) ─────────────
+const INK = '#09080E'
+const BLUE = '#0576CC'
+const MAGENTA = '#E941BC'
+const GRID = '#ECECEC'
+const TICK = '#8A8A8E'
+const AXIS = '#6B6B70'
 
-// Plot geometry (mirrors source pad object on lines 52, fixed viewBox for SVG).
-const VB_W = 720
-const VB_H = 405 // ~16:9
-const PAD = { top: 20, right: 16, bottom: 48, left: 52 }
-const P_W = VB_W - PAD.left - PAD.right
-const P_H = VB_H - PAD.top - PAD.bottom
+const SIZE_OPTIONS = ['all', '8', '10', '12', '15', '18']
+const TIER_OPTIONS = ['all', 'entry', 'mid', 'upper-mid', 'reference']
 
-const PRICE_TICKS = [0, 400, 800, 1200, 1600] // representative x grid
-const IMPACT_TICKS = [0.1, 0.2, 0.5, 1, 2, 4] // representative log y grid (source line 110)
-
-// Domain bounds derived from sample (source compute() pads price/impact).
-const P_MIN = 0
-const P_MAX = 1800
-const M_MIN = Math.log10(0.1) - 0.1
-const M_MAX = Math.log10(4) + 0.1
-
-function xScale(p: number): number {
-  return PAD.left + ((p - P_MIN) / (P_MAX - P_MIN)) * P_W
-}
-function yScale(v: number): number {
-  return PAD.top + P_H - ((Math.log10(v) - M_MIN) / (M_MAX - M_MIN)) * P_H
+// ── Source helpers (verbatim) ───────────────────────────────────────────────
+type Row = {
+  name: string
+  sz: string
+  tier: string
+  price: number
+  m: number
+  vb: number
+  xm: number
+  xp: boolean
+  rms: number
+  sens: number
 }
 
-// h() — thin wrapper around createElement so web-only SVG attrs are cast `as any`
-// (react-native has no typings for raw 'svg'/'circle'/etc.).
-function h(tag: string, props: Record<string, unknown>, ...children: unknown[]) {
-  return React.createElement(tag as any, props as any, ...(children as any[]))
+function rgba(hex: string, alpha: number) {
+  const n = parseInt(hex.slice(1), 16)
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')'
 }
 
-function WebChart() {
-  const gridLines: unknown[] = []
-
-  // Vertical price grid + $ tick labels (mono).
-  PRICE_TICKS.forEach((p, i) => {
-    const px = xScale(p)
-    gridLines.push(
-      h('line', {
-        key: `vx${i}`,
-        x1: px,
-        y1: PAD.top,
-        x2: px,
-        y2: PAD.top + P_H,
-        stroke: GRID,
-        strokeWidth: 1,
-      }),
+function pareto(rows: Row[]): Row[] {
+  return rows
+    .filter(
+      (r) =>
+        !rows.some(
+          (q) =>
+            q !== r &&
+            q.price <= r.price &&
+            q.m >= r.m &&
+            (q.price < r.price || q.m > r.m),
+        ),
     )
-    gridLines.push(
-      h(
-        'text',
-        {
-          key: `vt${i}`,
-          x: px,
-          y: PAD.top + P_H + 18,
-          fill: TICK,
-          fontSize: 11,
-          fontFamily: MONO,
-          textAnchor: 'middle',
-        },
-        `$${p}`,
-      ),
-    )
-  })
+    .sort((a, b) => a.price - b.price)
+}
 
-  // Horizontal impact grid (log) + tick labels (mono). m===1 gets a darker line.
-  IMPACT_TICKS.forEach((t, i) => {
-    const py = yScale(t)
-    gridLines.push(
-      h('line', {
-        key: `hy${i}`,
-        x1: PAD.left,
-        y1: py,
-        x2: PAD.left + P_W,
-        y2: py,
-        stroke: t === 1 ? '#D8D8DC' : GRID,
-        strokeWidth: 1,
-      }),
-    )
-    gridLines.push(
-      h(
-        'text',
-        {
-          key: `ht${i}`,
-          x: PAD.left - 8,
-          y: py + 4,
-          fill: TICK,
-          fontSize: 11,
-          fontFamily: MONO,
-          textAnchor: 'end',
-        },
-        t === 1 ? '1.00' : String(t),
-      ),
-    )
-  })
+function money(n: number) {
+  return '$' + Math.round(n).toLocaleString('en-US')
+}
 
-  // Dashed efficient-frontier polyline (source lines 132-140), accent blue.
-  const frontierPts = SAMPLE.filter((p) => p.front).sort((a, b) => a.price - b.price)
-  const frontierPath = frontierPts
-    .map((p, i) => `${i ? 'L' : 'M'}${xScale(p.price).toFixed(1)} ${yScale(p.m).toFixed(1)}`)
-    .join(' ')
-
-  // Plotted points: dominated first (gray), frontier on top (blue w/ white ring).
-  const dots: unknown[] = []
-  SAMPLE.forEach((p, i) => {
-    const cx = xScale(p.price)
-    const cy = yScale(p.m)
-    dots.push(
-      h('circle', {
-        key: `c${i}`,
-        cx,
-        cy,
-        r: p.front ? 5.5 : 4,
-        fill: p.front ? BLUE : DOMINATED,
-        stroke: p.front ? '#ffffff' : 'none',
-        strokeWidth: p.front ? 1.5 : 0,
-      }),
-    )
-  })
-
-  return h(
-    'svg',
-    {
-      viewBox: `0 0 ${VB_W} ${VB_H}`,
-      width: '100%',
-      height: 'auto',
-      role: 'img',
-      'aria-label': 'Subwoofer value frontier chart',
-      style: { display: 'block', maxWidth: '100%' },
-    },
-    ...gridLines,
-    h('path', {
-      key: 'frontier',
-      d: frontierPath,
-      fill: 'none',
-      stroke: BLUE,
-      strokeWidth: 1.5,
-      strokeDasharray: '4 4',
-    }),
-    ...dots,
-    // X axis title (centered, mono).
-    h(
-      'text',
-      {
-        key: 'xlabel',
-        x: PAD.left + P_W / 2,
-        y: VB_H - 8,
-        fill: AXIS,
-        fontSize: 11,
-        fontFamily: MONO,
-        textAnchor: 'middle',
-      },
-      X_AXIS_LABEL,
-    ),
-    // Y axis title (rotated -90deg, mono).
-    h(
-      'text',
-      {
-        key: 'ylabel',
-        x: 13,
-        y: PAD.top + P_H / 2,
-        fill: AXIS,
-        fontSize: 11,
-        fontFamily: MONO,
-        textAnchor: 'middle',
-        transform: `rotate(-90 13 ${PAD.top + P_H / 2})`,
-      },
-      Y_AXIS_LABEL,
-    ),
-  )
+declare global {
+  interface Window {
+    NCSW_SUBWOOFER_FRONTIER?: Row[]
+  }
 }
 
 export function SubwooferFrontierChart() {
-  useWindowDimensions() // re-render on resize; SVG itself is fluid (width 100%).
+  if (Platform.OS !== 'web') return <NativePlaceholder />
+  return <WebChart />
+}
 
-  if (Platform.OS !== 'web') {
-    // Native chart DEFERRED — placeholder tile + title only.
-    return (
-      <View>
-        <Text
-          style={{
-            fontFamily: 'IBM Plex Mono',
-            fontSize: 11,
-            letterSpacing: 0.6,
-            color: AXIS,
-            marginBottom: 8,
-          }}
-        >
-          SUBWOOFER VALUE FRONTIER
-        </Text>
-        <View
-          style={{
-            width: '100%',
-            aspectRatio: 16 / 9,
-            backgroundColor: '#f5f5f5',
-            borderRadius: 6,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontFamily: 'Inter', fontSize: 14, color: TICK }}>
-            Interactive chart available on web
-          </Text>
-        </View>
-      </View>
-    )
-  }
-
+function NativePlaceholder() {
   return (
-    <View style={{ width: '100%' }}>
-      <WebChart />
-      {/* Legend — exact text from source lines 267-269. */}
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: 14 as any,
-          marginTop: 8,
-        }}
-      >
-        {LEGEND.map((item) => (
-          <View
-            key={item.text}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 as any }}
-          >
-            {item.kind === 'dash' ? (
-              <View style={{ width: 14, height: 0, borderTopWidth: 1.5, borderTopColor: BLUE, borderStyle: 'dashed' }} />
-            ) : (
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: item.kind === 'blue' ? BLUE : DOMINATED,
-                }}
-              />
-            )}
-            <Text
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: INK,
-                textTransform: 'uppercase' as const,
-                letterSpacing: 0.6,
-              }}
-            >
-              {item.text}
-            </Text>
-          </View>
-        ))}
-      </View>
+    <View
+      style={{
+        width: '100%',
+        aspectRatio: 16 / 9,
+        backgroundColor: '#f5f5f5',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: AXIS }}>
+        Value-frontier chart available on web
+      </Text>
     </View>
+  )
+}
+
+function WebChart() {
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const plotRef = useRef<HTMLDivElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const tooltipRef = useRef<HTMLDivElement | null>(null)
+  const hoverRef = useRef(-1)
+  const geomRef = useRef<any>(null)
+
+  const [size, setSize] = useState('all')
+  const [tier, setTier] = useState('all')
+  const [price, setPrice] = useState(1670)
+  const [rows, setRows] = useState<Row[]>([])
+
+  // Pull the global dataset. <script defer> may not have populated window yet
+  // at first render; poll briefly until it does (max ~4s).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.NCSW_SUBWOOFER_FRONTIER && window.NCSW_SUBWOOFER_FRONTIER.length) {
+      setRows(window.NCSW_SUBWOOFER_FRONTIER)
+      return
+    }
+    let n = 0
+    const id = window.setInterval(() => {
+      n++
+      if (window.NCSW_SUBWOOFER_FRONTIER && window.NCSW_SUBWOOFER_FRONTIER.length) {
+        setRows(window.NCSW_SUBWOOFER_FRONTIER)
+        window.clearInterval(id)
+      } else if (n > 40) {
+        window.clearInterval(id)
+      }
+    }, 100)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const filtered = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (size === 'all' || r.sz === size) &&
+          (tier === 'all' || r.tier === tier) &&
+          r.price >= 60 &&
+          r.price <= price &&
+          r.m != null,
+      ),
+    [rows, size, tier, price],
+  )
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const plot = plotRef.current
+    const tip = tooltipRef.current
+    if (!canvas || !plot || !tip) return undefined
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return undefined
+    const dpr = window.devicePixelRatio || 1
+    const pad = { top: 20, right: 16, bottom: 48, left: 52 }
+    let raf = 0
+
+    function layout() {
+      const rect = plot!.getBoundingClientRect()
+      const width = Math.max(320, Math.round(rect.width))
+      const height = Math.max(300, Math.round(rect.height))
+      canvas!.width = width * dpr
+      canvas!.height = height * dpr
+      canvas!.style.width = width + 'px'
+      canvas!.style.height = height + 'px'
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+      return {
+        width,
+        height,
+        pW: width - pad.left - pad.right,
+        pH: height - pad.top - pad.bottom,
+      }
+    }
+
+    function compute(box: ReturnType<typeof layout>) {
+      if (!filtered.length) return null
+      const prices = filtered.map((r) => r.price)
+      const impacts = filtered.map((r) => Math.log10(r.m))
+      const pMn = Math.max(0, Math.min(...prices) - 60)
+      const pMx = Math.max(...prices) + 100
+      const mMn = Math.min(...impacts) - 0.1
+      const mMx = Math.max(...impacts) + 0.1
+      const x = (p: number) => pad.left + ((p - pMn) / (pMx - pMn)) * box.pW
+      const y = (v: number) =>
+        pad.top + box.pH - ((Math.log10(v) - mMn) / (mMx - mMn)) * box.pH
+      const frontier = pareto(filtered)
+      return { pMn, pMx, mMn, mMx, x, y, frontier }
+    }
+
+    function draw() {
+      const box = layout()
+      const model = compute(box)
+      geomRef.current = model
+      ctx!.clearRect(0, 0, box.width, box.height)
+      if (!model) {
+        ctx!.fillStyle = AXIS
+        ctx!.font = '13px Inter, sans-serif'
+        ctx!.fillText('No drivers match these filters.', pad.left, pad.top + 28)
+        return
+      }
+      const { pMn, pMx, mMn, mMx, x, y, frontier } = model
+      const priceSpan = pMx - pMn
+      const step =
+        priceSpan > 1800 ? 400 : priceSpan > 1200 ? 200 : priceSpan > 600 ? 100 : 50
+      ctx!.strokeStyle = GRID
+      ctx!.lineWidth = 1
+      ctx!.font = "11px 'IBM Plex Mono', monospace"
+
+      for (let p = Math.ceil(pMn / step) * step; p <= pMx; p += step) {
+        const px = x(p)
+        ctx!.beginPath()
+        ctx!.moveTo(px, pad.top)
+        ctx!.lineTo(px, pad.top + box.pH)
+        ctx!.stroke()
+        ctx!.fillStyle = TICK
+        ctx!.textAlign = 'center'
+        ctx!.fillText('$' + p, px, pad.top + box.pH + 18)
+      }
+
+      ;[0.05, 0.1, 0.2, 0.5, 1, 2, 4, 8]
+        .filter((t) => Math.log10(t) >= mMn && Math.log10(t) <= mMx)
+        .forEach((t) => {
+          const py = y(t)
+          ctx!.strokeStyle = t === 1 ? '#D8D8DC' : GRID
+          ctx!.beginPath()
+          ctx!.moveTo(pad.left, py)
+          ctx!.lineTo(pad.left + box.pW, py)
+          ctx!.stroke()
+          ctx!.fillStyle = TICK
+          ctx!.textAlign = 'right'
+          ctx!.fillText(t < 1 ? String(t) : t === 1 ? '1.00' : String(t), pad.left - 8, py + 4)
+        })
+
+      ctx!.fillStyle = AXIS
+      ctx!.font = "11px 'IBM Plex Mono', monospace"
+      ctx!.textAlign = 'center'
+      ctx!.fillText('PRICE', pad.left + box.pW / 2, box.height - 8)
+      ctx!.save()
+      ctx!.translate(13, pad.top + box.pH / 2)
+      ctx!.rotate(-Math.PI / 2)
+      ctx!.fillText('IMPACT - HC-12 = 1.00', 0, 0)
+      ctx!.restore()
+
+      if (frontier.length) {
+        ctx!.beginPath()
+        frontier.forEach((r, i) =>
+          i ? ctx!.lineTo(x(r.price), y(r.m)) : ctx!.moveTo(x(r.price), y(r.m)),
+        )
+        ctx!.strokeStyle = BLUE
+        ctx!.lineWidth = 1.5
+        ctx!.setLineDash([4, 4])
+        ctx!.stroke()
+        ctx!.setLineDash([])
+      }
+
+      filtered.forEach((r, i) => {
+        if (i === hoverRef.current) return
+        ctx!.beginPath()
+        ctx!.arc(x(r.price), y(r.m), frontier.includes(r) ? 5.5 : 4, 0, Math.PI * 2)
+        ctx!.fillStyle = frontier.includes(r) ? BLUE : rgba(INK, 0.22)
+        ctx!.fill()
+        if (frontier.includes(r)) {
+          ctx!.strokeStyle = '#fff'
+          ctx!.lineWidth = 1.5
+          ctx!.stroke()
+        }
+      })
+
+      if (hoverRef.current >= 0 && filtered[hoverRef.current]) {
+        const r = filtered[hoverRef.current]
+        ctx!.beginPath()
+        ctx!.arc(x(r.price), y(r.m), 7, 0, Math.PI * 2)
+        ctx!.fillStyle = MAGENTA
+        ctx!.fill()
+        ctx!.strokeStyle = '#fff'
+        ctx!.lineWidth = 2
+        ctx!.stroke()
+      }
+    }
+
+    function scheduleDraw() {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(draw)
+    }
+
+    function onMove(e: MouseEvent) {
+      const model = geomRef.current
+      if (!model) return
+      const rect = canvas!.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      let best = -1
+      let bestDist = 20
+      filtered.forEach((row, i) => {
+        const d = Math.hypot(mx - model.x(row.price), my - model.y(row.m))
+        if (d < bestDist) {
+          bestDist = d
+          best = i
+        }
+      })
+      if (best !== hoverRef.current) {
+        hoverRef.current = best
+        draw()
+      }
+      if (best >= 0) {
+        const r = filtered[best]
+        const onFrontier = model.frontier.includes(r)
+        tip!.innerHTML =
+          '<div class="vf-tip-name">' +
+          r.name +
+          ' (' +
+          r.sz +
+          '")' +
+          (r.tier !== 'untiered' ? ' · ' + r.tier : '') +
+          '</div>' +
+          '<div class="vf-tip-row">Impact <b>' +
+          r.m.toFixed(2) +
+          '</b> · ' +
+          money(r.price) +
+          ' · ' +
+          (onFrontier ? '<b>on frontier</b>' : 'dominated') +
+          '</div>' +
+          '<div class="vf-tip-row">Box <b>' +
+          r.vb +
+          ' ft³</b> · Xmax <b>' +
+          r.xm +
+          'mm' +
+          (r.xp ? ' (print)' : '') +
+          '</b></div>' +
+          '<div class="vf-tip-row">RMS <b>' +
+          r.rms +
+          'W</b> · Sens <b>' +
+          r.sens.toFixed(1) +
+          'dB 1W</b></div>'
+        tip!.classList.add('on')
+        let tx = mx + 16
+        if (tx + 320 > rect.width) tx = Math.max(4, mx - 330)
+        let ty = my - 44
+        if (ty < 0) ty = my + 16
+        tip!.style.left = tx + 'px'
+        tip!.style.top = ty + 'px'
+      } else {
+        tip!.classList.remove('on')
+      }
+    }
+
+    function onLeave() {
+      hoverRef.current = -1
+      tip!.classList.remove('on')
+      draw()
+    }
+
+    const ro = (window as any).ResizeObserver ? new ResizeObserver(scheduleDraw) : null
+    if (ro) ro.observe(plot)
+    window.addEventListener('resize', scheduleDraw)
+    canvas.addEventListener('mousemove', onMove)
+    canvas.addEventListener('mouseleave', onLeave)
+    if ((document as any).fonts && (document as any).fonts.ready)
+      (document as any).fonts.ready.then(scheduleDraw)
+    scheduleDraw()
+    return () => {
+      cancelAnimationFrame(raf)
+      if (ro) ro.disconnect()
+      window.removeEventListener('resize', scheduleDraw)
+      canvas.removeEventListener('mousemove', onMove)
+      canvas.removeEventListener('mouseleave', onLeave)
+    }
+  }, [filtered])
+
+  const priceLabel = '≤ $' + price.toLocaleString('en-US')
+
+  return React.createElement(
+    'div',
+    { className: 'vf-chart', ref: rootRef, 'aria-label': 'Subwoofer value frontier chart' },
+    React.createElement(
+      'div',
+      { className: 'vf-controls' },
+      React.createElement(
+        'div',
+        { className: 'vf-group' },
+        React.createElement('span', { className: 'vf-label' }, 'Size'),
+        React.createElement(
+          'div',
+          { className: 'vf-chips' },
+          SIZE_OPTIONS.map((opt) =>
+            React.createElement(
+              'button',
+              {
+                key: opt,
+                type: 'button',
+                className: 'vf-chip' + (size === opt ? ' on' : ''),
+                'aria-pressed': size === opt,
+                onClick: () => setSize(opt),
+              },
+              opt === 'all' ? 'All' : opt + '"',
+            ),
+          ),
+        ),
+      ),
+      React.createElement(
+        'div',
+        { className: 'vf-group' },
+        React.createElement('span', { className: 'vf-label' }, 'Tier'),
+        React.createElement(
+          'div',
+          { className: 'vf-chips' },
+          TIER_OPTIONS.map((opt) =>
+            React.createElement(
+              'button',
+              {
+                key: opt,
+                type: 'button',
+                className: 'vf-chip' + (tier === opt ? ' on' : ''),
+                'aria-pressed': tier === opt,
+                onClick: () => setTier(opt),
+              },
+              opt === 'all' ? 'All' : opt,
+            ),
+          ),
+        ),
+      ),
+      React.createElement(
+        'div',
+        { className: 'vf-group vf-price' },
+        React.createElement(
+          'label',
+          { className: 'vf-label', htmlFor: 'vf-price' },
+          'Price ',
+          React.createElement('span', null, priceLabel),
+        ),
+        React.createElement('input', {
+          id: 'vf-price',
+          type: 'range',
+          min: 60,
+          max: 1900,
+          value: price,
+          step: 10,
+          onChange: (e: any) => setPrice(Number(e.target.value)),
+          'aria-label': 'Maximum subwoofer price',
+        }),
+      ),
+    ),
+    React.createElement(
+      'div',
+      { className: 'vf-canvas-wrap', ref: plotRef },
+      React.createElement('canvas', { className: 'vf-canvas', ref: canvasRef }),
+      React.createElement('div', { className: 'vf-tooltip', ref: tooltipRef }),
+    ),
+    React.createElement(
+      'div',
+      { className: 'vf-legend' },
+      React.createElement(
+        'span',
+        null,
+        React.createElement('i', { className: 'vf-dot vf-dot-blue' }),
+        'On value frontier',
+      ),
+      React.createElement(
+        'span',
+        null,
+        React.createElement('i', { className: 'vf-dot vf-dot-gray' }),
+        'Dominated',
+      ),
+      React.createElement(
+        'span',
+        null,
+        React.createElement('i', { className: 'vf-dash' }),
+        'Efficient frontier',
+      ),
+    ),
   )
 }

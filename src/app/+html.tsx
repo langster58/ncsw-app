@@ -66,7 +66,12 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link rel="stylesheet" href="/ncsw.css" />
         <ScrollViewStyleReset />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* Homepage data feeds — set window globals the components read.
+            Loaded before the React bundle so they're available on first render. */}
+        <script src="/subwoofer-frontier-data.js" defer />
+        {children}
+      </body>
     </html>
   )
 }
