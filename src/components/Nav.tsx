@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import React from 'react'
+import { space, useFluidPx } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
 //   .nav { position:sticky; top:0; z-index:80; background:rgba(255,255,255,.85);
@@ -130,7 +131,8 @@ function Brand() {
 export function Nav() {
   const { width } = useWindowDimensions()
   const narrow = Platform.OS === 'web' && width <= 900
-  const navY = narrow ? 14 : 16 // .nav-inner padding-y (14px <=900)
+  const navY = narrow ? 14 : 16
+  const padX = useFluidPx(space.containerPadX)
 
   const navStyle: any = {
     backgroundColor: 'rgba(255,255,255,0.85)',
@@ -143,22 +145,24 @@ export function Nav() {
 
   return (
     <View style={navStyle}>
-      {/* .nav-inner.container */}
+      {/* Full-bleed nav. Brand flush-left, phone/CTA flush-right via
+          justify-content: space-between. Menu gap tightened so the link
+          columns don't drift apart on wide viewports. */}
       <View
-        style={{
-          width: '100%',
-          maxWidth: 1410,
-          marginHorizontal: 'auto',
-          paddingHorizontal: 40,
-          paddingTop: navY,
-          paddingBottom: navY,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 30,
-        }}
+        style={
+          {
+            width: '100%',
+            paddingHorizontal: padX,
+            paddingTop: navY,
+            paddingBottom: navY,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 24,
+          } as any
+        }
       >
-        {/* .nav-brand */}
+        {/* .nav-brand — flush left */}
         <Pressable
           onPress={() => openHref('/')}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
@@ -168,19 +172,16 @@ export function Nav() {
 
         {/* .nav-menu (hidden <=900) */}
         {!narrow ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 26 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
             {NAV_LINKS.map(([label, href]) => (
               <NavLink key={label} label={label} href={href} />
             ))}
           </View>
         ) : null}
 
-        {/* right group: .nav-cta + .nav-burger (gap 14) */}
+        {/* right group: .nav-cta + .nav-burger — flush right */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          {/* .nav-cta (hidden <=900) */}
           {!narrow ? <NavCta /> : null}
-
-          {/* .nav-burger (shown <=900) */}
           {narrow ? (
             <View style={{ flexDirection: 'column', gap: 5 }}>
               <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />

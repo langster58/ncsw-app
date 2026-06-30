@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { Text } from 'react-native'
+import { FullWidthCopyContext } from './CopyContext'
 import {
   colors,
   copyMaxWidth,
@@ -14,7 +15,8 @@ import {
 // Single edit point for ALL body copy:
 //   - color     → tokens.colors.body
 //   - font      → tokens.fonts.body
-//   - maxWidth  → tokens.copyMaxWidth
+//   - maxWidth  → tokens.copyMaxWidth (skipped when inside a bounded
+//                  container like Card.Body — see FullWidthCopyContext)
 //   - size      → tokens.type.lead | .body
 
 type Size = 'heroLead' | 'lead' | 'body'
@@ -22,6 +24,7 @@ type Size = 'heroLead' | 'lead' | 'body'
 export function Lead({ size = 'lead', children }: { size?: Size; children: ReactNode }) {
   const fontSize = useFluidPx(type[size])
   const lh = fluidLineHeight(fontSize, lineHeight.body)
+  const fullWidth = useContext(FullWidthCopyContext)
   return (
     <Text
       style={
@@ -30,7 +33,7 @@ export function Lead({ size = 'lead', children }: { size?: Size; children: React
           fontSize,
           lineHeight: lh,
           color: colors.body,
-          maxWidth: copyMaxWidth,
+          ...(fullWidth ? null : { maxWidth: copyMaxWidth }),
         } as any
       }
     >

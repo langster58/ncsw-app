@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native';
+import { space, useFluidPx } from '@/ui';
 
 const INK = '#09080e';
 const FONT_BODY = 'Inter';
@@ -44,53 +45,50 @@ function FooterLink({ label }: { label: string }) {
 
 export function Footer() {
   const { width } = useWindowDimensions();
+  const padX = useFluidPx(space.containerPadX);
+  const stacked = width <= 1100;
 
-  // CSS breakpoints: <=1100 -> 2 cols, <=640 -> 1 col, else 2fr 1fr 1fr 1fr
-  let gridTemplateColumns = '2fr 1fr 1fr 1fr';
-  let gridGap = 32;
-  if (width <= 640) {
-    gridTemplateColumns = '1fr';
-    gridGap = 28;
-  } else if (width <= 1100) {
-    gridTemplateColumns = '1fr 1fr';
-    gridGap = 28;
-  }
+  // Top region: brand block (flush left), 3-column nav block (flush right).
+  // Wide viewports: flex row with space-between, so brand and nav-block sit
+  // at opposite edges and the empty middle IS the deliberate separator.
+  // Narrow viewports (<=1100): stack brand on top, then nav in 2 or 1 cols.
+  const navCols = width <= 640 ? '1fr' : 'repeat(3, minmax(0, 1fr))';
 
   return (
     <View
       style={
         {
           backgroundColor: INK,
-          marginTop: width <= 1100 ? 64 : 96,
+          marginTop: stacked ? 64 : 96,
         } as any
       }
     >
       <View
         style={
           {
-            maxWidth: 1410,
-            marginLeft: 'auto',
-            marginRight: 'auto',
             width: '100%',
             paddingTop: 64,
             paddingBottom: 40,
-            paddingLeft: 40,
-            paddingRight: 40,
+            paddingLeft: padX,
+            paddingRight: padX,
           } as any
         }
       >
         {/* footer-top */}
         <View
           style={
-            {
-              display: 'grid',
-              gridTemplateColumns,
-              gap: gridGap,
-            } as any
+            (stacked
+              ? { flexDirection: 'column', gap: 48 }
+              : {
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 96,
+                }) as any
           }
         >
-          {/* footer-brand */}
-          <View>
+          {/* footer-brand — flush left */}
+          <View style={stacked ? undefined : ({ flexShrink: 1, maxWidth: 460 } as any)}>
             {Platform.OS === 'web' ? (
               React.createElement('img', {
                 src: '/brand/NCSW-wordmark.svg',
@@ -121,36 +119,47 @@ export function Footer() {
                 fontSize: 14,
                 lineHeight: 14 * 1.6,
                 marginTop: 22,
-                maxWidth: '66.6%',
               }}
             >
               {BRAND_COPY}
             </Text>
           </View>
 
-          {/* footer-col x3 */}
-          {COLS.map((c) => (
-            <View key={c.h}>
-              <Text
-                style={
-                  {
-                    fontFamily: FONT_BODY,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.12 * 11,
-                    fontSize: 11,
-                    fontWeight: '600',
-                    color: 'rgba(255,255,255,0.5)',
-                    marginBottom: 18,
-                  } as any
-                }
-              >
-                {c.h}
-              </Text>
-              {c.links.map((l) => (
-                <FooterLink key={l} label={l} />
-              ))}
-            </View>
-          ))}
+          {/* nav block — flush right, three columns with tight gap */}
+          <View
+            style={
+              {
+                display: 'grid',
+                gridTemplateColumns: navCols,
+                columnGap: 56,
+                rowGap: 32,
+                ...(stacked ? null : { flexShrink: 0 }),
+              } as any
+            }
+          >
+            {COLS.map((c) => (
+              <View key={c.h}>
+                <Text
+                  style={
+                    {
+                      fontFamily: FONT_BODY,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.12 * 11,
+                      fontSize: 11,
+                      fontWeight: '600',
+                      color: 'rgba(255,255,255,0.5)',
+                      marginBottom: 18,
+                    } as any
+                  }
+                >
+                  {c.h}
+                </Text>
+                {c.links.map((l) => (
+                  <FooterLink key={l} label={l} />
+                ))}
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* footer-bot */}

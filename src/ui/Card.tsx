@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View } from 'react-native'
+import { FullWidthCopyContext } from './CopyContext'
 import { HoverContext } from './HoverContext'
 import { colors, fonts, radius, tracking } from './tokens'
 
@@ -246,7 +247,9 @@ function CardBody({ children, gap = 16 }: { children: React.ReactNode; gap?: num
   const layout = React.useContext(CardLayoutContext)
   const pad = layout === 'split' ? 32 : 22
   return (
-    <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap } as any}>{children}</View>
+    <FullWidthCopyContext.Provider value={true}>
+      <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap } as any}>{children}</View>
+    </FullWidthCopyContext.Provider>
   )
 }
 

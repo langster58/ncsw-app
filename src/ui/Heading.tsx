@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { Text } from 'react-native'
+import { FullWidthCopyContext } from './CopyContext'
 import {
   colors,
   copyMaxWidth,
@@ -25,6 +26,7 @@ type Level = 'h2' | 'h2sm' | 'h3' | 'h4'
 export function Heading({ level = 'h2', children }: { level?: Level; children: ReactNode }) {
   const fontSize = useFluidPx(type[level])
   const lh = fluidLineHeight(fontSize, lineHeight.tight)
+  const fullWidth = useContext(FullWidthCopyContext)
   return (
     <Text
       style={
@@ -35,7 +37,7 @@ export function Heading({ level = 'h2', children }: { level?: Level; children: R
           lineHeight: lh,
           letterSpacing: tracking.display,
           color: colors.ink,
-          maxWidth: copyMaxWidth,
+          ...(fullWidth ? null : { maxWidth: copyMaxWidth }),
         } as any
       }
     >
