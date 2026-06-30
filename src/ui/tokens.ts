@@ -1,63 +1,91 @@
 // NCSW design tokens — single source of truth.
 //
-// Fluid typography anchored at 1920px viewport (modal desktop per StatCounter
-// data). 1 reference px ≈ 0.0521vw (100/1920). Every type size is a clamp()
-// with an accessibility floor and a desktop-XL cap, so the page scales
-// proportionally like printed material between 360px and 2560px viewports.
+// ── Fluid scaling engine ─────────────────────────────────────────────────────
+// True linear fluid interpolation (the standard "utopia"-style formula),
+// anchored between two viewport breakpoints:
 //
-//   anchor (reference)  1920px   — design sizes resolve to nominal here
-//   cap                  2560px   — page stops growing above this (1440p)
-//   floor                 360px   — modern smallest phone (iPhone SE etc.)
-//   body text floor        14px   — practical WCAG floor for desktop body
+//   MIN_VW   360px   — narrowest modern phone. Every value holds flat at its
+//                       floor below this; nothing gets too small to use.
+//   MAX_VW  1920px   — reference desktop viewport. Each token's "design size"
+//                       lands here.
 //
-// `fluid()` returns a CSS clamp() string on web (react-native-web passes it
-// straight through to the underlying DOM). On native we expose a hook that
-// resolves the same curve via useWindowDimensions.
+// Below MIN_VW: flat at the floor. Between MIN_VW and MAX_VW: linear fluid
+// interpolation. Above MAX_VW: NO ceiling — values keep growing at the same
+// rate forever. This matches the rest of the site's "no max-width, everything
+// keeps scaling" approach: MAX_VW names the reference size, it isn't a cap.
+//
+// Two flavors:
+//   fluid(minPx, maxPx)      — px output, for spacing/layout (space.*)
+//   fluidType(minPx, maxPx)  — rem output, for type sizes (type.*). rem
+//     (not px) so text also respects a user's browser-level default
+//     font-size preference, not just pinch/page zoom.
+//
+// Both return a CSS string on web (react-native-web passes it straight to
+// the DOM) and an opaque spec on native, resolved via useFluidPx().
 
 import { Platform, useWindowDimensions } from 'react-native'
 
-const ANCHOR_VW_PX = 1920 // 1 ref px = 100/1920 ≈ 0.0521vw
+const MIN_VW = 360
+const MAX_VW = 1920
 
-// fluid(referencePx, floorPx, capPx)
-// referencePx is the value the type lands at on a 1920px viewport.
-export function fluid(ref: number, floor: number, cap: number) {
-  if (Platform.OS === 'web') {
-    const coef = (100 / ANCHOR_VW_PX) * ref
-    return `clamp(${floor}px, ${coef.toFixed(3)}vw, ${cap}px)` as unknown as number
-  }
-  // Native: opaque tag; resolve via useFluidPx(spec) at the call site.
-  return { __fluid: true, ref, floor, cap } as unknown as number
+function slopeIntercept(minPx: number, maxPx: number) {
+  const slope = (maxPx - minPx) / (MAX_VW - MIN_VW)
+  const yIntersectionPx = -MIN_VW * slope + minPx
+  return { slope, yIntersectionPx }
 }
 
-type FluidSpec = { __fluid: true; ref: number; floor: number; cap: number }
+type FluidSpec = { __fluid: true; minPx: number; slope: number; yIntersectionPx: number }
 function isFluidSpec(v: unknown): v is FluidSpec {
   return typeof v === 'object' && v !== null && (v as FluidSpec).__fluid === true
 }
 
-// Hook: resolve a fluid spec to a real px on native using the current viewport.
-// On web this is a no-op (the value is already a clamp() string).
+// fluid(minPx, maxPx) — px-based, for spacing/layout.
+export function fluid(minPx: number, maxPx: number) {
+  const { slope, yIntersectionPx } = slopeIntercept(minPx, maxPx)
+  if (Platform.OS === 'web') {
+    return `max(${minPx}px, calc(${yIntersectionPx.toFixed(3)}px + ${(slope * 100).toFixed(4)}vw))` as unknown as number
+  }
+  return { __fluid: true, minPx, slope, yIntersectionPx } as unknown as number
+}
+
+// fluidType(minPx, maxPx) — rem-based (1rem = 16px), for type sizes.
+export function fluidType(minPx: number, maxPx: number) {
+  const { slope, yIntersectionPx } = slopeIntercept(minPx, maxPx)
+  if (Platform.OS === 'web') {
+    const minRem = minPx / 16
+    const yRem = yIntersectionPx / 16
+    return `max(${minRem.toFixed(4)}rem, calc(${yRem.toFixed(4)}rem + ${(slope * 100).toFixed(4)}vw))` as unknown as number
+  }
+  return { __fluid: true, minPx, slope, yIntersectionPx } as unknown as number
+}
+
+// Hook: resolve a fluid spec to a real px number on native using the current
+// viewport width. Floor only — no ceiling.
 export function useFluidPx(spec: number | string): number | string {
   const { width } = useWindowDimensions()
   if (Platform.OS === 'web') return spec
   if (!isFluidSpec(spec as unknown)) return spec
-  const { ref, floor, cap } = spec as unknown as FluidSpec
-  const coef = ref / ANCHOR_VW_PX
-  return Math.max(floor, Math.min(cap, coef * width))
+  const { minPx, slope, yIntersectionPx } = spec as unknown as FluidSpec
+  return Math.max(minPx, yIntersectionPx + slope * width)
 }
 
 // ── Type scale ──────────────────────────────────────────────────────────────
-// Two section heading sizes in the source:
-//   - h2     → .howto h2 (HowItWorks) — clamp(36, 4.8vw, 54)
-//   - h2sm   → .section-intro h2 (Collections, Editorial) — clamp(28, 3.2vw, 42)
+// Modular scale, ratio 1.25 (Major Third), values in px shown for reference
+// (engine converts to rem). Spread (floor vs. 1920-anchor size) widens for
+// bigger elements and stays nearly flat for body/meta — small text shouldn't
+// shrink much, it's already at the edge of legible. Hierarchy holds at both
+// ends; no level ever crosses another.
+//
+//   level      floor@360   anchor@1920
 export const type = {
-  h2: fluid(54, 36, 64), // section headings (large) — .howto h2
-  h2sm: fluid(42, 28, 50), // section headings (medium) — .section-intro h2
-  h3: fluid(30, 22, 36), // sub-headings
-  h4: fluid(22, 18, 26), // card titles
-  heroLead: fluid(22, 17, 26), // hero statement — source: .hero-lede 22/1.45
-  lead: fluid(17, 15, 20), // section lede
-  body: fluid(15, 14, 18), // body / card descriptions — 14px WCAG floor
-  meta: fluid(11, 11, 13), // mono uppercase eyebrows / labels
+  h2: fluidType(34, 52), //   34px        52px   — large section headings
+  h2sm: fluidType(28, 40), // 28px        40px   — medium section headings
+  h3: fluidType(22, 32), //   22px        32px   — sub-headings
+  h4: fluidType(18, 24), //   18px        24px   — card titles
+  heroLead: fluidType(18, 22), // 18px    22px   — hero statement
+  lead: fluidType(17, 20), // 17px        20px   — section lede
+  body: fluidType(15, 16), // 15px        16px   — body / card descriptions
+  meta: fluidType(11, 12), // 11px        12px   — mono uppercase eyebrows/labels
 }
 
 // ── Line heights (unitless multipliers, source-accurate) ────────────────────
@@ -137,18 +165,15 @@ export const fonts = {
 }
 
 // ── Spacing / layout ────────────────────────────────────────────────────────
-// Layout spacing scales with the viewport on the same clamp() curve as type.
-// No max-width: the page fills the viewport at every size and grows
-// proportionally past the 1920 anchor up to 2560. Floors protect narrow
-// phones; caps prevent ultra-wide screens from getting absurd values.
+// Layout spacing scales with the viewport on the same fluid curve as type.
+// No max-width: the page fills the viewport at every size and keeps growing
+// past the 1920 anchor with no ceiling. Floors protect narrow phones.
 //
 // Resolve fluid spec values via useFluidPx() at the call site (same pattern
 // as the type scale).
 export const space = {
-  // .section { padding-top: 96px } @ 1920 anchor
-  sectionTop: fluid(96, 56, 128),
-  // .container { padding: 0 40px } @ 1920 anchor; floor 22 on narrow phones
-  containerPadX: fluid(40, 22, 56),
+  sectionTop: fluid(56, 96), // floor@360 -> 96px@1920, then keeps growing
+  containerPadX: fluid(22, 40), // floor@360 -> 40px@1920, then keeps growing
   blockGap: 28, // gap between heading and lede
   ruleHairline: 1,
 }
