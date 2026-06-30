@@ -2,17 +2,21 @@ import { useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 import { colors, fonts, radius, tracking } from './tokens'
 
-// Button — one size, two variants, standard states.
+// Button — one size, two variants. Material Design state coverage:
+//
+//   enabled · hover · focus · pressed · disabled
 //
 //   <Button variant="primary" onPress={...}>Call now</Button>
 //   <Button variant="secondary" disabled>…</Button>
 //
 // Variants
 //   primary    — filled accent (Call Now, Show packages)
-//   secondary  — white outline (Reset, Cancel, Nav CTA)
+//   secondary  — outlined accent (Reset, Cancel, Nav CTA) — accent label +
+//                accent border so it never reads as a disabled control.
 //
-// States (cascade from tokens.colors):
-//   default · hover · pressed · focus · disabled · loading
+// Focus is rendered as a 2px ring with 3px offset (Material 3 focus indicator)
+// stacked on top of the hover-equivalent state layer, so keyboard focus is
+// always visible regardless of hover.
 //
 // Source dimensions: .btn { min-height:36; padding:7×14; radius:8; font 10/600/uppercase/.12em }
 
@@ -22,7 +26,6 @@ type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
   disabled?: boolean
-  loading?: boolean
   icon?: React.ReactNode
   onPress?: () => void
 }
@@ -31,7 +34,6 @@ export function Button({
   children,
   variant = 'secondary',
   disabled = false,
-  loading = false,
   icon,
   onPress,
 }: ButtonProps) {
@@ -48,12 +50,16 @@ export function Button({
       ? { onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
       : {}
 
-  const inert = disabled || loading
-  const { bg, fg, border } = resolveColors(variant, { hovered, pressed, disabled: inert })
+  const { bg, fg, border } = resolveColors(variant, {
+    hovered: hovered && !disabled,
+    pressed: pressed && !disabled,
+    focused: focused && !disabled,
+    disabled,
+  })
 
   return (
     <Pressable
-      onPress={inert ? undefined : onPress}
+      onPress={disabled ? undefined : onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       {...hoverProps}
@@ -71,15 +77,18 @@ export function Button({
           borderColor: border,
           borderRadius: radius.sm,
           backgroundColor: bg,
-          opacity: loading ? 0.6 : 1,
-          cursor: inert ? 'not-allowed' : 'pointer',
+          cursor: disabled ? 'not-allowed' : 'pointer',
           ...(focused && Platform.OS === 'web'
-            ? { outlineWidth: 2, outlineStyle: 'solid', outlineColor: colors.focusRing, outlineOffset: 3 }
+            ? {
+                outlineWidth: 2,
+                outlineStyle: 'solid',
+                outlineColor: colors.focusRing,
+                outlineOffset: 3,
+              }
             : null),
         } as any
       }
     >
-      {loading ? <Spinner color={fg} /> : null}
       <Text
         style={
           {
@@ -98,7 +107,7 @@ export function Button({
       {icon ? (
         <View
           style={
-            { transform: hovered && !inert ? [{ translateX: 2 }] : [] } as any
+            { transform: hovered && !disabled ? [{ translateX: 2 }] : [] } as any
           }
         >
           {icon}
@@ -108,44 +117,32 @@ export function Button({
   )
 }
 
+// State layers (Material 3): focus and hover layer the same tint; pressed is
+// the deepest. Disabled wins over everything else.
 function resolveColors(
   variant: Variant,
-  state: { hovered: boolean; pressed: boolean; disabled: boolean },
+  state: { hovered: boolean; pressed: boolean; focused: boolean; disabled: boolean },
 ) {
   if (state.disabled) {
     return { bg: colors.disabledBg, fg: colors.disabledFg, border: colors.disabledBorder }
   }
-  if (variant === 'primary') {
-    // Standard primary: darken by ~5% (hover) / ~10% (pressed) of base accent.
-    return {
-      bg: state.pressed ? colors.accentPressed : state.hovered ? colors.accentHover : colors.accent,
-      fg: colors.white,
-      border: state.pressed ? colors.accentPressed : state.hovered ? colors.accentHover : colors.accent,
-    }
-  }
-  // Standard secondary (outline): subtle bg fill on hover, slightly darker on pressed.
-  return {
-    bg: state.pressed ? colors.surfacePressed : state.hovered ? colors.surfaceHover : colors.white,
-    fg: colors.ink,
-    border: state.pressed
-      ? colors.borderStrongActive
-      : state.hovered
-        ? colors.borderStrongHover
-        : colors.borderStrong,
-  }
-}
 
-function Spinner({ color }: { color: string }) {
-  return (
-    <View
-      style={{
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        borderWidth: 2,
-        borderColor: color,
-        borderTopColor: 'transparent',
-      }}
-    />
-  )
+  if (variant === 'primary') {
+    const bg = state.pressed
+      ? colors.accentPressed
+      : state.hovered || state.focused
+        ? colors.accentHover
+        : colors.accent
+    return { bg, fg: colors.white, border: bg }
+  }
+
+  // Secondary (outlined). Accent label + accent border so it's clearly an
+  // interactive control, not a disabled one.
+  const bg = state.pressed
+    ? colors.accentSoftPressed
+    : state.hovered || state.focused
+      ? colors.accentSoft
+      : colors.white
+  const accent = state.pressed ? colors.accentPressed : colors.accent
+  return { bg, fg: accent, border: accent }
 }

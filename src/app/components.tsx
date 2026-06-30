@@ -240,11 +240,11 @@ export default function ComponentsPage() {
             <Row>
               <Button variant="primary">Primary</Button>
               <Button variant="secondary">Secondary</Button>
+              <Button variant="secondary" icon={<IconArrow size={14} />}>With icon</Button>
             </Row>
             <Row>
-              <Button variant="secondary" icon={<IconArrow size={14} />}>With icon</Button>
-              <Button variant="primary" disabled>Disabled</Button>
-              <Button variant="primary" loading>Loading</Button>
+              <Button variant="primary" disabled>Disabled primary</Button>
+              <Button variant="secondary" disabled>Disabled secondary</Button>
             </Row>
           </Block>
 
