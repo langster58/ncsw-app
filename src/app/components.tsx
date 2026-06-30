@@ -526,11 +526,10 @@ export default function ComponentsPage() {
                   setTableSortDir(1)
                 }
               }}
-              maxVisible={5}
               rowHeight={48}
             />
             <Mono size="sm" tone="gray">
-              Generic sortable table. Sticky left column ("Price"), sticky header, lazy-scroll.
+              Sortable header · sticky left column ("Price") · per-row hover state. Pass <Text style={{ fontFamily: fonts.mono }}>maxVisible</Text> to cap height and enable lazy-load scrolling for thousands of rows.
             </Mono>
           </Block>
 

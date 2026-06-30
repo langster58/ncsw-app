@@ -1,10 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text, View } from 'react-native'
 import { IconChevron, IconChevronUp } from './Icon'
 import { colors, fonts, tracking } from './tokens'
 
-// DataTable — generic sortable, sticky-left-column, infinite-scroll table.
-// Data-driven via columns config + rows array. Caller controls sort state.
+// DataTable — generic sortable, sticky-left-column, optional infinite-scroll
+// table. Data-driven via columns config + rows array. Caller controls sort
+// state.
+//
+// Set `maxVisible` to cap the visible rows and enable an internal scroll
+// region (sticky header against that scroll). Omit it to render all rows at
+// natural height (sticky header against the page scroll).
 //
 //   <DataTable
 //     columns={[
@@ -19,7 +24,6 @@ import { colors, fonts, tracking } from './tokens'
 //     onSort={(key) => …}
 //     rowHeight={52}
 //     headerHeight={38}
-//     maxVisible={10}
 //     onRowPress={(r) => …}
 //   />
 
@@ -41,6 +45,7 @@ type Props<T> = {
   onSort?: (key: string) => void
   rowHeight?: number
   headerHeight?: number
+  /** Cap visible rows and enable internal scroll. Omit to render all rows. */
   maxVisible?: number
   pageSize?: number
   onRowPress?: (row: T) => void
@@ -55,34 +60,31 @@ export function DataTable<T>({
   onSort,
   rowHeight = 52,
   headerHeight = 38,
-  maxVisible = 10,
+  maxVisible,
   pageSize = 40,
   onRowPress,
 }: Props<T>) {
   const totalWidth = columns.reduce((a, c) => a + c.width, 0)
-  const regionH = headerHeight + maxVisible * rowHeight
+  const scrollable = typeof maxVisible === 'number'
   const regionRef = useRef<any>(null)
-  const [visible, setVisible] = useState(pageSize)
+  const [visible, setVisible] = useState(scrollable ? pageSize : rows.length)
 
-  useEffect(() => setVisible(pageSize), [rows, pageSize])
+  useEffect(() => {
+    setVisible(scrollable ? pageSize : rows.length)
+  }, [rows, pageSize, scrollable])
 
   const onScroll = useCallback(() => {
+    if (!scrollable) return
     const el = regionRef.current
     if (!el) return
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 400) {
       setVisible((v) => Math.min(rows.length, v + pageSize))
     }
-  }, [rows.length, pageSize])
+  }, [rows.length, pageSize, scrollable])
 
   const body = rows.slice(0, visible)
 
-  return React.createElement(
-    'div',
-    {
-      ref: regionRef,
-      onScroll,
-      style: { height: regionH, overflow: 'auto', width: '100%' },
-    },
+  const tableContent = (
     <View style={{ width: totalWidth } as any}>
       {/* sticky header */}
       <View
@@ -139,45 +141,99 @@ export function DataTable<T>({
       </View>
 
       {/* body rows */}
-      {body.map((r, ri) => {
-        const zebra = ri % 2 === 1
-        const press = onRowPress ? () => onRowPress(r) : undefined
-        return (
-          <Pressable
-            key={rowKey(r)}
-            onPress={press}
-            style={{
-              flexDirection: 'row',
-              height: rowHeight,
-              backgroundColor: zebra ? '#fafbfc' : colors.white,
-            }}
-          >
-            {columns.map((c) => (
-              <View
-                key={c.key}
-                style={{
-                  width: c.width,
-                  paddingHorizontal: 14,
-                  justifyContent: 'center',
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.line,
-                  ...(c.stickyLeft
-                    ? ({
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 10,
-                        backgroundColor: zebra ? '#fafbfc' : colors.white,
-                        boxShadow: '1px 0 0 ' + colors.line,
-                      } as any)
-                    : {}),
-                }}
-              >
-                {c.render(r)}
-              </View>
-            ))}
-          </Pressable>
-        )
-      })}
-    </View>,
+      {body.map((r, ri) => (
+        <DataRow
+          key={rowKey(r)}
+          row={r}
+          columns={columns}
+          rowHeight={rowHeight}
+          zebra={ri % 2 === 1}
+          onPress={onRowPress ? () => onRowPress(r) : undefined}
+        />
+      ))}
+    </View>
+  )
+
+  if (!scrollable) return tableContent
+
+  const regionH = headerHeight + maxVisible! * rowHeight
+  return React.createElement(
+    'div',
+    {
+      ref: regionRef,
+      onScroll,
+      style: { height: regionH, overflow: 'auto', width: '100%' },
+    },
+    tableContent,
+  )
+}
+
+// One row + its hover-state plumbing. Hover bg has to be applied to the
+// sticky-left cell too, otherwise it stays zebra/white while the rest of the
+// row tints.
+function DataRow<T>({
+  row,
+  columns,
+  rowHeight,
+  zebra,
+  onPress,
+}: {
+  row: T
+  columns: DataColumn<T>[]
+  rowHeight: number
+  zebra: boolean
+  onPress?: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  const baseBg = zebra ? '#fafbfc' : colors.white
+  const bg = hovered ? colors.surfaceHoverNeutral : baseBg
+
+  const hoverProps: any =
+    Platform.OS === 'web'
+      ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
+      : {}
+
+  return (
+    <Pressable
+      onPress={onPress}
+      {...hoverProps}
+      style={
+        {
+          flexDirection: 'row',
+          height: rowHeight,
+          backgroundColor: bg,
+          cursor: onPress ? 'pointer' : 'default',
+          transition: 'background-color 120ms ease',
+        } as any
+      }
+    >
+      {columns.map((c) => (
+        <View
+          key={c.key}
+          style={
+            {
+              width: c.width,
+              paddingHorizontal: 14,
+              justifyContent: 'center',
+              borderBottomWidth: 1,
+              borderBottomColor: colors.line,
+              ...(c.stickyLeft
+                ? {
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 10,
+                    backgroundColor: bg,
+                    boxShadow: '1px 0 0 ' + colors.line,
+                    transition: 'background-color 120ms ease',
+                  }
+                : {}),
+            } as any
+          }
+        >
+          {c.render(row)}
+        </View>
+      ))}
+    </Pressable>
   )
 }
