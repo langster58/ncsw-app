@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Platform, Pressable, View } from 'react-native'
-import { colors, space, useFluidPx } from './tokens'
+import { Linking, Platform, Pressable, View } from 'react-native'
+import { Button } from './Button'
+import { colors, fonts, space, useFluidPx } from './tokens'
 
-// NavBar — sticky top chrome with slots for brand / menu / CTA.
+// NavBar — sticky top chrome with slots for brand / menu / phone.
 //   <NavBar>
 //     <NavBar.Brand href="/">…</NavBar.Brand>
 //     <NavBar.Menu>…link list…</NavBar.Menu>
-//     <NavBar.Cta>…button…</NavBar.Cta>
+//     <NavBar.Phone number="(216) 555-0114" />
 //   </NavBar>
 
 const HEIGHT = 56
@@ -88,18 +89,47 @@ function Menu({ children }: { children: React.ReactNode }) {
   return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>{children}</View>
 }
 
-// Cta slot — right-aligned button container.
-function Cta({ children }: { children: React.ReactNode }) {
-  return <View style={{ flexDirection: 'row', alignItems: 'center' }}>{children}</View>
+// Phone slot — platform-aware. On desktop there's nowhere to navigate to and
+// no in-page action to take, so we render the phone number as plain styled
+// text (wrapped in a tel: anchor — clicking still hands off to FaceTime /
+// Continuity on Apple desktops, no-op elsewhere). On a phone, render an
+// actual button that opens the dialer.
+function Phone({ number }: { number: string }) {
+  const digits = number.replace(/\D/g, '')
+  const tel = `tel:+1${digits}`
+
+  if (Platform.OS === 'web') {
+    return React.createElement(
+      'a',
+      {
+        href: tel,
+        style: {
+          fontFamily: fonts.body,
+          fontSize: 14,
+          fontWeight: 600,
+          color: colors.ink,
+          textDecoration: 'none',
+          letterSpacing: '-0.005em',
+        },
+      },
+      number,
+    )
+  }
+
+  return (
+    <Button variant="primary" onPress={() => Linking.openURL(tel)}>
+      Call now
+    </Button>
+  )
 }
 
 type NavBarComponent = ((p: NavBarProps) => React.ReactElement) & {
   Brand: typeof Brand
   Menu: typeof Menu
-  Cta: typeof Cta
+  Phone: typeof Phone
 }
 
 export const NavBar = Root as NavBarComponent
 NavBar.Brand = Brand
 NavBar.Menu = Menu
-NavBar.Cta = Cta
+NavBar.Phone = Phone

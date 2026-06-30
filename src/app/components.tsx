@@ -478,10 +478,12 @@ export default function ComponentsPage() {
                   <Link variant="nav" href="#">Editorial</Link>
                   <Link variant="nav" href="#">Location</Link>
                 </View>
-                <Button variant="secondary">Call Now</Button>
+                <NavBar.Phone number="(216) 555-0114" />
               </View>
             </View>
-            <Mono size="sm" tone="gray">Slots: Brand · Menu · Cta. Sticky on web with scroll-triggered border + blur.</Mono>
+            <Mono size="sm" tone="gray">
+              Slots: Brand · Menu · Phone. On web the Phone slot renders as plain styled text (tel: anchor — no button chrome). On native it renders a Button that opens the system dialer via Linking.
+            </Mono>
           </Block>
 
           <Block title="Footer">
