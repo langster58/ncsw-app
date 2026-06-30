@@ -1,5 +1,5 @@
 import { ScrollView } from 'react-native'
-import { Preloader } from '@/components/Preloader'
+import { Preloader, Reveal } from '@/ui'
 import { Nav } from '@/components/Nav'
 import { Hero } from '@/components/Hero'
 import { Packages } from '@/components/Packages'
@@ -9,7 +9,6 @@ import { Collections } from '@/components/Collections'
 import { Editorial } from '@/components/Editorial'
 import { Location } from '@/components/Location'
 import { Footer } from '@/components/Footer'
-import { Reveal } from '@/components/Reveal'
 
 export default function HomeScreen() {
   return (

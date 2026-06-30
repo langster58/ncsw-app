@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
-import { Platform, Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
+import { IconCheck, IconChevron } from './Icon'
 import { Modal } from './Modal'
-import { colors, fonts, radius, tracking } from './tokens'
+import { colors, fonts, radius } from './tokens'
 
-// Dropdown — labeled select with mono uppercase chrome.
+// Dropdown — labeled select with a single tap surface. The picker that opens
+// uses our Modal primitive on BOTH web and native so the opened UI conforms to
+// the rest of the application's styles (no browser-native dropdown).
 //
 //   <Dropdown
 //     label="Year"
@@ -14,9 +17,13 @@ import { colors, fonts, radius, tracking } from './tokens'
 //     disabled={!enabled}
 //   />
 //
-// Web: native <select> absolutely positioned opacity:0 over the chrome.
-//      Free keyboard nav, mobile picker UI, screen reader behavior.
-// Native: tapping opens <Modal title={label}> with selectable rows.
+// Layout:
+//   [  padding-x  ][ label  value ][ … chevron ][  padding-x  ]
+//   padding-right of the chevron === padding-left of the label, so the entire
+//   row is symmetrically padded.
+
+const PAD_X = 12 // identical left and right
+const ROW_GAP = 6 // label ↔ value
 
 type Option = string | { label: string; value: string }
 
@@ -42,131 +49,89 @@ export function Dropdown({
   disabled = false,
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
-  const [focused, setFocused] = useState(false)
   const [open, setOpen] = useState(false)
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
 
-  const hoverProps: any =
-    Platform.OS === 'web'
-      ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
-      : {}
-  const focusProps: any =
-    Platform.OS === 'web'
-      ? { onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
-      : {}
+  const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
+  const borderColor = disabled ? colors.borderStrong : hovered ? colors.inkSoft : colors.borderStrong
 
-  const borderColor = disabled
-    ? colors.borderStrong
-    : hovered
-      ? colors.inkSoft
-      : colors.borderStrong
-
-  // Shared chrome (labeled row + chevron). Web overlays a native <select>;
-  // native makes the whole row pressable to open the Modal picker.
-  const chrome = (
-    <View
-      {...hoverProps}
-      {...focusProps}
-      style={
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          borderRadius: radius.sm,
-          borderWidth: 1,
-          borderColor,
-          backgroundColor: colors.white,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          opacity: disabled ? 0.35 : 1,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          ...(focused && Platform.OS === 'web'
-            ? { outlineWidth: 2, outlineStyle: 'solid', outlineColor: colors.focusRing, outlineOffset: 3 }
-            : null),
-        } as any
-      }
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 } as any}>
-        <Text
+  return (
+    <>
+      <Pressable
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${current ? `: ${current.label}` : ''}`}
+        {...hoverProps}
+        style={
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: PAD_X,
+            paddingVertical: 8,
+            borderRadius: radius.sm,
+            borderWidth: 1,
+            borderColor,
+            backgroundColor: colors.white,
+            opacity: disabled ? 0.35 : 1,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            minHeight: 38,
+          } as any
+        }
+      >
+        {/* label + value group */}
+        <View
           style={
-            {
-              fontFamily: fonts.mono,
-              fontSize: 10.5,
-              fontWeight: '500',
-              letterSpacing: '0.07em',
-              textTransform: 'uppercase',
-              color: colors.inkFaint,
-              flexShrink: 0,
-            } as any
+            { flexDirection: 'row', alignItems: 'center', gap: ROW_GAP, minWidth: 0, flexShrink: 1 } as any
           }
         >
-          {label}
-        </Text>
-        {current ? (
           <Text
             style={
               {
+                fontFamily: fonts.mono,
+                fontSize: 10.5,
+                fontWeight: '500',
+                letterSpacing: 0.735, // .07em * 10.5
+                textTransform: 'uppercase',
+                color: colors.inkFaint,
+                flexShrink: 0,
+              } as any
+            }
+          >
+            {label}
+          </Text>
+          {current ? (
+            <Text
+              numberOfLines={1}
+              style={{
                 fontFamily: fonts.mono,
                 fontSize: 11,
                 fontWeight: '600',
                 color: colors.ink,
                 flexShrink: 1,
-              } as any
-            }
-            numberOfLines={1}
-          >
-            {current.label}
-          </Text>
-        ) : placeholder && !value ? null : null}
-      </View>
-      <Text style={{ color: colors.inkFaint, fontSize: 12 }}>⌄</Text>
-    </View>
-  )
+              }}
+            >
+              {current.label}
+            </Text>
+          ) : placeholder ? (
+            <Text
+              numberOfLines={1}
+              style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint, flexShrink: 1 }}
+            >
+              {placeholder}
+            </Text>
+          ) : null}
+        </View>
 
-  // ── Web: native <select> overlaid ─────────────────────────────────────
-  if (Platform.OS === 'web') {
-    return (
-      <View style={{ position: 'relative' } as any}>
-        {chrome}
-        {React.createElement('select', {
-          value: value || '',
-          disabled,
-          onChange: (e: any) => onChange(e.target.value),
-          'aria-label': label,
-          style: {
-            position: 'absolute',
-            inset: 0,
-            opacity: 0,
-            width: '100%',
-            height: '100%',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            fontSize: 16, // prevent mobile-Safari zoom on focus
-          },
-          children: [
-            placeholder
-              ? React.createElement(
-                  'option',
-                  { key: '__placeholder', value: '', disabled: true },
-                  placeholder,
-                )
-              : null,
-            ...norm.map((o) =>
-              React.createElement('option', { key: o.value, value: o.value }, o.label),
-            ),
-          ],
-        })}
-      </View>
-    )
-  }
-
-  // ── Native: tap opens Modal picker ────────────────────────────────────
-  return (
-    <>
-      <Pressable disabled={disabled} onPress={() => setOpen(true)}>
-        {chrome}
+        {/* chevron — vertically centered; right padding === left padding via paddingHorizontal */}
+        <View style={{ alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <IconChevron size={14} color={colors.inkFaint} />
+        </View>
       </Pressable>
+
+      {/* Picker — Modal-based on both web and native. */}
       <Modal open={open} onClose={() => setOpen(false)} title={label}>
         <Modal.Body>
           {norm.map((o) => {
@@ -198,9 +163,7 @@ export function Dropdown({
                 >
                   {o.label}
                 </Text>
-                {selected ? (
-                  <Text style={{ color: colors.accent, fontSize: 16 }}>✓</Text>
-                ) : null}
+                {selected ? <IconCheck size={16} color={colors.accent} /> : null}
               </Pressable>
             )
           })}
