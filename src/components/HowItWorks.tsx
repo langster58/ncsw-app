@@ -1,6 +1,16 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Section, SectionIntro } from '@/ui'
+import {
+  Card,
+  Container,
+  Heading,
+  IconArrow as UIIconArrow,
+  Image,
+  Lead,
+  Link,
+  Section,
+  SectionIntro,
+} from '@/ui'
 import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
 // HowItWorks — methodology / "how it works" section, ported from HowItWorks.jsx.
@@ -301,34 +311,31 @@ function MethodologyHub() {
           } as any
         }
       >
-        {/* .mc-door.mc-door--tall — featured Subwoofers door */}
-        <View
-          style={
-            {
-              ...(isWeb ? { gridColumn: 1 } : {}),
-              borderWidth: 1,
-              borderColor: '#ececec', // var(--ncsw-line)
-              borderRadius: 14, // .mc-door
-              overflow: 'hidden',
-              backgroundColor: '#fff',
-            } as any
-          }
-        >
-          <DoorMedia img={doorImg('subwoofers.webp')} label="Subwoofers" />
-          {/* .mc-door-body */}
-          <View style={{ paddingTop: 15, paddingHorizontal: 16, paddingBottom: 17, flex: 1 }}>
-            <Text
-              style={{
-                fontFamily: 'Inter',
-                fontSize: 13.5,
-                lineHeight: 20.52, // 1.52 * 13.5
-                color: '#333333', // var(--fg-2)
-              }}
-            >
-              {SUBS_BODY}
-            </Text>
-            <DoorLink />
-          </View>
+        {/* Featured Subwoofers card — built from the design-system Card primitive
+            so the whole surface is the tap target and the footer takes on the
+            hover tint, matching the /components reference. The image no longer
+            carries a label overlay; the section heading lives inside the body
+            where headings belong. */}
+        <View style={(isWeb ? { gridColumn: 1 } : null) as any}>
+          <Card href="/methodology/subwoofers">
+            <Card.Media aspectRatio={16 / 9}>
+              <Image
+                src={doorImg('subwoofers.webp')}
+                fill
+                objectFit="cover"
+                alt="Subwoofers methodology"
+              />
+            </Card.Media>
+            <Card.Body>
+              <Heading level="h4">Subwoofers</Heading>
+              <Lead size="body">{SUBS_BODY}</Lead>
+            </Card.Body>
+            <Card.Footer>
+              <Link variant="door" icon={<UIIconArrow size={15} />}>
+                Continue reading
+              </Link>
+            </Card.Footer>
+          </Card>
         </View>
 
         {/* .mc-exhibit — the live SubwooferFrontierChart exhibit. */}
