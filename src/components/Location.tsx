@@ -26,13 +26,8 @@ const SHOP_PHONE = '(216) 555-0114'
 
 type DayHours = [day: string, hours: string]
 const HOURS: DayHours[] = [
-  ['Mon', '9am — 5pm'],
-  ['Tue', '9am — 5pm'],
-  ['Wed', '9am — 5pm'],
-  ['Thu', '9am — 5pm'],
-  ['Fri', '9am — 5pm'],
-  ['Sat', 'Closed'],
-  ['Sun', 'Closed'],
+  ['Mon–Fri', '9am — 5pm'],
+  ['Sat–Sun', 'Closed'],
 ]
 
 export function Location() {
