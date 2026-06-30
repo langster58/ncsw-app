@@ -62,35 +62,12 @@ type CardProps = {
 // without callers needing to pass the layout down.
 const CardLayoutContext = React.createContext<Layout>('stack')
 
-// Card resolves its own hover/pressed color cascade (matches the secondary
-// Button treatment so an interactive card and a secondary button hover the
-// same way: white → accentSoft → accentSoftPressed, with the border
-// cascading line → accent → accentPressed).
-function resolveCardColors(state: { hovered: boolean; pressed: boolean }) {
-  return {
-    bg: state.pressed
-      ? colors.accentSoftPressed
-      : state.hovered
-        ? colors.accentSoft
-        : colors.white,
-    border: state.pressed
-      ? colors.accentPressed
-      : state.hovered
-        ? colors.accent
-        : colors.line,
-  }
-}
-
 function CardRoot({ children, layout = 'stack', href, onPress }: CardProps) {
   const isWeb = Platform.OS === 'web'
   const interactive = !!onPress || !!href
 
   const [hovered, setHovered] = useState(false)
   const [pressed, setPressed] = useState(false)
-
-  const { bg, border } = interactive
-    ? resolveCardColors({ hovered, pressed })
-    : { bg: colors.white, border: colors.line }
 
   const interactiveProps: any = interactive
     ? {
@@ -115,15 +92,16 @@ function CardRoot({ children, layout = 'stack', href, onPress }: CardProps) {
       }
     : null
 
+  // Card root keeps its neutral chrome (white bg, line border) at every
+  // interaction state. Hover treatment is scoped to Card.Footer — the
+  // "button-equivalent" strip below the rule — via HoverContext.
   const baseStyle: any = {
     borderWidth: 1,
-    borderColor: border,
+    borderColor: colors.line,
     borderRadius: radius.lg,
-    backgroundColor: bg,
+    backgroundColor: colors.white,
     overflow: 'hidden',
-    ...(interactive && Platform.OS === 'web'
-      ? { cursor: 'pointer', transition: 'background-color 140ms ease, border-color 140ms ease' }
-      : null),
+    ...(interactive && Platform.OS === 'web' ? { cursor: 'pointer' } : null),
   }
 
   if (layout === 'split' && isWeb) {
@@ -297,17 +275,22 @@ function CardHeader({ children, right }: { children: React.ReactNode; right?: Re
 // Footer row — typically a door link. Has a top hairline divider.
 function CardFooter({ children }: { children: React.ReactNode }) {
   const layout = React.useContext(CardLayoutContext)
+  const hovered = React.useContext(HoverContext)
   const padX = layout === 'split' ? 32 : 22
   return (
     <View
-      style={{
-        paddingHorizontal: padX,
-        paddingVertical: 18,
-        borderTopWidth: 1,
-        borderTopColor: colors.line,
-        flexDirection: 'row',
-        alignItems: 'center',
-      }}
+      style={
+        {
+          paddingHorizontal: padX,
+          paddingVertical: 18,
+          borderTopWidth: 1,
+          borderTopColor: colors.line,
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: hovered ? colors.accentSoft : 'transparent',
+          ...(Platform.OS === 'web' ? { transition: 'background-color 140ms ease' } : null),
+        } as any
+      }
     >
       {children}
     </View>

@@ -10,3 +10,8 @@ import { createContext } from 'react'
 // inherited hover and behave normally.
 
 export const HoverContext = createContext<boolean>(false)
+
+// PressContext sibling for the pressed state. Same shape (boolean), same
+// pattern: an interactive surface publishes; descendants subscribe so they
+// can take on the pressed treatment at the same time as the surface.
+export const PressContext = createContext<boolean>(false)
