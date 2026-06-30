@@ -1,29 +1,32 @@
-// SubwooferFrontierChart — faithful port of SubwooferFrontierChart.jsx.
+// SubwooferFrontierChart — faithful port of SubwooferFrontierChart.jsx, built on
+// React Native primitives (View/Text/Pressable) with web-only escape hatches
+// for <canvas> and <input type=range> — the two interactive web elements that
+// have no React Native equivalent.
 //
-// The source uses HTML5 canvas + window.NCSW_SUBWOOFER_FRONTIER (248 rows).
-// We load the same data file via <script src="/subwoofer-frontier-data.js"> in
-// src/app/+html.tsx; this component reads window.NCSW_SUBWOOFER_FRONTIER
-// exactly like the source.
-//
-// Web: canvas implementation ported 1:1 (axis math, draw order, hover hit-test,
-// chips + price slider + tooltip).
-// Native: placeholder (canvas isn't available without react-native-skia).
+// Source: SubwooferFrontierChart.jsx + the .vf-* rules in home.css. All values
+// (colors, paddings, sizes, axis math, draw order, hit-test radius) are taken
+// verbatim from the source. Data comes from window.NCSW_SUBWOOFER_FRONTIER
+// (loaded via <script src="/subwoofer-frontier-data.js"> in src/app/+html.tsx).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, Text, View } from 'react-native'
+import { Platform, Pressable, Text, View } from 'react-native'
 
-// ── Source constants (verbatim from SubwooferFrontierChart.jsx) ─────────────
+// ── Source constants (verbatim) ─────────────────────────────────────────────
 const INK = '#09080E'
 const BLUE = '#0576CC'
 const MAGENTA = '#E941BC'
 const GRID = '#ECECEC'
 const TICK = '#8A8A8E'
 const AXIS = '#6B6B70'
+const LINE = '#ECECEC'
+const FG_2 = '#656565'
+const FONT_MONO = 'IBM Plex Mono'
+const FONT_BODY = 'Inter'
 
 const SIZE_OPTIONS = ['all', '8', '10', '12', '15', '18']
 const TIER_OPTIONS = ['all', 'entry', 'mid', 'upper-mid', 'reference']
 
-// ── Source helpers (verbatim) ───────────────────────────────────────────────
+// ── Helpers (verbatim from source) ──────────────────────────────────────────
 type Row = {
   name: string
   sz: string
@@ -67,6 +70,7 @@ declare global {
   }
 }
 
+// ── Component ───────────────────────────────────────────────────────────────
 export function SubwooferFrontierChart() {
   if (Platform.OS !== 'web') return <NativePlaceholder />
   return <WebChart />
@@ -83,18 +87,23 @@ function NativePlaceholder() {
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: AXIS }}>
+      <Text style={{ fontFamily: FONT_MONO, fontSize: 11, color: AXIS }}>
         Value-frontier chart available on web
       </Text>
     </View>
   )
 }
 
+type TooltipState = {
+  row: Row
+  onFrontier: boolean
+  left: number
+  top: number
+}
+
 function WebChart() {
-  const rootRef = useRef<HTMLDivElement | null>(null)
-  const plotRef = useRef<HTMLDivElement | null>(null)
+  const plotRef = useRef<any>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const tooltipRef = useRef<HTMLDivElement | null>(null)
   const hoverRef = useRef(-1)
   const geomRef = useRef<any>(null)
 
@@ -102,9 +111,9 @@ function WebChart() {
   const [tier, setTier] = useState('all')
   const [price, setPrice] = useState(1670)
   const [rows, setRows] = useState<Row[]>([])
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
-  // Pull the global dataset. <script defer> may not have populated window yet
-  // at first render; poll briefly until it does (max ~4s).
+  // Pull the global dataset (<script defer> populates window.NCSW_SUBWOOFER_FRONTIER).
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (window.NCSW_SUBWOOFER_FRONTIER && window.NCSW_SUBWOOFER_FRONTIER.length) {
@@ -140,8 +149,7 @@ function WebChart() {
   useEffect(() => {
     const canvas = canvasRef.current
     const plot = plotRef.current
-    const tip = tooltipRef.current
-    if (!canvas || !plot || !tip) return undefined
+    if (!canvas || !plot) return undefined
     const ctx = canvas.getContext('2d')
     if (!ctx) return undefined
     const dpr = window.devicePixelRatio || 1
@@ -149,7 +157,7 @@ function WebChart() {
     let raf = 0
 
     function layout() {
-      const rect = plot!.getBoundingClientRect()
+      const rect = plot.getBoundingClientRect()
       const width = Math.max(320, Math.round(rect.width))
       const height = Math.max(300, Math.round(rect.height))
       canvas!.width = width * dpr
@@ -298,48 +306,19 @@ function WebChart() {
       if (best >= 0) {
         const r = filtered[best]
         const onFrontier = model.frontier.includes(r)
-        tip!.innerHTML =
-          '<div class="vf-tip-name">' +
-          r.name +
-          ' (' +
-          r.sz +
-          '")' +
-          (r.tier !== 'untiered' ? ' · ' + r.tier : '') +
-          '</div>' +
-          '<div class="vf-tip-row">Impact <b>' +
-          r.m.toFixed(2) +
-          '</b> · ' +
-          money(r.price) +
-          ' · ' +
-          (onFrontier ? '<b>on frontier</b>' : 'dominated') +
-          '</div>' +
-          '<div class="vf-tip-row">Box <b>' +
-          r.vb +
-          ' ft³</b> · Xmax <b>' +
-          r.xm +
-          'mm' +
-          (r.xp ? ' (print)' : '') +
-          '</b></div>' +
-          '<div class="vf-tip-row">RMS <b>' +
-          r.rms +
-          'W</b> · Sens <b>' +
-          r.sens.toFixed(1) +
-          'dB 1W</b></div>'
-        tip!.classList.add('on')
         let tx = mx + 16
         if (tx + 320 > rect.width) tx = Math.max(4, mx - 330)
         let ty = my - 44
         if (ty < 0) ty = my + 16
-        tip!.style.left = tx + 'px'
-        tip!.style.top = ty + 'px'
+        setTooltip({ row: r, onFrontier, left: tx, top: ty })
       } else {
-        tip!.classList.remove('on')
+        setTooltip(null)
       }
     }
 
     function onLeave() {
       hoverRef.current = -1
-      tip!.classList.remove('on')
+      setTooltip(null)
       draw()
     }
 
@@ -362,104 +341,236 @@ function WebChart() {
 
   const priceLabel = '≤ $' + price.toLocaleString('en-US')
 
-  return React.createElement(
-    'div',
-    { className: 'vf-chart', ref: rootRef, 'aria-label': 'Subwoofer value frontier chart' },
-    React.createElement(
-      'div',
-      { className: 'vf-controls' },
-      React.createElement(
-        'div',
-        { className: 'vf-group' },
-        React.createElement('span', { className: 'vf-label' }, 'Size'),
-        React.createElement(
-          'div',
-          { className: 'vf-chips' },
-          SIZE_OPTIONS.map((opt) =>
-            React.createElement(
-              'button',
-              {
-                key: opt,
-                type: 'button',
-                className: 'vf-chip' + (size === opt ? ' on' : ''),
-                'aria-pressed': size === opt,
-                onClick: () => setSize(opt),
-              },
-              opt === 'all' ? 'All' : opt + '"',
-            ),
-          ),
-        ),
-      ),
-      React.createElement(
-        'div',
-        { className: 'vf-group' },
-        React.createElement('span', { className: 'vf-label' }, 'Tier'),
-        React.createElement(
-          'div',
-          { className: 'vf-chips' },
-          TIER_OPTIONS.map((opt) =>
-            React.createElement(
-              'button',
-              {
-                key: opt,
-                type: 'button',
-                className: 'vf-chip' + (tier === opt ? ' on' : ''),
-                'aria-pressed': tier === opt,
-                onClick: () => setTier(opt),
-              },
-              opt === 'all' ? 'All' : opt,
-            ),
-          ),
-        ),
-      ),
-      React.createElement(
-        'div',
-        { className: 'vf-group vf-price' },
-        React.createElement(
-          'label',
-          { className: 'vf-label', htmlFor: 'vf-price' },
-          'Price ',
-          React.createElement('span', null, priceLabel),
-        ),
-        React.createElement('input', {
-          id: 'vf-price',
-          type: 'range',
-          min: 60,
-          max: 1900,
-          value: price,
-          step: 10,
-          onChange: (e: any) => setPrice(Number(e.target.value)),
-          'aria-label': 'Maximum subwoofer price',
-        }),
-      ),
-    ),
-    React.createElement(
-      'div',
-      { className: 'vf-canvas-wrap', ref: plotRef },
-      React.createElement('canvas', { className: 'vf-canvas', ref: canvasRef }),
-      React.createElement('div', { className: 'vf-tooltip', ref: tooltipRef }),
-    ),
-    React.createElement(
-      'div',
-      { className: 'vf-legend' },
-      React.createElement(
-        'span',
-        null,
-        React.createElement('i', { className: 'vf-dot vf-dot-blue' }),
-        'On value frontier',
-      ),
-      React.createElement(
-        'span',
-        null,
-        React.createElement('i', { className: 'vf-dot vf-dot-gray' }),
-        'Dominated',
-      ),
-      React.createElement(
-        'span',
-        null,
-        React.createElement('i', { className: 'vf-dash' }),
-        'Efficient frontier',
-      ),
-    ),
+  return (
+    <View
+      style={
+        {
+          // .vf-chart: width 100%, height 100%, flex column, background white.
+          // We add an explicit min-height since RN doesn't read the
+          // .vf-chart CSS rule (was: clamp(360px, 68vw, 520px) — pick 480 here).
+          width: '100%',
+          minHeight: 480,
+          backgroundColor: '#fff',
+          color: INK,
+        } as any
+      }
+    >
+      {/* .vf-controls — flex row wrap, gap 14/18, margin-bottom 12 */}
+      <View
+        style={
+          { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 18, marginBottom: 12 } as any
+        }
+      >
+        <ChipGroup label="Size" options={SIZE_OPTIONS} value={size} onChange={setSize} renderOpt={(o) => (o === 'all' ? 'All' : o + '"')} />
+        <ChipGroup label="Tier" options={TIER_OPTIONS} value={tier} onChange={setTier} renderOpt={(o) => (o === 'all' ? 'All' : o)} />
+        <PriceGroup priceLabel={priceLabel} price={price} setPrice={setPrice} />
+      </View>
+
+      {/* .vf-canvas-wrap — relative, flex 1, min-height 300 */}
+      <View
+        ref={plotRef}
+        style={
+          {
+            position: 'relative',
+            width: '100%',
+            flex: 1,
+            minHeight: 300,
+          } as any
+        }
+      >
+        {React.createElement('canvas', {
+          ref: canvasRef,
+          style: { display: 'block', width: '100%', height: '100%', cursor: 'crosshair' },
+        })}
+        {tooltip ? <Tooltip tooltip={tooltip} /> : null}
+      </View>
+
+      {/* .vf-legend — flex wrap, gap 10/12, margin-top 12, padding-top 12, top hairline */}
+      <View
+        style={
+          {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 12,
+            paddingTop: 12,
+            borderTopWidth: 1,
+            borderTopColor: LINE,
+          } as any
+        }
+      >
+        <LegendItem>
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE }} />
+          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>On value frontier</Text>
+        </LegendItem>
+        <LegendItem>
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: rgba(INK, 0.22) }} />
+          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>Dominated</Text>
+        </LegendItem>
+        <LegendItem>
+          <View style={{ width: 18, borderTopWidth: 2, borderTopColor: BLUE, borderStyle: 'dashed' } as any} />
+          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>Efficient frontier</Text>
+        </LegendItem>
+      </View>
+    </View>
+  )
+}
+
+// ── .vf-group with chip row (Size / Tier) ───────────────────────────────────
+function ChipGroup({
+  label,
+  options,
+  value,
+  onChange,
+  renderOpt,
+}: {
+  label: string
+  options: string[]
+  value: string
+  onChange: (v: string) => void
+  renderOpt: (o: string) => string
+}) {
+  return (
+    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
+      <Text style={vfLabelStyle}>{label}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 } as any}>
+        {options.map((opt) => (
+          <VfChip key={opt} on={value === opt} onPress={() => onChange(opt)}>
+            {renderOpt(opt)}
+          </VfChip>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+// ── .vf-group.vf-price (label + range slider) ───────────────────────────────
+function PriceGroup({
+  priceLabel,
+  price,
+  setPrice,
+}: {
+  priceLabel: string
+  price: number
+  setPrice: (n: number) => void
+}) {
+  return (
+    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
+      <Text style={vfLabelStyle}>
+        Price <Text style={{ color: INK, textTransform: 'none', marginLeft: 2 }}>{priceLabel}</Text>
+      </Text>
+      {/* <input type=range> is the one HTML primitive with no RN-web equivalent. */}
+      {React.createElement('input', {
+        type: 'range',
+        min: 60,
+        max: 1900,
+        step: 10,
+        value: price,
+        onChange: (e: any) => setPrice(Number(e.target.value)),
+        'aria-label': 'Maximum subwoofer price',
+        style: { width: 170, accentColor: BLUE },
+      })}
+    </View>
+  )
+}
+
+// ── .vf-chip ────────────────────────────────────────────────────────────────
+function VfChip({
+  on,
+  onPress,
+  children,
+}: {
+  on: boolean
+  onPress: () => void
+  children: React.ReactNode
+}) {
+  const [hovered, setHovered] = useState(false)
+  const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
+  const bg = on ? mixAccent8 : hovered ? '#fafbfc' : '#fff'
+  const border = on ? BLUE : hovered ? '#cfd3d9' : LINE
+  const color = on ? BLUE : hovered ? INK : FG_2
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      {...hoverProps}
+      style={{
+        borderWidth: 1,
+        borderColor: border,
+        borderRadius: 5,
+        backgroundColor: bg,
+        paddingVertical: 4,
+        paddingHorizontal: 7,
+      }}
+    >
+      <Text style={{ fontFamily: FONT_MONO, fontSize: 10.5, color, fontWeight: on ? '600' : '400' }}>
+        {children}
+      </Text>
+    </Pressable>
+  )
+}
+
+// ── .vf-label ───────────────────────────────────────────────────────────────
+const vfLabelStyle = {
+  fontFamily: FONT_MONO,
+  fontSize: 11,
+  fontWeight: '600' as const,
+  color: FG_2,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 0.88, // .08em * 11
+}
+
+// color-mix(in srgb, #0576CC 8%, #fff) ≈ #eef5fb (precomputed)
+const mixAccent8 = '#eef5fb'
+
+// ── .vf-tooltip ─────────────────────────────────────────────────────────────
+function Tooltip({ tooltip }: { tooltip: TooltipState }) {
+  const r = tooltip.row
+  return (
+    <View
+      pointerEvents="none"
+      style={
+        {
+          position: 'absolute',
+          left: tooltip.left,
+          top: tooltip.top,
+          backgroundColor: '#fff',
+          borderWidth: 1,
+          borderColor: LINE,
+          borderRadius: 8,
+          paddingHorizontal: 13,
+          paddingVertical: 10,
+          zIndex: 10,
+          // box-shadow: 0 6px 14px rgba(9,8,14,.1)
+          boxShadow: '0 6px 14px rgba(9, 8, 14, 0.1)',
+        } as any
+      }
+    >
+      <Text style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: '600', color: INK, marginBottom: 3 }}>
+        {r.name} ({r.sz}")
+        {r.tier !== 'untiered' ? ' · ' + r.tier : ''}
+      </Text>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+        Impact <Text style={tipBold}>{r.m.toFixed(2)}</Text> · {money(r.price)} ·{' '}
+        {tooltip.onFrontier ? <Text style={tipBold}>on frontier</Text> : 'dominated'}
+      </Text>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+        Box <Text style={tipBold}>{r.vb} ft³</Text> · Xmax <Text style={tipBold}>{r.xm}mm{r.xp ? ' (print)' : ''}</Text>
+      </Text>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+        RMS <Text style={tipBold}>{r.rms}W</Text> · Sens <Text style={tipBold}>{r.sens.toFixed(1)}dB 1W</Text>
+      </Text>
+    </View>
+  )
+}
+
+const tipBold = { color: INK, fontWeight: '500' as const }
+
+// ── Legend item ─────────────────────────────────────────────────────────────
+function LegendItem({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>{children}</View>
   )
 }
