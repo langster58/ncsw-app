@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, Pressable, useWindowDimensions, Platform } from 'react-native';
-import { space, useFluidPx } from '@/ui';
 
 const INK = '#09080e';
 const FONT_BODY = 'Inter';
@@ -45,7 +44,6 @@ function FooterLink({ label }: { label: string }) {
 
 export function Footer() {
   const { width } = useWindowDimensions();
-  const padX = useFluidPx(space.containerPadX);
   const stacked = width <= 1100;
 
   // Top region: brand block (flush left), 3-column nav block (flush right).
@@ -69,8 +67,6 @@ export function Footer() {
             width: '100%',
             paddingTop: 64,
             paddingBottom: 40,
-            paddingLeft: padX,
-            paddingRight: padX,
           } as any
         }
       >
