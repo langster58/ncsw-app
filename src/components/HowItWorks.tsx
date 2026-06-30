@@ -1,6 +1,7 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
 import { Container, Heading, Lead, Section } from '@/ui'
+import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
 // HowItWorks — methodology / "how it works" section, ported from HowItWorks.jsx.
 // Builds two blocks faithfully:
@@ -343,19 +344,17 @@ function MethodologyHub() {
           </View>
         </View>
 
-        {/* .mc-exhibit — the live <SubwooferFrontierChart /> exhibit.
-            NOTE: the chart is a SEPARATE file (SubwooferFrontierChart) and is NOT
-            built here. This is a flagged placeholder; wire the real chart in later. */}
+        {/* .mc-exhibit — the live SubwooferFrontierChart exhibit. */}
         <View
           style={
             {
               ...(isWeb ? { gridColumn: '2 / span 2' } : {}),
               width: '100%',
-              aspectRatio: 16 / 9,
-              backgroundColor: '#f5f5f5', // surface / var(--ncsw-shape)
             } as any
           }
-        />
+        >
+          <SubwooferFrontierChart />
+        </View>
       </View>
 
       {/* .mc-doors { margin-top: var(--gutter); grid repeat(3, minmax(0,1fr)) } */}
