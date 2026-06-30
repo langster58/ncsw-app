@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { space, useFluidPx } from '@/ui'
+import { Container } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
 //   .nav { position:sticky; top:0; z-index:80; background:rgba(255,255,255,.85);
@@ -127,11 +127,12 @@ function Brand() {
   )
 }
 
+// Nav's horizontal gutter comes entirely from <Container> — the same
+// primitive every other section uses. No hand-rolled padX/useFluidPx here.
 export function Nav() {
   const { width } = useWindowDimensions()
   const narrow = Platform.OS === 'web' && width <= 900
   const navY = narrow ? 14 : 16
-  const padX = useFluidPx(space.containerPadX)
 
   // Sits as the first row of the page's flex column (see app/index.tsx);
   // the ScrollView below it is what scrolls. No sticky positioning needed,
@@ -146,52 +147,49 @@ export function Nav() {
 
   return (
     <View style={navStyle}>
-      {/* Full-bleed nav. Brand flush-left, phone/CTA flush-right via
-          justify-content: space-between. Menu gap tightened so the link
-          columns don't drift apart on wide viewports. */}
-      <View
-        style={
-          {
-            width: '100%',
-            paddingHorizontal: padX,
-            paddingTop: navY,
-            paddingBottom: navY,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 24,
-          } as any
-        }
-      >
-        {/* .nav-brand — flush left */}
-        <Pressable
-          onPress={() => openHref('/')}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+      <Container>
+        <View
+          style={
+            {
+              paddingTop: navY,
+              paddingBottom: navY,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 24,
+            } as any
+          }
         >
-          <Brand />
-        </Pressable>
+          {/* .nav-brand — flush left */}
+          <Pressable
+            onPress={() => openHref('/')}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
+            <Brand />
+          </Pressable>
 
-        {/* .nav-menu (hidden <=900) */}
-        {!narrow ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
-            {NAV_LINKS.map(([label, href]) => (
-              <NavLink key={label} label={label} href={href} />
-            ))}
-          </View>
-        ) : null}
-
-        {/* right group: .nav-cta + .nav-burger — flush right */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          {!narrow ? <NavCta /> : null}
-          {narrow ? (
-            <View style={{ flexDirection: 'column', gap: 5 }}>
-              <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-              <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-              <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+          {/* .nav-menu (hidden <=900) */}
+          {!narrow ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+              {NAV_LINKS.map(([label, href]) => (
+                <NavLink key={label} label={label} href={href} />
+              ))}
             </View>
           ) : null}
+
+          {/* right group: .nav-cta + .nav-burger — flush right */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {!narrow ? <NavCta /> : null}
+            {narrow ? (
+              <View style={{ flexDirection: 'column', gap: 5 }}>
+                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
+      </Container>
     </View>
   )
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { space, useFluidPx } from '@/ui'
+import { Container } from '@/ui'
 import { PackageTableModal } from './PackageTableModal.web'
 
 // PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
@@ -214,7 +214,6 @@ function stickyCell(col: Col, zebra: boolean): any {
 
 /* ---------------- main table ---------------- */
 export function PackageTable() {
-  const padX = useFluidPx(space.containerPadX)
   const [tier, setTier] = useState('All')
   const [topo, setTopo] = useState('All')
   const [count, setCount] = useState('All')
@@ -305,18 +304,11 @@ export function PackageTable() {
   }
 
   return (
-    // Full-bleed within the site's fluid gutters; the inner scroll region only
-    // shows a horizontal scrollbar when the table's columns exceed the viewport
-    // width (otherwise it fills the space).
-    <View
-      style={
-        {
-          width: '100%',
-          paddingHorizontal: padX,
-          backgroundColor: WHITE,
-        } as any
-      }
-    >
+    // Horizontal gutter comes from <Container> — the same primitive every
+    // other section uses. The inner scroll region only shows a horizontal
+    // scrollbar when the table's columns exceed the viewport width.
+    <View style={{ width: '100%', backgroundColor: WHITE } as any}>
+      <Container>
       {/* ============ TOP CHROME: vehicle selector + Sort & Filter ============ */}
       <View
         style={{
@@ -493,6 +485,7 @@ export function PackageTable() {
           })}
         </View>,
       )}
+      </Container>
 
       {/* ============ FILTER + SORT SHEET (extracted to PackageTableModal.web.tsx) ============ */}
       {sheet ? (
