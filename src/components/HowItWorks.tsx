@@ -1,6 +1,6 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Heading, Lead, Section } from '@/ui'
+import { Container, Heading, Lead, Opener, Section } from '@/ui'
 import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
 // HowItWorks — methodology / "how it works" section, ported from HowItWorks.jsx.
@@ -383,6 +383,7 @@ export function HowItWorks() {
   return (
     <Section>
       <Container>
+        <Opener index="02" label="Our Methodology" />
         <HowItWorksIntro />
         <MethodologyHub />
       </Container>
