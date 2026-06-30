@@ -38,7 +38,6 @@ export { Card } from './Card'
 export { Modal } from './Modal'
 export { Accordion } from './Accordion'
 export { NavBar } from './NavBar'
-export { Footer } from './Footer'
 export { DataTable } from './DataTable'
 export type { DataColumn } from './DataTable'
 

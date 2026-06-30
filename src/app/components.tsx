@@ -17,7 +17,6 @@ import {
   Eyebrow,
   FilterChipGroup,
   FilterTriggerButton,
-  Footer,
   Heading,
   IconArrow,
   IconCheck,
@@ -547,34 +546,6 @@ export default function ComponentsPage() {
             <Mono size="sm" tone="gray">
               Slots: Brand · Menu · Phone. On web the Phone slot renders as plain styled text (tel: anchor — no button chrome). On native it renders a Button that opens the system dialer via Linking.
             </Mono>
-          </Block>
-
-          <Block title="Footer">
-            <View style={{ borderRadius: 8, overflow: 'hidden' }}>
-              <View style={{ backgroundColor: colors.ink, padding: 32 }}>
-                <View style={{ flexDirection: 'row', gap: 32, marginBottom: 32 }}>
-                  <View style={{ flex: 1.4 }}>
-                    <Text style={{ color: colors.white, fontFamily: fonts.display, fontWeight: '800', fontSize: 22 }}>NCSW</Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.78)', marginTop: 12, fontSize: 14, lineHeight: 22 }}>
-                      Cleveland's MECP-certified car-audio installation specialist.
-                    </Text>
-                  </View>
-                  {['Systems', 'Read', 'Shop'].map((h) => (
-                    <View key={h} style={{ flex: 1, gap: 12 }}>
-                      <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 1.32 }}>{h}</Text>
-                      {['Packages', 'Subwoofers', 'Editorial'].map((l) => (
-                        <Text key={l} style={{ color: 'rgba(255,255,255,0.78)', fontSize: 14 }}>{l}</Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-                <View style={{ paddingTop: 24, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.10)', flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 1.32 }}>© 2026 NCSW</Text>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: 1.32 }}>MECP Certified · Cleveland OH</Text>
-                </View>
-              </View>
-            </View>
-            <Mono size="sm" tone="gray">Slots: Top (Brand + Columns), Bottom (Meta).</Mono>
           </Block>
 
           <Block title="DataTable">
