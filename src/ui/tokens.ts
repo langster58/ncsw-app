@@ -185,8 +185,9 @@ export const radius = {
 }
 
 // ── Shared text constraint ──────────────────────────────────────────────────
-// All headings + body paragraphs use this. Single edit point.
-export const copyMaxWidth = '66.6%' as const
+// All headings + body paragraphs use this. Single edit point. Also used for
+// the hero wordmark's width, so it scales at the same proportion.
+export const copyMaxWidth = '60%' as const
 
 // ── Breakpoint for narrow-viewport chrome (nav stack, etc.) ─────────────────
 // Layout sizing is fluid via clamp(); this breakpoint only governs source
