@@ -1,62 +1,53 @@
 // NCSW design tokens — single source of truth.
 //
 // ── Fluid scaling engine ─────────────────────────────────────────────────────
-// True linear fluid interpolation (the standard "utopia"-style formula),
-// anchored between two viewport breakpoints:
+// Uniform proportional scaling — every value is a FIXED PERCENTAGE of the
+// current viewport width (anchorPx/1920 of it), so headings AND body copy
+// shrink and grow by the exact same percentage together as the window
+// resizes. This is the "look you'd get from pure vw units" effect, just
+// with a hard floor so nothing becomes illegible, and no ceiling (values
+// keep growing past 1920px with no upper limit).
 //
-//   MIN_VW   360px   — narrowest modern phone. Every value holds flat at its
-//                       floor below this; nothing gets too small to use.
-//   MAX_VW  1920px   — reference desktop viewport. Each token's "design size"
-//                       lands here.
-//
-// Below MIN_VW: flat at the floor. Between MIN_VW and MAX_VW: linear fluid
-// interpolation. Above MAX_VW: NO ceiling — values keep growing at the same
-// rate forever. This matches the rest of the site's "no max-width, everything
-// keeps scaling" approach: MAX_VW names the reference size, it isn't a cap.
-//
-// Two flavors:
-//   fluid(minPx, maxPx)      — px output, for spacing/layout (space.*)
-//   fluidType(minPx, maxPx)  — rem output, for type sizes (type.*). rem
+//   fluid(anchorPx, floorPx)      — px output, for spacing/layout (space.*)
+//   fluidType(anchorPx, floorPx)  — rem output, for type sizes (type.*). rem
 //     (not px) so text also respects a user's browser-level default
 //     font-size preference, not just pinch/page zoom.
+//
+// anchorPx: the value at the 1920px reference viewport (also defines the
+//   scaling percentage: anchorPx/1920 of viewport width, at every width).
+// floorPx: a hard minimum — a safety net for extreme narrow viewports, not
+//   a stylistic "barely changes" design. Above the width where the
+//   proportional value crosses this floor, sizing is purely proportional.
 //
 // Both return a CSS string on web (react-native-web passes it straight to
 // the DOM) and an opaque spec on native, resolved via useFluidPx().
 
 import { Platform, useWindowDimensions } from 'react-native'
 
-const MIN_VW = 360
-const MAX_VW = 1920
+const REF_VW = 1920
 
-function slopeIntercept(minPx: number, maxPx: number) {
-  const slope = (maxPx - minPx) / (MAX_VW - MIN_VW)
-  const yIntersectionPx = -MIN_VW * slope + minPx
-  return { slope, yIntersectionPx }
-}
-
-type FluidSpec = { __fluid: true; minPx: number; slope: number; yIntersectionPx: number }
+type FluidSpec = { __fluid: true; floorPx: number; coefficient: number }
 function isFluidSpec(v: unknown): v is FluidSpec {
   return typeof v === 'object' && v !== null && (v as FluidSpec).__fluid === true
 }
 
-// fluid(minPx, maxPx) — px-based, for spacing/layout.
-export function fluid(minPx: number, maxPx: number) {
-  const { slope, yIntersectionPx } = slopeIntercept(minPx, maxPx)
+// fluid(anchorPx, floorPx) — px-based, for spacing/layout.
+export function fluid(anchorPx: number, floorPx: number) {
+  const vwPercent = (anchorPx / REF_VW) * 100
   if (Platform.OS === 'web') {
-    return `max(${minPx}px, calc(${yIntersectionPx.toFixed(3)}px + ${(slope * 100).toFixed(4)}vw))` as unknown as number
+    return `max(${floorPx}px, ${vwPercent.toFixed(4)}vw)` as unknown as number
   }
-  return { __fluid: true, minPx, slope, yIntersectionPx } as unknown as number
+  return { __fluid: true, floorPx, coefficient: anchorPx / REF_VW } as unknown as number
 }
 
-// fluidType(minPx, maxPx) — rem-based (1rem = 16px), for type sizes.
-export function fluidType(minPx: number, maxPx: number) {
-  const { slope, yIntersectionPx } = slopeIntercept(minPx, maxPx)
+// fluidType(anchorPx, floorPx) — rem-based (1rem = 16px), for type sizes.
+export function fluidType(anchorPx: number, floorPx: number) {
+  const vwPercent = (anchorPx / REF_VW) * 100
   if (Platform.OS === 'web') {
-    const minRem = minPx / 16
-    const yRem = yIntersectionPx / 16
-    return `max(${minRem.toFixed(4)}rem, calc(${yRem.toFixed(4)}rem + ${(slope * 100).toFixed(4)}vw))` as unknown as number
+    const floorRem = floorPx / 16
+    return `max(${floorRem.toFixed(4)}rem, ${vwPercent.toFixed(4)}vw)` as unknown as number
   }
-  return { __fluid: true, minPx, slope, yIntersectionPx } as unknown as number
+  return { __fluid: true, floorPx, coefficient: anchorPx / REF_VW } as unknown as number
 }
 
 // Hook: resolve a fluid spec to a real px number on native using the current
@@ -65,8 +56,8 @@ export function useFluidPx(spec: number | string): number | string {
   const { width } = useWindowDimensions()
   if (Platform.OS === 'web') return spec
   if (!isFluidSpec(spec as unknown)) return spec
-  const { minPx, slope, yIntersectionPx } = spec as unknown as FluidSpec
-  return Math.max(minPx, yIntersectionPx + slope * width)
+  const { floorPx, coefficient } = spec as unknown as FluidSpec
+  return Math.max(floorPx, coefficient * width)
 }
 
 // ── Type scale ──────────────────────────────────────────────────────────────
@@ -76,17 +67,22 @@ export function useFluidPx(spec: number | string): number | string {
 // shrink much, it's already at the edge of legible. Hierarchy holds at both
 // ends; no level ever crosses another.
 //
-//   level      floor@360   anchor@1920
+// Uniform proportional scaling: every level shares the same anchorPx/1920
+// percentage of viewport width, so a heading and a paragraph shrink/grow by
+// the same percentage together. floorPx is a real legibility minimum, not a
+// stylistic near-flat spread — plenty of room to visibly shrink above it.
+//
+//   level         anchor@1920   floor (hard minimum)
 export const type = {
-  h2: fluidType(34, 52), //   34px        52px   — large section headings
-  h2sm: fluidType(28, 40), // 28px        40px   — medium section headings
-  h3: fluidType(22, 32), //   22px        32px   — sub-headings
-  h4: fluidType(18, 24), //   18px        24px   — card titles
-  heroLead: fluidType(18, 22), // 18px    22px   — hero statement
-  lead: fluidType(17, 20), // 17px        20px   — section lede
-  body: fluidType(15, 16), // 15px        16px   — body / card descriptions
-  small: fluidType(12, 14), // 12px       14px   — small labels / dense data text
-  meta: fluidType(11, 12), // 11px        12px   — mono uppercase eyebrows/labels
+  h2: fluidType(52, 28), //    52px          28px   — large section headings
+  h2sm: fluidType(40, 24), //  40px          24px   — medium section headings
+  h3: fluidType(32, 20), //    32px          20px   — sub-headings
+  h4: fluidType(24, 16), //    24px          16px   — card titles
+  heroLead: fluidType(22, 16), // 22px       16px   — hero statement
+  lead: fluidType(20, 15), //  20px          15px   — section lede
+  body: fluidType(16, 13), //  16px          13px   — body / card descriptions
+  small: fluidType(14, 11), // 14px          11px   — small labels / dense data text
+  meta: fluidType(12, 10), // 12px           10px   — mono uppercase eyebrows/labels
 }
 
 // ── Line heights (unitless multipliers, source-accurate) ────────────────────
@@ -173,8 +169,8 @@ export const fonts = {
 // Resolve fluid spec values via useFluidPx() at the call site (same pattern
 // as the type scale).
 export const space = {
-  sectionTop: fluid(56, 96), // floor@360 -> 96px@1920, then keeps growing
-  containerPadX: fluid(22, 40), // floor@360 -> 40px@1920, then keeps growing
+  sectionTop: fluid(96, 56), // 96px@1920, floor 56px, uniform % scaling
+  containerPadX: fluid(40, 22), // 40px@1920, floor 22px, uniform % scaling
   blockGap: 28, // gap between heading and lede
   ruleHairline: 1,
 }
