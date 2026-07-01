@@ -56,7 +56,7 @@ function PreloaderWeb() {
     React.createElement('img', {
       src: '/brand/NCSW-wordmark-full.svg',
       alt: 'North Coast Soundworks',
-      style: { width: 'min(60vw, 520px)', height: 'auto' },
+      style: { width: '60vw', height: 'auto' },
     }),
   )
 }

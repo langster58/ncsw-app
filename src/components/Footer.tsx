@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
-import { Container, Section, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
+import { Container, Section, fluid, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
 
 const INK = '#09080e';
 const FONT_BODY = 'Inter';
@@ -64,6 +64,7 @@ function BrandBlock() {
   const nativeMarkSize = useFluidPx(type.heroLead);
   const copySize = useFluidPx(type.small);
   const copyLineHeight = fluidLineHeight(copySize, lineHeight.body);
+  const copyMaxWidth = useFluidPx(fluid(320, 220));
   return (
     <View
       style={
@@ -110,7 +111,7 @@ function BrandBlock() {
             fontSize: copySize,
             lineHeight: copyLineHeight,
             marginTop: 22,
-            maxWidth: 320,
+            maxWidth: copyMaxWidth,
           } as any
         }
       >

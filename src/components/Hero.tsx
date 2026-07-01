@@ -130,7 +130,7 @@ export function Hero() {
         src: '/brand/NCSW-wordmark-full.svg',
         alt: 'North Coast Soundworks',
         className: 'ncsw-hero-word', // entrance: translateY 40 -> 0 + fade (public/ncsw.css)
-        style: { display: 'block', width: '100%', maxWidth: 760, height: 'auto' },
+        style: { display: 'block', width: '100%', height: 'auto' },
       })}
     </View>
   ) : (
