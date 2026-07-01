@@ -1,6 +1,6 @@
 import React from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Lead, Section, copyMaxWidth, type, useFluidPx } from '@/ui'
+import { Container, Lead, Section, type, useFluidPx } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
 //   .hero { padding: 64px 0 0 }
@@ -130,7 +130,7 @@ export function Hero() {
         src: '/brand/NCSW-wordmark-full.svg',
         alt: 'North Coast Soundworks',
         className: 'ncsw-hero-word', // entrance: translateY 40 -> 0 + fade (public/ncsw.css)
-        style: { display: 'block', width: copyMaxWidth, height: 'auto' },
+        style: { display: 'block', width: '45%', height: 'auto' },
       })}
     </View>
   ) : (
