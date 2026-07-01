@@ -1,6 +1,6 @@
 import React from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Lead, Section } from '@/ui'
+import { Container, Lead, Section, type, useFluidPx } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
 //   .hero { padding: 64px 0 0 }
@@ -47,6 +47,7 @@ function HeroLede() {
 
 // .hero-call (shown <=900px / on native)
 function HeroCall() {
+  const fontSize = useFluidPx(type.body)
   return (
     <Pressable
       onPress={callShop}
@@ -57,7 +58,7 @@ function HeroCall() {
           {
             fontFamily: 'Inter',
             fontWeight: '600',
-            fontSize: 15,
+            fontSize,
             color: '#0576cc', // var(--accent) -> var(--ncsw-primary)
             textDecorationLine: 'underline',
             // .hero-call: text-underline-offset:4px; text-decoration-thickness:1px (web)
@@ -120,6 +121,7 @@ export function Hero() {
   const narrow = width <= 760
   const showCall = !isWeb || width <= 900
   const cols = isWeb && !narrow ? 4 : 2
+  const nativeWordmarkSize = useFluidPx(type.h2)
 
   // ---- Native fallback: text wordmark (SVG <Image> needs react-native-svg) ----
   const Wordmark = isWeb ? (
@@ -135,7 +137,7 @@ export function Hero() {
     <Text
       style={{
         fontFamily: 'Creato Display',
-        fontSize: 40,
+        fontSize: nativeWordmarkSize as number,
         fontWeight: '700',
         letterSpacing: -1.4,
         color: '#09080e',

@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { Container, Section, SectionIntro } from '@/ui';
+import { Container, Section, SectionIntro, fluidLineHeight, type, useFluidPx } from '@/ui';
 
 /* ============================================================
    Collections — "Sub-stage / collections" section
@@ -114,6 +114,14 @@ export function Collections() {
   const { width } = useWindowDimensions();
   const isMobile = width < 760; // home.css collapses .coll-grid to 1fr at narrow widths
   const gutter = 32; // --ncsw-grid-gutter clamp(20px, 1.7vw, 32px)
+  const tagSize = useFluidPx(type.meta)
+  const titleSize = useFluidPx(type.h4)
+  const titleLineHeight = fluidLineHeight(titleSize, 1.12)
+  const descSize = useFluidPx(type.body)
+  const descLineHeight = fluidLineHeight(descSize, 1.5)
+  const metaLabelSize = useFluidPx(type.meta)
+  const metaValueSize = useFluidPx(type.lead)
+  const doorSize = useFluidPx(type.meta)
 
   return (
     <Section>
@@ -184,14 +192,16 @@ export function Collections() {
                   }
                 >
                   <Text
-                    style={{
-                      fontFamily: FONT_BODY,
-                      textTransform: 'uppercase',
-                      letterSpacing: 1.2, // .12em * 10
-                      fontSize: 10,
-                      fontWeight: '600',
-                      color: '#ffffff',
-                    }}
+                    style={
+                      {
+                        fontFamily: FONT_BODY,
+                        textTransform: 'uppercase',
+                        letterSpacing: 1.2, // .12em * 10
+                        fontSize: tagSize,
+                        fontWeight: '600',
+                        color: '#ffffff',
+                      } as any
+                    }
                   >
                     {c.tag}
                   </Text>
@@ -209,26 +219,30 @@ export function Collections() {
                 }}
               >
                 <Text
-                  style={{
-                    fontFamily: FONT_BODY,
-                    fontSize: 24,
-                    fontWeight: '600',
-                    letterSpacing: -0.48, // -.02em * 24
-                    lineHeight: 24 * 1.12,
-                    color: INK,
-                  }}
+                  style={
+                    {
+                      fontFamily: FONT_BODY,
+                      fontSize: titleSize,
+                      fontWeight: '600',
+                      letterSpacing: -0.48, // -.02em * 24
+                      lineHeight: titleLineHeight,
+                      color: INK,
+                    } as any
+                  }
                 >
                   {c.title}
                 </Text>
                 <Text
-                  style={{
-                    fontFamily: FONT_BODY,
-                    color: GRAY,
-                    fontSize: 15,
-                    lineHeight: 15 * 1.5,
-                    marginTop: 11,
-                    marginBottom: 16,
-                  }}
+                  style={
+                    {
+                      fontFamily: FONT_BODY,
+                      color: GRAY,
+                      fontSize: descSize,
+                      lineHeight: descLineHeight,
+                      marginTop: 11,
+                      marginBottom: 16,
+                    } as any
+                  }
                 >
                   {c.desc}
                 </Text>
@@ -246,26 +260,30 @@ export function Collections() {
                   {c.meta.map(([k, v], i) => (
                     <View key={k} style={{ marginRight: i === 0 ? 22 : 0 }}>
                       <Text
-                        style={{
-                          fontFamily: FONT_BODY,
-                          textTransform: 'uppercase',
-                          letterSpacing: 1.08, // .12em * 9
-                          fontWeight: '600',
-                          fontSize: 9,
-                          color: GRAY,
-                        }}
+                        style={
+                          {
+                            fontFamily: FONT_BODY,
+                            textTransform: 'uppercase',
+                            letterSpacing: 1.08, // .12em * 9
+                            fontWeight: '600',
+                            fontSize: metaLabelSize,
+                            color: GRAY,
+                          } as any
+                        }
                       >
                         {k}
                       </Text>
                       <Text
-                        style={{
-                          fontFamily: FONT_MONO,
-                          fontSize: 17,
-                          fontWeight: '500',
-                          letterSpacing: 0,
-                          marginTop: 3,
-                          color: INK,
-                        }}
+                        style={
+                          {
+                            fontFamily: FONT_MONO,
+                            fontSize: metaValueSize,
+                            fontWeight: '500',
+                            letterSpacing: 0,
+                            marginTop: 3,
+                            color: INK,
+                          } as any
+                        }
                       >
                         {v}
                       </Text>
@@ -286,15 +304,17 @@ export function Collections() {
                     }}
                   >
                     <Text
-                      style={{
-                        fontFamily: FONT_BODY,
-                        textTransform: 'uppercase',
-                        letterSpacing: 1.32, // .12em * 11
-                        fontSize: 11,
-                        fontWeight: '600',
-                        color: INK,
-                        marginRight: 9,
-                      }}
+                      style={
+                        {
+                          fontFamily: FONT_BODY,
+                          textTransform: 'uppercase',
+                          letterSpacing: 1.32, // .12em * 11
+                          fontSize: doorSize,
+                          fontWeight: '600',
+                          color: INK,
+                          marginRight: 9,
+                        } as any
+                      }
                     >
                       See the alignment
                     </Text>

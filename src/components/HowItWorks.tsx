@@ -10,6 +10,9 @@ import {
   Link,
   Section,
   SectionIntro,
+  fluidLineHeight,
+  type,
+  useFluidPx,
 } from '@/ui'
 import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
@@ -153,6 +156,7 @@ function IconArrow({ s = 15 }: { s?: number }) {
 
 // .door — "Continue reading ›" link row (font-mono-ish accent label).
 function DoorLink() {
+  const fontSize = useFluidPx(type.small)
   return (
     <View
       style={{
@@ -163,13 +167,15 @@ function DoorLink() {
       }}
     >
       <Text
-        style={{
-          fontFamily: 'IBM Plex Mono',
-          fontSize: 12.5,
-          fontWeight: '600',
-          letterSpacing: 0.6, // .04em * ~15px (.door uses mono caps elsewhere)
-          color: '#0576cc', // var(--accent)
-        }}
+        style={
+          {
+            fontFamily: 'IBM Plex Mono',
+            fontSize,
+            fontWeight: '600',
+            letterSpacing: 0.6, // .04em * ~15px (.door uses mono caps elsewhere)
+            color: '#0576cc', // var(--accent)
+          } as any
+        }
       >
         Continue reading{' '}
       </Text>
@@ -184,6 +190,7 @@ function DoorLink() {
 // .mc-door-label { mono 13/600; uppercase; ls .04em; #fff; text-shadow }
 function DoorMedia({ img, label }: { img?: string; label: string }) {
   const isWeb = Platform.OS === 'web'
+  const labelSize = useFluidPx(type.small)
   return (
     <View
       style={{
@@ -229,7 +236,7 @@ function DoorMedia({ img, label }: { img?: string; label: string }) {
             left: 15,
             zIndex: 2,
             fontFamily: 'IBM Plex Mono',
-            fontSize: 13,
+            fontSize: labelSize,
             fontWeight: '600',
             letterSpacing: 0.52, // .04em * 13px
             textTransform: 'uppercase',
@@ -254,6 +261,8 @@ function MethodDoor({
   img?: string
   copy: string
 }) {
+  const copySize = useFluidPx(type.small)
+  const copyLineHeight = fluidLineHeight(copySize, 1.52)
   return (
     <View
       style={{
@@ -270,12 +279,14 @@ function MethodDoor({
       <View style={{ paddingTop: 15, paddingHorizontal: 16, paddingBottom: 17, flex: 1 }}>
         {/* .mc-door-greek */}
         <Text
-          style={{
-            fontFamily: 'Inter',
-            fontSize: 13.5,
-            lineHeight: 20.52, // 1.52 * 13.5
-            color: '#333333', // var(--fg-2)
-          }}
+          style={
+            {
+              fontFamily: 'Inter',
+              fontSize: copySize,
+              lineHeight: copyLineHeight,
+              color: '#333333', // var(--fg-2)
+            } as any
+          }
         >
           {copy}
         </Text>

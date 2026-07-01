@@ -6,12 +6,13 @@
 
 import React from 'react'
 import { Platform, Text, View } from 'react-native'
-import { Container, Eyebrow, Section, SectionIntro, colors, fonts } from '@/ui'
+import { Container, Eyebrow, Section, SectionIntro, colors, fonts, type, useFluidPx } from '@/ui'
 
 // Mono data text — small inline helper, since mono is just a font spec.
 function MonoText({ children }: { children: React.ReactNode }) {
+  const fontSize = useFluidPx(type.small)
   return (
-    <Text style={{ fontFamily: fonts.mono, fontSize: 14, fontWeight: '500', color: colors.ink }}>
+    <Text style={{ fontFamily: fonts.mono, fontSize, fontWeight: '500', color: colors.ink } as any}>
       {children}
     </Text>
   )
@@ -89,6 +90,7 @@ const MAP_SRC =
   'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d199.69500286942724!2d-81.53184896443469!3d41.52086731623014!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8830fde42c83abcd%3A0x828e1f4623ea6e6c!2s4117%20Mayfield%20Rd%2C%20South%20Euclid%2C%20OH%2044121!5e0!3m2!1sen!2sus!4v1782779605874!5m2!1sen!2sus'
 
 function MapEmbed() {
+  const placeholderSize = useFluidPx(type.meta)
   if (Platform.OS === 'web') {
     return React.createElement(
       'div',
@@ -125,7 +127,7 @@ function MapEmbed() {
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: 11, color: colors.gray }}>
+      <Text style={{ fontFamily: 'IBM Plex Mono', fontSize: placeholderSize, color: colors.gray } as any}>
         Map available on web
       </Text>
     </View>

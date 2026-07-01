@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { Container } from '@/ui'
+import { Container, type, useFluidPx } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
 //   .nav { position:sticky; top:0; z-index:80; background:rgba(255,255,255,.85);
@@ -37,6 +37,7 @@ function openHref(href: string) {
 // .nav-link — default ink, hover gray.
 function NavLink({ label, href }: { label: string; href: string }) {
   const [hovered, setHovered] = useState(false)
+  const fontSize = useFluidPx(type.meta)
   const hoverProps: any =
     Platform.OS === 'web'
       ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
@@ -44,14 +45,16 @@ function NavLink({ label, href }: { label: string; href: string }) {
   return (
     <Pressable onPress={() => openHref(href)} style={{ paddingBottom: 3 }} {...hoverProps}>
       <Text
-        style={{
-          fontFamily: 'Inter',
-          textTransform: 'uppercase',
-          letterSpacing: 1.32, // .12em * 11
-          fontSize: 11,
-          fontWeight: '600',
-          color: hovered ? '#333333' : '#09080e', // :hover -> var(--fg-2)
-        }}
+        style={
+          {
+            fontFamily: 'Inter',
+            textTransform: 'uppercase',
+            letterSpacing: 1.32, // .12em * 11
+            fontSize,
+            fontWeight: '600',
+            color: hovered ? '#333333' : '#09080e', // :hover -> var(--fg-2)
+          } as any
+        }
       >
         {label}
       </Text>
@@ -62,6 +65,7 @@ function NavLink({ label, href }: { label: string; href: string }) {
 // .nav-cta — white outline button; hover -> bg #fafbfc, border #b8b8b8 (.btn:hover).
 function NavCta() {
   const [hovered, setHovered] = useState(false)
+  const fontSize = useFluidPx(type.meta)
   const hoverProps: any =
     Platform.OS === 'web'
       ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
@@ -85,25 +89,28 @@ function NavCta() {
       }}
     >
       <Text
-        style={{
-          fontFamily: 'Inter',
-          textTransform: 'uppercase',
-          letterSpacing: 1.2, // .12em * 10
-          fontSize: 10,
-          lineHeight: 10,
-          fontWeight: '600',
-          color: '#09080e',
-        }}
+        style={
+          {
+            fontFamily: 'Inter',
+            textTransform: 'uppercase',
+            letterSpacing: 1.2, // .12em * 10
+            fontSize,
+            lineHeight: fontSize,
+            fontWeight: '600',
+            color: '#09080e',
+          } as any
+        }
       >
         Call now
       </Text>
-      <Text style={{ fontSize: 10, lineHeight: 10, color: '#09080e' }}>→</Text>
+      <Text style={{ fontSize, lineHeight: fontSize, color: '#09080e' } as any}>→</Text>
     </Pressable>
   )
 }
 
 // .nav-brand img.word (height 23) — text fallback on native.
 function Brand() {
+  const fontSize = useFluidPx(type.h4)
   if (Platform.OS === 'web') {
     return React.createElement('img', {
       src: '/brand/NCSW-wordmark.svg',
@@ -113,14 +120,16 @@ function Brand() {
   }
   return (
     <Text
-      style={{
-        fontFamily: 'Creato Display',
-        fontSize: 18,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        textTransform: 'uppercase',
-        color: '#09080e',
-      }}
+      style={
+        {
+          fontFamily: 'Creato Display',
+          fontSize,
+          fontWeight: '800',
+          letterSpacing: -0.5,
+          textTransform: 'uppercase',
+          color: '#09080e',
+        } as any
+      }
     >
       NCSW
     </Text>

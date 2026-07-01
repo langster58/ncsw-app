@@ -22,7 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Container, Section, SectionIntro } from '@/ui';
+import { Container, Section, SectionIntro, fluidLineHeight, type, useFluidPx } from '@/ui';
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
 const INK = '#09080e'; // --ncsw-ink / --fg-1
@@ -155,6 +155,7 @@ function IconArrow({ s = 15 }: { s?: number }) {
 
 // .door — uppercase, tracked link affordance.
 function Door({ label }: { label: string }) {
+  const fontSize = useFluidPx(type.meta)
   return (
     <Pressable
       style={{
@@ -168,15 +169,17 @@ function Door({ label }: { label: string }) {
       }}
     >
       <Text
-        style={{
-          fontFamily: FONT_BODY,
-          textTransform: 'uppercase',
-          letterSpacing: 0.12 * 11, // .12em @ 11px
-          fontSize: 11,
-          fontWeight: '600',
-          color: INK,
-          marginRight: 9, // .door gap
-        }}
+        style={
+          {
+            fontFamily: FONT_BODY,
+            textTransform: 'uppercase',
+            letterSpacing: 0.12 * 11, // .12em @ 11px
+            fontSize,
+            fontWeight: '600',
+            color: INK,
+            marginRight: 9, // .door gap
+          } as any
+        }
       >
         {label}
       </Text>
@@ -189,18 +192,21 @@ function Door({ label }: { label: string }) {
 
 // .figrows — label + horizontal bar rows (BlindAmpFig).
 function FigRows({ rows }: { rows: [string, number, boolean][] }) {
+  const fontSize = useFluidPx(type.meta)
   return (
     <View style={{ flexDirection: 'column', gap: 7 } as any}>
       {rows.map(([label, w, hi]) => (
         <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 } as any}>
           <Text
-            style={{
-              fontFamily: FONT_MONO,
-              fontVariant: ['tabular-nums'],
-              fontSize: 10,
-              color: GRAY,
-              width: 30,
-            }}
+            style={
+              {
+                fontFamily: FONT_MONO,
+                fontVariant: ['tabular-nums'],
+                fontSize,
+                color: GRAY,
+                width: 30,
+              } as any
+            }
           >
             {label}
           </Text>
@@ -377,18 +383,21 @@ function MiniFrontier() {
 
 // .minichart .legend
 function Legend() {
+  const fontSize = useFluidPx(type.meta)
   const item = (color: string, label: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 } as any}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
       <Text
-        style={{
-          fontFamily: FONT_BODY,
-          textTransform: 'uppercase',
-          letterSpacing: 0.1 * 8.5, // .1em @ 8.5px
-          fontWeight: '600',
-          fontSize: 8.5,
-          color: GRAY,
-        }}
+        style={
+          {
+            fontFamily: FONT_BODY,
+            textTransform: 'uppercase',
+            letterSpacing: 0.1 * 8.5, // .1em @ 8.5px
+            fontWeight: '600',
+            fontSize,
+            color: GRAY,
+          } as any
+        }
       >
         {label}
       </Text>
@@ -411,6 +420,12 @@ function PieceFigure({ kind }: { kind: FigKind }) {
 // ── Card ────────────────────────────────────────────────────────────────────
 // .piece — bordered, rounded card, flex column, figure pinned to bottom.
 function PieceCard({ piece, cardWidth }: { piece: Piece; cardWidth: number | undefined }) {
+  const noSize = useFluidPx(type.small)
+  const readSize = useFluidPx(type.meta)
+  const titleSize = useFluidPx(type.h4)
+  const titleLineHeight = fluidLineHeight(titleSize, 1.1)
+  const dekSize = useFluidPx(type.body)
+  const dekLineHeight = fluidLineHeight(dekSize, 1.55)
   return (
     <View
       style={{
@@ -436,25 +451,29 @@ function PieceCard({ piece, cardWidth }: { piece: Piece; cardWidth: number | und
         } as any}
       >
         <Text
-          style={{
-            fontFamily: FONT_MONO,
-            fontVariant: ['tabular-nums'],
-            fontSize: 12,
-            fontWeight: '500',
-            color: ACCENT_2,
-          }}
+          style={
+            {
+              fontFamily: FONT_MONO,
+              fontVariant: ['tabular-nums'],
+              fontSize: noSize,
+              fontWeight: '500',
+              color: ACCENT_2,
+            } as any
+          }
         >
           {piece.no}
         </Text>
         <Text
-          style={{
-            fontFamily: FONT_BODY,
-            textTransform: 'uppercase',
-            letterSpacing: 0.12 * 10, // .12em @ 10px
-            fontWeight: '600',
-            fontSize: 10,
-            color: GRAY,
-          }}
+          style={
+            {
+              fontFamily: FONT_BODY,
+              textTransform: 'uppercase',
+              letterSpacing: 0.12 * 10, // .12em @ 10px
+              fontWeight: '600',
+              fontSize: readSize,
+              color: GRAY,
+            } as any
+          }
         >
           {piece.read}
         </Text>
@@ -462,27 +481,31 @@ function PieceCard({ piece, cardWidth }: { piece: Piece; cardWidth: number | und
 
       {/* .piece h4 */}
       <Text
-        style={{
-          fontFamily: FONT_BODY,
-          fontSize: 25,
-          fontWeight: '600',
-          letterSpacing: -0.02 * 25, // -.02em @ 25px
-          lineHeight: 25 * 1.1,
-          color: INK,
-          marginTop: 18,
-        }}
+        style={
+          {
+            fontFamily: FONT_BODY,
+            fontSize: titleSize,
+            fontWeight: '600',
+            letterSpacing: -0.02 * 25, // -.02em @ 25px
+            lineHeight: titleLineHeight,
+            color: INK,
+            marginTop: 18,
+          } as any
+        }
       >
         {piece.title}
       </Text>
 
       {/* .dek */}
       <Text
-        style={{
-          color: GRAY,
-          fontSize: 15,
-          lineHeight: 15 * 1.55,
-          marginTop: 12,
-        }}
+        style={
+          {
+            color: GRAY,
+            fontSize: dekSize,
+            lineHeight: dekLineHeight,
+            marginTop: 12,
+          } as any
+        }
       >
         {piece.dek}
       </Text>

@@ -85,6 +85,7 @@ export const type = {
   heroLead: fluidType(18, 22), // 18px    22px   — hero statement
   lead: fluidType(17, 20), // 17px        20px   — section lede
   body: fluidType(15, 16), // 15px        16px   — body / card descriptions
+  small: fluidType(12, 14), // 12px       14px   — small labels / dense data text
   meta: fluidType(11, 12), // 11px        12px   — mono uppercase eyebrows/labels
 }
 

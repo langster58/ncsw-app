@@ -10,6 +10,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
+import { fluidLineHeight, type, useFluidPx } from '@/ui'
 
 // ── Source constants (verbatim) ─────────────────────────────────────────────
 const INK = '#09080E'
@@ -77,6 +78,7 @@ export function SubwooferFrontierChart() {
 }
 
 function NativePlaceholder() {
+  const fontSize = useFluidPx(type.meta)
   return (
     <View
       style={{
@@ -87,7 +89,7 @@ function NativePlaceholder() {
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: FONT_MONO, fontSize: 11, color: AXIS }}>
+      <Text style={{ fontFamily: FONT_MONO, fontSize, color: AXIS } as any}>
         Value-frontier chart available on web
       </Text>
     </View>
@@ -112,6 +114,7 @@ function WebChart() {
   const [price, setPrice] = useState(1670)
   const [rows, setRows] = useState<Row[]>([])
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const legendSize = useFluidPx(type.meta)
 
   // Pull the global dataset (<script defer> populates window.NCSW_SUBWOOFER_FRONTIER).
   useEffect(() => {
@@ -402,15 +405,15 @@ function WebChart() {
       >
         <LegendItem>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE }} />
-          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>On value frontier</Text>
+          <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>On value frontier</Text>
         </LegendItem>
         <LegendItem>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: rgba(INK, 0.22) }} />
-          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>Dominated</Text>
+          <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>Dominated</Text>
         </LegendItem>
         <LegendItem>
           <View style={{ width: 18, borderTopWidth: 2, borderTopColor: BLUE, borderStyle: 'dashed' } as any} />
-          <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2 }}>Efficient frontier</Text>
+          <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>Efficient frontier</Text>
         </LegendItem>
       </View>
     </View>
@@ -431,9 +434,10 @@ function ChipGroup({
   onChange: (v: string) => void
   renderOpt: (o: string) => string
 }) {
+  const fontSize = useFluidPx(type.meta)
   return (
     <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
-      <Text style={vfLabelStyle}>{label}</Text>
+      <Text style={{ ...vfLabelStyle, fontSize } as any}>{label}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 } as any}>
         {options.map((opt) => (
           <VfChip key={opt} on={value === opt} onPress={() => onChange(opt)}>
@@ -455,9 +459,10 @@ function PriceGroup({
   price: number
   setPrice: (n: number) => void
 }) {
+  const fontSize = useFluidPx(type.meta)
   return (
     <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
-      <Text style={vfLabelStyle}>
+      <Text style={{ ...vfLabelStyle, fontSize } as any}>
         Price <Text style={{ color: INK, textTransform: 'none', marginLeft: 2 }}>{priceLabel}</Text>
       </Text>
       {/* <input type=range> is the one HTML primitive with no RN-web equivalent. */}
@@ -486,6 +491,7 @@ function VfChip({
   children: React.ReactNode
 }) {
   const [hovered, setHovered] = useState(false)
+  const fontSize = useFluidPx(type.meta)
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
   const bg = on ? mixAccent8 : hovered ? '#fafbfc' : '#fff'
   const border = on ? BLUE : hovered ? '#cfd3d9' : LINE
@@ -505,7 +511,7 @@ function VfChip({
         paddingHorizontal: 7,
       }}
     >
-      <Text style={{ fontFamily: FONT_MONO, fontSize: 10.5, color, fontWeight: on ? '600' : '400' }}>
+      <Text style={{ fontFamily: FONT_MONO, fontSize, color, fontWeight: on ? '600' : '400' } as any}>
         {children}
       </Text>
     </Pressable>
@@ -513,9 +519,10 @@ function VfChip({
 }
 
 // ── .vf-label ───────────────────────────────────────────────────────────────
+// fontSize applied dynamically at each call site via useFluidPx(type.meta) —
+// kept out of this static object since it must resolve per-render.
 const vfLabelStyle = {
   fontFamily: FONT_MONO,
-  fontSize: 11,
   fontWeight: '600' as const,
   color: FG_2,
   textTransform: 'uppercase' as const,
@@ -528,6 +535,9 @@ const mixAccent8 = '#eef5fb'
 // ── .vf-tooltip ─────────────────────────────────────────────────────────────
 function Tooltip({ tooltip }: { tooltip: TooltipState }) {
   const r = tooltip.row
+  const titleSize = useFluidPx(type.small)
+  const bodySize = useFluidPx(type.meta)
+  const bodyLineHeight = fluidLineHeight(bodySize, 19 / 12)
   return (
     <View
       pointerEvents="none"
@@ -548,18 +558,18 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
         } as any
       }
     >
-      <Text style={{ fontFamily: FONT_BODY, fontSize: 13, fontWeight: '600', color: INK, marginBottom: 3 }}>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: titleSize, fontWeight: '600', color: INK, marginBottom: 3 } as any}>
         {r.name} ({r.sz}")
         {r.tier !== 'untiered' ? ' · ' + r.tier : ''}
       </Text>
-      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: bodySize, color: FG_2, lineHeight: bodyLineHeight } as any}>
         Impact <Text style={tipBold}>{r.m.toFixed(2)}</Text> · {money(r.price)} ·{' '}
         {tooltip.onFrontier ? <Text style={tipBold}>on frontier</Text> : 'dominated'}
       </Text>
-      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: bodySize, color: FG_2, lineHeight: bodyLineHeight } as any}>
         Box <Text style={tipBold}>{r.vb} ft³</Text> · Xmax <Text style={tipBold}>{r.xm}mm{r.xp ? ' (print)' : ''}</Text>
       </Text>
-      <Text style={{ fontFamily: FONT_BODY, fontSize: 12, color: FG_2, lineHeight: 19 }}>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: bodySize, color: FG_2, lineHeight: bodyLineHeight } as any}>
         RMS <Text style={tipBold}>{r.rms}W</Text> · Sens <Text style={tipBold}>{r.sens.toFixed(1)}dB 1W</Text>
       </Text>
     </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
-import { Container, Section } from '@/ui';
+import { Container, Section, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
 
 const INK = '#09080e';
 const FONT_BODY = 'Inter';
@@ -35,6 +35,7 @@ const FOOTER_TOP_CSS = `
 
 function FooterLink({ label }: { label: string }) {
   const [hovered, setHovered] = React.useState(false);
+  const fontSize = useFluidPx(type.small);
   return (
     <Pressable
       onPress={() => {}}
@@ -48,7 +49,7 @@ function FooterLink({ label }: { label: string }) {
             display: 'block',
             color: hovered ? '#ffffff' : 'rgba(255,255,255,0.82)',
             fontFamily: FONT_BODY,
-            fontSize: 14,
+            fontSize,
             transition: 'color .2s ease-in-out',
           } as any
         }
@@ -60,6 +61,9 @@ function FooterLink({ label }: { label: string }) {
 }
 
 function BrandBlock() {
+  const nativeMarkSize = useFluidPx(type.heroLead);
+  const copySize = useFluidPx(type.small);
+  const copyLineHeight = fluidLineHeight(copySize, lineHeight.body);
   return (
     <View
       style={
@@ -85,26 +89,30 @@ function BrandBlock() {
         })
       ) : (
         <Text
-          style={{
-            color: '#ffffff',
-            fontFamily: 'Creato Display',
-            fontSize: 22,
-            fontWeight: '800',
-            letterSpacing: 1,
-          }}
+          style={
+            {
+              color: '#ffffff',
+              fontFamily: 'Creato Display',
+              fontSize: nativeMarkSize,
+              fontWeight: '800',
+              letterSpacing: 1,
+            } as any
+          }
         >
           NCSW
         </Text>
       )}
       <Text
-        style={{
-          color: 'rgba(255,255,255,0.55)',
-          fontFamily: FONT_BODY,
-          fontSize: 14,
-          lineHeight: 14 * 1.6,
-          marginTop: 22,
-          maxWidth: 320,
-        }}
+        style={
+          {
+            color: 'rgba(255,255,255,0.55)',
+            fontFamily: FONT_BODY,
+            fontSize: copySize,
+            lineHeight: copyLineHeight,
+            marginTop: 22,
+            maxWidth: 320,
+          } as any
+        }
       >
         {BRAND_COPY}
       </Text>
@@ -116,6 +124,7 @@ function BrandBlock() {
 // (.ncsw-footer-navcols) so they group together with a reasonable, fixed
 // gap, independent of however much space is left after the brand block.
 function NavColumns() {
+  const headingSize = useFluidPx(type.meta);
   const cols = COLS.map((c) => (
     <View key={c.h}>
       <Text
@@ -124,7 +133,7 @@ function NavColumns() {
             fontFamily: FONT_BODY,
             textTransform: 'uppercase',
             letterSpacing: 0.12 * 11,
-            fontSize: 11,
+            fontSize: headingSize,
             fontWeight: '600',
             color: 'rgba(255,255,255,0.5)',
             marginBottom: 18,
@@ -149,6 +158,7 @@ function NavColumns() {
 // background) > Container (the same horizontal gutter as every other
 // section) > contents.
 export function Footer() {
+  const metaSize = useFluidPx(type.meta);
   return (
     <Section style={{ backgroundColor: INK } as any}>
       {Platform.OS === 'web'
@@ -192,7 +202,7 @@ export function Footer() {
                 {
                   fontFamily: FONT_MONO,
                   fontVariantNumeric: 'tabular-nums',
-                  fontSize: 11,
+                  fontSize: metaSize,
                   letterSpacing: 0.04 * 11,
                   color: 'rgba(255,255,255,0.45)',
                 } as any
@@ -207,7 +217,7 @@ export function Footer() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.12 * 11,
                   fontWeight: '600',
-                  fontSize: 11,
+                  fontSize: metaSize,
                   color: 'rgba(255,255,255,0.6)',
                 } as any
               }
