@@ -370,7 +370,8 @@ function WebChart() {
   const priceLabel = '≤ $' + price.toLocaleString('en-US')
   const controlsGap = useFluidPx(fluid(18, 14))
   const controlsMarginBottom = useFluidPx(fluid(12, 9))
-  const canvasMinHeight = useFluidPx(fluid(220, 170))
+  const canvasMinHeight = useFluidPx(fluid(300, 220))
+  const chartMinHeight = useFluidPx(fluid(480, 340))
   const legendGap = useFluidPx(fluid(12, 9))
   const legendMarginTop = useFluidPx(fluid(12, 9))
   const legendPaddingTop = useFluidPx(fluid(12, 9))
@@ -381,14 +382,17 @@ function WebChart() {
     <View
       style={
         {
-          // .vf-chart: width 100%, flex column, background white. Height is
-          // no longer pinned by min-height/flex:1 — that only grew when a
-          // CSS-grid `stretch` sibling handed it extra space, so it never
-          // actually shrank on its own as the viewport narrowed. The plot
-          // area below is sized by its own aspect-ratio instead, so total
-          // height is a direct function of this component's own width at
-          // every viewport, in lockstep with everything around it.
+          // .vf-chart: width 100%, flex column, background white. The card
+          // next to it (real photo + a long paragraph) is the natural
+          // height driver at almost every width, so this fills 100% of
+          // whatever height the CSS-grid row stretches its column to —
+          // via height:'100%' resolving against that grid-stretched
+          // ancestor, not a fixed/aspect-ratio guess that only matched the
+          // card by coincidence at one reference width. minHeight is a
+          // floor for the rare case this is the taller sibling.
           width: '100%',
+          height: '100%',
+          minHeight: chartMinHeight,
           backgroundColor: '#fff',
           color: INK,
         } as any
@@ -411,16 +415,16 @@ function WebChart() {
         <PriceGroup priceLabel={priceLabel} price={price} setPrice={setPrice} />
       </View>
 
-      {/* .vf-canvas-wrap — relative, sized by its own aspect ratio so it
-          scales with this component's rendered width instead of borrowing
-          height from a flex/grid ancestor. */}
+      {/* .vf-canvas-wrap — relative, flex:1 so it absorbs whatever height
+          the card leaves it after the controls/legend rows, rather than
+          being sized off its own width. */}
       <View
         ref={plotRef}
         style={
           {
             position: 'relative',
             width: '100%',
-            aspectRatio: 2,
+            flex: 1,
             minHeight: canvasMinHeight,
           } as any
         }

@@ -331,11 +331,12 @@ function MethodologyHub() {
             display: isWeb ? 'grid' : 'flex',
             gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             gap: gridGutter,
-            // 'stretch' let the shorter sibling silently inherit blank space
-            // from the taller one instead of both sizing off their own fluid
-            // content — that's what made the chart look height-locked. Each
-            // column now sizes to its own content/aspect-ratio.
-            alignItems: 'flex-start',
+            // The card (real photo + a long paragraph) is the natural
+            // height driver at nearly every width. 'stretch' hands the
+            // chart column the card's full row height; the chart itself
+            // fills it via height:'100%' + flex:1 on its plot area (see
+            // SubwooferFrontierChart) instead of guessing a fixed ratio.
+            alignItems: 'stretch',
             ...(isWeb ? {} : { flexDirection: 'column' }),
           } as any
         }
@@ -367,7 +368,12 @@ function MethodologyHub() {
           </Card>
         </View>
 
-        {/* .mc-exhibit — the live SubwooferFrontierChart exhibit. */}
+        {/* .mc-exhibit — the live SubwooferFrontierChart exhibit. As a
+            direct grid item this column is already stretched to the
+            card's row height by the grid's default alignItems:'stretch';
+            SubwooferFrontierChart's own root height:'100%' is what lets
+            it actually consume that height instead of sizing to its own
+            (shorter) content and leaving the rest blank. */}
         <View
           style={
             {
