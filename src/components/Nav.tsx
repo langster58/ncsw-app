@@ -212,33 +212,39 @@ export function Nav() {
             <Brand />
           </Pressable>
 
-          {/* .nav-menu (hidden <=900) — desktop web appends a pipe + the
-              plain-text phone number after the links, flush right as one
-              group. */}
-          {!narrow ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
-              {NAV_LINKS.map(([label, href]) => (
-                <NavLink key={label} label={label} href={href} />
-              ))}
-              {showPhoneAsText ? (
-                <>
-                  <Pipe />
-                  <PhoneText number="(216) 555-0114" />
-                </>
-              ) : null}
-            </View>
-          ) : null}
-
-          {/* right group: .nav-cta + .nav-burger — flush right */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            {showCallButton ? <CallButton /> : null}
-            {narrow ? (
-              <View style={{ flexDirection: 'column', gap: 5 }}>
-                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+          {/* Everything but the brand lives in one flush-right group, so
+              justifyContent:'space-between' only ever sees two real slots
+              (brand, this) — with the menu and the button/burger as two
+              separate items, space-between spread THEM apart too, leaving
+              a gap after the phone number instead of hugging the edge. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 } as any}>
+            {/* .nav-menu (hidden <=900) — desktop web appends a pipe + the
+                plain-text phone number after the links. */}
+            {!narrow ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+                {NAV_LINKS.map(([label, href]) => (
+                  <NavLink key={label} label={label} href={href} />
+                ))}
+                {showPhoneAsText ? (
+                  <>
+                    <Pipe />
+                    <PhoneText number="(216) 555-0114" />
+                  </>
+                ) : null}
               </View>
             ) : null}
+
+            {/* .nav-cta + .nav-burger */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+              {showCallButton ? <CallButton /> : null}
+              {narrow ? (
+                <View style={{ flexDirection: 'column', gap: 5 }}>
+                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
       </Container>
