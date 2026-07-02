@@ -1,12 +1,10 @@
-import React, { useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { Platform, Pressable, Text, View } from 'react-native'
 import { IconCheck, IconChevron } from './Icon'
 import { Modal } from './Modal'
 import { colors, fonts, radius } from './tokens'
 
-// Dropdown — labeled select with a single tap surface. The picker that opens
-// uses our Modal primitive on BOTH web and native so the opened UI conforms to
-// the rest of the application's styles (no browser-native dropdown).
+// Dropdown — labeled select with a single tap surface.
 //
 //   <Dropdown
 //     label="Year"
@@ -16,6 +14,14 @@ import { colors, fonts, radius } from './tokens'
 //     placeholder="Select year"
 //     disabled={!enabled}
 //   />
+//
+// The picker opens differently per platform:
+//   - Web: a compact popover anchored directly under the trigger, the way
+//     any desktop select/combobox behaves. A full-screen takeover for
+//     picking one value out of a short list reads as broken on a pointer-
+//     driven surface with plenty of room right below the control.
+//   - Native: our Modal primitive as a full-screen sheet — the standard,
+//     expected pattern for a picker on a phone.
 //
 // Layout:
 //   [  padding-x  ][ label  value ][ … chevron ][  padding-x  ]
@@ -52,12 +58,68 @@ export function Dropdown({
   const [open, setOpen] = useState(false)
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
+  const isWeb = Platform.OS === 'web'
 
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
   const borderColor = disabled ? colors.borderStrong : hovered ? colors.inkSoft : colors.borderStrong
 
+  const close = () => setOpen(false)
+  const select = (v: string) => {
+    onChange(v)
+    close()
+  }
+
+  // Web-only: Escape closes the popover (Modal already has its own ESC
+  // handling for the native full-screen sheet, so this only needs to exist
+  // on the web branch).
+  useEffect(() => {
+    if (!isWeb || !open || typeof document === 'undefined') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isWeb, open])
+
+  function optionRow(o: { label: string; value: string }, size: 'compact' | 'comfortable') {
+    const selected = o.value === value
+    const compact = size === 'compact'
+    return (
+      <Pressable
+        key={o.value}
+        onPress={() => select(o.value)}
+        style={
+          {
+            paddingVertical: compact ? 9 : 14,
+            paddingHorizontal: compact ? 10 : 4,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.line,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            ...(compact && isWeb ? { cursor: 'pointer' } : null),
+          } as any
+        }
+      >
+        <Text
+          style={
+            {
+              fontFamily: fonts.body,
+              fontSize: compact ? 14 : 16,
+              color: selected ? colors.accent : colors.ink,
+              fontWeight: selected ? '600' : '400',
+            } as any
+          }
+        >
+          {o.label}
+        </Text>
+        {selected ? <IconCheck size={compact ? 14 : 16} color={colors.accent} /> : null}
+      </Pressable>
+    )
+  }
+
   return (
-    <>
+    <View style={{ position: 'relative' } as any}>
       <Pressable
         disabled={disabled}
         onPress={() => setOpen(true)}
@@ -131,44 +193,53 @@ export function Dropdown({
         </View>
       </Pressable>
 
-      {/* Picker — Modal-based on both web and native. */}
-      <Modal open={open} onClose={() => setOpen(false)} title={label}>
-        <Modal.Body>
-          {norm.map((o) => {
-            const selected = o.value === value
-            return (
-              <Pressable
-                key={o.value}
-                onPress={() => {
-                  onChange(o.value)
-                  setOpen(false)
-                }}
-                style={{
-                  paddingVertical: 14,
-                  paddingHorizontal: 4,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.line,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: fonts.body,
-                    fontSize: 16,
-                    color: selected ? colors.accent : colors.ink,
-                    fontWeight: selected ? '600' : '400',
-                  }}
-                >
-                  {o.label}
-                </Text>
-                {selected ? <IconCheck size={16} color={colors.accent} /> : null}
-              </Pressable>
-            )
-          })}
-        </Modal.Body>
-      </Modal>
-    </>
+      {isWeb ? (
+        // Compact popover, anchored directly under the trigger — standard
+        // desktop select/combobox behavior. A full-screen takeover for one
+        // value out of a short list reads as broken on a pointer-driven
+        // surface with room to spare right below the control.
+        open ? (
+          <>
+            <Pressable
+              onPress={close}
+              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150 } as any}
+            />
+            <View
+              style={
+                {
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: 4,
+                  zIndex: 151,
+                  backgroundColor: colors.white,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  borderRadius: radius.sm,
+                  maxHeight: 260,
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(9, 8, 14, 0.14)',
+                } as any
+              }
+            >
+              {React.createElement(
+                'div',
+                { style: { maxHeight: 260, overflowY: 'auto' } },
+                <View style={{ paddingHorizontal: 4 } as any}>
+                  {norm.map((o) => optionRow(o, 'compact'))}
+                </View>,
+              )}
+            </View>
+          </>
+        ) : null
+      ) : (
+        // Native: full-screen sheet via Modal — the standard picker pattern
+        // on a phone.
+        <Modal open={open} onClose={close} title={label}>
+          <Modal.Body>{norm.map((o) => optionRow(o, 'comfortable'))}</Modal.Body>
+        </Modal>
+      )}
+    </View>
   )
 }
