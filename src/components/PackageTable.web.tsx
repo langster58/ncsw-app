@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Container } from '@/ui'
+import { Container, Dropdown, fluid, useFluidPx } from '@/ui'
 import { PackageTableModal } from './PackageTableModal.web'
 
 // PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
@@ -62,6 +62,40 @@ const monoWattsOf: Record<string, number> = {
   'Sundown SAE-1000': 1000,
   'DS18 FRP 3.5K': 3500,
 }
+
+// Vehicle selector — cascading Year -> Make -> Model -> Trim. The source
+// reads window.NCSW_VEHICLES (external/CMS), not present in this port. YEARS
+// below is real; MAKE/MODEL/TRIM are a small representative set standing in
+// for that feed so the control is genuinely interactive instead of chrome
+// with no options behind it.
+const YEARS = ['2026', '2025', '2024', '2023', '2022', '2021', '2020']
+const MAKES = ['Volkswagen', 'BMW', 'Audi', 'Subaru']
+const MODELS_BY_MAKE: Record<string, string[]> = {
+  Volkswagen: ['Golf Alltrack', 'GTI', 'Atlas'],
+  BMW: ['3 Series', 'X3', 'M4'],
+  Audi: ['A4', 'Q5', 'S3'],
+  Subaru: ['Outback', 'WRX', 'Forester'],
+}
+const TRIMS_BY_MODEL: Record<string, string[]> = {
+  'Golf Alltrack': ['SE', 'SEL'],
+  GTI: ['S', 'SE', 'Autobahn'],
+  Atlas: ['SE', 'SEL'],
+  '3 Series': ['330i', 'M340i'],
+  X3: ['xDrive30i', 'M40i'],
+  M4: ['Base', 'Competition'],
+  A4: ['Premium', 'Prestige'],
+  Q5: ['Premium', 'Prestige'],
+  S3: ['Premium Plus', 'Prestige'],
+  Outback: ['Premium', 'Limited', 'Touring'],
+  WRX: ['Premium', 'GT'],
+  Forester: ['Premium', 'Sport', 'Limited'],
+}
+
+// Sized to comfortably fit the longest realistic label + value (e.g. "MODEL"
+// + "Golf Alltrack") without the box stretching to fill leftover row width.
+// Fluid like the rest of the design system, not the fixed px this table
+// otherwise intentionally uses for its dense grid.
+const VEHICLE_FIELD_WIDTH = fluid(190, 150)
 
 type Row = {
   id: number
@@ -214,6 +248,26 @@ function stickyCell(col: Col, zebra: boolean): any {
 
 /* ---------------- main table ---------------- */
 export function PackageTable() {
+  const vehicleFieldWidth = useFluidPx(VEHICLE_FIELD_WIDTH)
+  const [vehYear, setVehYear] = useState('')
+  const [vehMake, setVehMake] = useState('')
+  const [vehModel, setVehModel] = useState('')
+  const [vehTrim, setVehTrim] = useState('')
+  const onVehYearChange = (v: string) => {
+    setVehYear(v)
+    setVehMake('')
+    setVehModel('')
+    setVehTrim('')
+  }
+  const onVehMakeChange = (v: string) => {
+    setVehMake(v)
+    setVehModel('')
+    setVehTrim('')
+  }
+  const onVehModelChange = (v: string) => {
+    setVehModel(v)
+    setVehTrim('')
+  }
   const [tier, setTier] = useState('All')
   const [topo, setTopo] = useState('All')
   const [count, setCount] = useState('All')
@@ -321,37 +375,49 @@ export function PackageTable() {
           gap: 8,
         }}
       >
-        {['Year', 'Make', 'Model', 'Trim'].map((label, i) => (
-          <View
-            key={label}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: LINES,
-              backgroundColor: WHITE,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              opacity: i === 0 ? 1 : 0.35, // Make/Model/Trim disabled until prior chosen (no vehicle data)
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: MONO,
-                fontSize: 10.5,
-                fontWeight: '500',
-                letterSpacing: 0.735,
-                textTransform: 'uppercase',
-                color: INK3,
-              }}
-            >
-              {label}
-            </Text>
-            <Text style={{ fontFamily: MONO, fontSize: 13, color: INK3 }}>⌄</Text>
+        {[
+          {
+            label: 'Year',
+            value: vehYear,
+            options: YEARS,
+            onChange: onVehYearChange,
+            placeholder: 'Select year',
+            disabled: false,
+          },
+          {
+            label: 'Make',
+            value: vehMake,
+            options: MAKES,
+            onChange: onVehMakeChange,
+            placeholder: 'Select make',
+            disabled: !vehYear,
+          },
+          {
+            label: 'Model',
+            value: vehModel,
+            options: vehMake ? (MODELS_BY_MAKE[vehMake] ?? []) : [],
+            onChange: onVehModelChange,
+            placeholder: 'Select model',
+            disabled: !vehMake,
+          },
+          {
+            label: 'Trim',
+            value: vehTrim,
+            options: vehModel ? (TRIMS_BY_MODEL[vehModel] ?? []) : [],
+            onChange: setVehTrim,
+            placeholder: 'Select trim',
+            disabled: !vehModel,
+          },
+        ].map((f) => (
+          <View key={f.label} style={{ width: vehicleFieldWidth } as any}>
+            <Dropdown
+              label={f.label}
+              value={f.value}
+              options={f.options}
+              onChange={f.onChange}
+              placeholder={f.placeholder}
+              disabled={f.disabled}
+            />
           </View>
         ))}
         <View style={{ width: 12 }} />
