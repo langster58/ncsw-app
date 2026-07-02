@@ -6,3 +6,6 @@ dist/
 build/
 .DS_Store
 /clamp strategy/
+
+# firecrawl scrape cache (research artifacts, not app code)
+.firecrawl/
