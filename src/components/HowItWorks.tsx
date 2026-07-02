@@ -10,9 +10,11 @@ import {
   Link,
   Section,
   SectionIntro,
+  fluid,
   fluidLineHeight,
   type,
   useFluidPx,
+  useFluidValue,
 } from '@/ui'
 import { SubwooferFrontierChart } from './SubwooferFrontierChart'
 
@@ -133,13 +135,14 @@ const doorImg = (file: string) => `/images/methodology/${file}`
 
 // ---- IconArrow (the .door "Continue reading ›" caret) ----
 // Source uses <IconArrow s={15} />. Web: inline SVG; native: a text caret.
-function IconArrow({ s = 15 }: { s?: number }) {
+function IconArrow({ s }: { s?: number }) {
+  const size = useFluidValue(s ?? 15, (s ?? 15) * 0.8)
   if (Platform.OS === 'web') {
     return React.createElement(
       'svg',
       {
-        width: s,
-        height: s,
+        width: size,
+        height: size,
         viewBox: '0 0 24 24',
         fill: 'none',
         stroke: 'currentColor',
@@ -157,14 +160,18 @@ function IconArrow({ s = 15 }: { s?: number }) {
 // .door — "Continue reading ›" link row (font-mono-ish accent label).
 function DoorLink() {
   const fontSize = useFluidPx(type.small)
+  const gap = useFluidPx(fluid(8, 6))
+  const marginTop = useFluidPx(fluid(12, 9))
   return (
     <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 12,
-      }}
+      style={
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap,
+          marginTop,
+        } as any
+      }
     >
       <Text
         style={
@@ -191,6 +198,8 @@ function DoorLink() {
 function DoorMedia({ img, label }: { img?: string; label: string }) {
   const isWeb = Platform.OS === 'web'
   const labelSize = useFluidPx(type.small)
+  const labelTop = useFluidPx(fluid(13, 10))
+  const labelLeft = useFluidPx(fluid(15, 11))
   return (
     <View
       style={{
@@ -232,8 +241,8 @@ function DoorMedia({ img, label }: { img?: string; label: string }) {
         style={
           {
             position: 'absolute',
-            top: 13,
-            left: 15,
+            top: labelTop,
+            left: labelLeft,
             zIndex: 2,
             fontFamily: 'IBM Plex Mono',
             fontSize: labelSize,
@@ -263,6 +272,9 @@ function MethodDoor({
 }) {
   const copySize = useFluidPx(type.small)
   const copyLineHeight = fluidLineHeight(copySize, 1.52)
+  const padTop = useFluidPx(fluid(15, 12))
+  const padX = useFluidPx(fluid(16, 12))
+  const padBottom = useFluidPx(fluid(17, 13))
   return (
     <View
       style={{
@@ -276,7 +288,7 @@ function MethodDoor({
     >
       <DoorMedia img={img} label={label} />
       {/* .mc-door-body { padding: 15px 16px 17px } */}
-      <View style={{ paddingTop: 15, paddingHorizontal: 16, paddingBottom: 17, flex: 1 }}>
+      <View style={{ paddingTop: padTop, paddingHorizontal: padX, paddingBottom: padBottom, flex: 1 } as any}>
         {/* .mc-door-greek */}
         <Text
           style={
@@ -303,13 +315,15 @@ function MethodDoor({
 function MethodologyHub() {
   const { width } = useWindowDimensions()
   const isWeb = Platform.OS === 'web'
-  const gridGutter = 32 // --ncsw-grid-gutter clamp upper bound
+  const gridGutter = useFluidPx(fluid(32, 20)) // --ncsw-grid-gutter, no ceiling
+  const topMargin = useFluidPx(fluid(52, 36))
+  const iconSize = useFluidValue(15, 12)
   // .mc-doors: 3 cols; @max 940px -> 2 cols.
   const doorCols = isWeb ? (width <= 940 ? 2 : 3) : 1
 
   return (
     // .mc { margin-top: 52px }
-    <View style={{ marginTop: 52 }}>
+    <View style={{ marginTop: topMargin } as any}>
       {/* .mc-grid : repeat(3, minmax(0,1fr)); tall door at col 1 + chart exhibit. */}
       <View
         style={
@@ -342,7 +356,7 @@ function MethodologyHub() {
               <Lead size="body">{SUBS_BODY}</Lead>
             </Card.Body>
             <Card.Footer>
-              <Link variant="door" icon={<UIIconArrow size={15} />}>
+              <Link variant="door" icon={<UIIconArrow size={iconSize} />}>
                 Continue reading
               </Link>
             </Card.Footer>

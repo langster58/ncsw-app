@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react'
 import { Linking, Platform, Pressable, Text, View } from 'react-native'
 import { HoverContext } from './HoverContext'
-import { colors, fonts, tracking } from './tokens'
+import { colors, fluid, fluidType, fonts, tracking, useFluidPx } from './tokens'
 
 // Link — four variants: nav, text, door, cta. Each maps to a source pattern:
 //   nav  → .nav-link  : uppercase tracked top-bar link
@@ -54,6 +54,8 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
   }
 
   const { fg, underline, font, size, weight, letterSpacing, transform } = resolveLink(variant, effectiveHover)
+  const fontSize = useFluidPx(size)
+  const gap = useFluidPx(fluid(9, 7))
 
   // On web, render a real <a href> when href is set so cmd-click / middle-click /
   // screen readers all work natively. The Pressable wraps the visual styling.
@@ -66,7 +68,7 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
         {
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 9,
+          gap,
           cursor: 'pointer',
           ...(focused && Platform.OS === 'web'
             ? { outlineWidth: 2, outlineStyle: 'solid', outlineColor: colors.focusRing, outlineOffset: 2 }
@@ -79,7 +81,7 @@ export function Link({ children, variant = 'text', href, icon, onPress }: LinkPr
           style={
             {
               fontFamily: font,
-              fontSize: size,
+              fontSize,
               fontWeight: weight,
               letterSpacing,
               textTransform: transform,
@@ -152,7 +154,7 @@ function resolveLink(variant: Variant, hovered: boolean) {
         fg: hovered ? colors.inkSoft : colors.ink,
         underline: false,
         font: fonts.body,
-        size: 11,
+        size: fluidType(11, 9),
         weight: '600' as const,
         letterSpacing: tracking.label,
         transform: 'uppercase' as const,
@@ -162,7 +164,7 @@ function resolveLink(variant: Variant, hovered: boolean) {
         fg: hovered ? colors.accent : colors.ink,
         underline: false,
         font: fonts.body,
-        size: 11,
+        size: fluidType(11, 9),
         weight: '600' as const,
         letterSpacing: tracking.label,
         transform: 'uppercase' as const,
@@ -172,7 +174,7 @@ function resolveLink(variant: Variant, hovered: boolean) {
         fg: hovered ? colors.ink : colors.accent,
         underline: true,
         font: fonts.body,
-        size: 15,
+        size: fluidType(15, 12),
         weight: '600' as const,
         letterSpacing: 0,
         transform: 'none' as const,
@@ -183,7 +185,7 @@ function resolveLink(variant: Variant, hovered: boolean) {
         fg: hovered ? colors.ink : colors.accent,
         underline: true,
         font: fonts.body,
-        size: 15,
+        size: fluidType(15, 12),
         weight: '400' as const,
         letterSpacing: 0,
         transform: 'none' as const,

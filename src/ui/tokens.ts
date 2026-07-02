@@ -60,6 +60,23 @@ export function useFluidPx(spec: number | string): number | string {
   return Math.max(floorPx, coefficient * width)
 }
 
+// Pure fluid math for contexts that need a real number, not a CSS string —
+// canvas drawing, SVG width/height attributes, native <input> props. Same
+// uniform-proportional-percentage formula as fluid()/fluidType(), just
+// evaluated immediately against a given viewport width instead of deferred
+// to the browser via CSS.
+export function fluidNumber(anchorPx: number, floorPx: number, viewportWidth: number): number {
+  return Math.max(floorPx, (anchorPx / REF_VW) * viewportWidth)
+}
+
+// Hook form of fluidNumber — reactive to the live viewport width on both
+// web and native, for use anywhere a plain JS number is required at render
+// time (icon size props, etc.) rather than a CSS value.
+export function useFluidValue(anchorPx: number, floorPx: number): number {
+  const { width } = useWindowDimensions()
+  return fluidNumber(anchorPx, floorPx, width)
+}
+
 // ── Type scale ──────────────────────────────────────────────────────────────
 // Modular scale, ratio 1.25 (Major Third), values in px shown for reference
 // (engine converts to rem). Spread (floor vs. 1920-anchor size) widens for

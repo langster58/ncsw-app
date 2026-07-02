@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Linking, Platform, Pressable, Text, View } from 'react-native'
 import { FullWidthCopyContext } from './CopyContext'
 import { HoverContext } from './HoverContext'
-import { colors, fonts, radius, tracking } from './tokens'
+import { colors, fluid, fluidType, fonts, radius, tracking, useFluidPx } from './tokens'
 
 // Card — composable container for the three card patterns on the homepage:
 //
@@ -204,11 +204,15 @@ function CardMediaTag({
   children: React.ReactNode
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 }) {
+  const offset = useFluidPx(fluid(14, 10))
+  const padX = useFluidPx(fluid(10, 7))
+  const padY = useFluidPx(fluid(5, 4))
+  const fontSize = useFluidPx(fluidType(10.5, 9))
   const pos: any = {}
-  if (position.startsWith('top')) pos.top = 14
-  else pos.bottom = 14
-  if (position.endsWith('left')) pos.left = 14
-  else pos.right = 14
+  if (position.startsWith('top')) pos.top = offset
+  else pos.bottom = offset
+  if (position.endsWith('left')) pos.left = offset
+  else pos.right = offset
   return (
     <View
       style={
@@ -217,8 +221,8 @@ function CardMediaTag({
           ...pos,
           backgroundColor: 'rgba(0,0,0,0.55)',
           borderRadius: 5,
-          paddingHorizontal: 10,
-          paddingVertical: 5,
+          paddingHorizontal: padX,
+          paddingVertical: padY,
           ...(Platform.OS === 'web' ? { backdropFilter: 'blur(4px)' } : null),
         } as any
       }
@@ -227,7 +231,7 @@ function CardMediaTag({
         style={
           {
             fontFamily: fonts.mono,
-            fontSize: 10.5,
+            fontSize,
             fontWeight: '600',
             letterSpacing: tracking.label,
             textTransform: 'uppercase',
@@ -245,10 +249,13 @@ function CardMediaTag({
 // since the right column is narrower than a full-bleed stacked card body.
 function CardBody({ children, gap = 16 }: { children: React.ReactNode; gap?: number }) {
   const layout = React.useContext(CardLayoutContext)
-  const pad = layout === 'split' ? 32 : 22
+  const padSplit = useFluidPx(fluid(32, 22))
+  const padStack = useFluidPx(fluid(22, 16))
+  const pad = layout === 'split' ? padSplit : padStack
+  const resolvedGap = useFluidPx(fluid(gap, Math.round(gap * 0.75)))
   return (
     <FullWidthCopyContext.Provider value={true}>
-      <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap } as any}>{children}</View>
+      <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap: resolvedGap } as any}>{children}</View>
     </FullWidthCopyContext.Provider>
   )
 }
@@ -257,17 +264,22 @@ function CardBody({ children, gap = 16 }: { children: React.ReactNode; gap?: num
 // right slot (e.g. "8 MIN READ"). Used in Editorial cards.
 function CardHeader({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   const layout = React.useContext(CardLayoutContext)
-  const pad = layout === 'split' ? 32 : 22
+  const padSplit = useFluidPx(fluid(32, 22))
+  const padStack = useFluidPx(fluid(22, 16))
+  const pad = layout === 'split' ? padSplit : padStack
+  const gap = useFluidPx(fluid(12, 10))
   return (
     <View
-      style={{
-        paddingHorizontal: pad,
-        paddingTop: pad,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-      }}
+      style={
+        {
+          paddingHorizontal: pad,
+          paddingTop: pad,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap,
+        } as any
+      }
     >
       <View>{children}</View>
       {right ? <View>{right}</View> : null}
@@ -279,13 +291,16 @@ function CardHeader({ children, right }: { children: React.ReactNode; right?: Re
 function CardFooter({ children }: { children: React.ReactNode }) {
   const layout = React.useContext(CardLayoutContext)
   const hovered = React.useContext(HoverContext)
-  const padX = layout === 'split' ? 32 : 22
+  const padXSplit = useFluidPx(fluid(32, 22))
+  const padXStack = useFluidPx(fluid(22, 16))
+  const padX = layout === 'split' ? padXSplit : padXStack
+  const padY = useFluidPx(fluid(18, 14))
   return (
     <View
       style={
         {
           paddingHorizontal: padX,
-          paddingVertical: 18,
+          paddingVertical: padY,
           borderTopWidth: 1,
           borderTopColor: colors.line,
           flexDirection: 'row',

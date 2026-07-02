@@ -10,7 +10,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
-import { fluidLineHeight, type, useFluidPx } from '@/ui'
+import { fluid, fluidLineHeight, fluidNumber, radius, type, useFluidPx, useFluidValue } from '@/ui'
 
 // ── Source constants (verbatim) ─────────────────────────────────────────────
 const INK = '#09080E'
@@ -156,10 +156,22 @@ function WebChart() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return undefined
     const dpr = window.devicePixelRatio || 1
-    const pad = { top: 20, right: 16, bottom: 48, left: 52 }
     let raf = 0
 
+    // Canvas drawing is imperative pixel math, invisible to CSS — so it needs
+    // its own scale read straight off the viewport width every time it
+    // redraws (on mount and on every resize), matching the same uniform
+    // proportional formula as the rest of the fluid engine.
+    function fpx(anchor: number, floor: number) {
+      return fluidNumber(anchor, floor, window.innerWidth)
+    }
+
+    function currentPad() {
+      return { top: fpx(20, 16), right: fpx(16, 13), bottom: fpx(48, 38), left: fpx(52, 42) }
+    }
+
     function layout() {
+      const pad = currentPad()
       const rect = plot.getBoundingClientRect()
       const width = Math.max(320, Math.round(rect.width))
       const height = Math.max(300, Math.round(rect.height))
@@ -171,6 +183,7 @@ function WebChart() {
       return {
         width,
         height,
+        pad,
         pW: width - pad.left - pad.right,
         pH: height - pad.top - pad.bottom,
       }
@@ -184,22 +197,25 @@ function WebChart() {
       const pMx = Math.max(...prices) + 100
       const mMn = Math.min(...impacts) - 0.1
       const mMx = Math.max(...impacts) + 0.1
-      const x = (p: number) => pad.left + ((p - pMn) / (pMx - pMn)) * box.pW
+      const x = (p: number) => box.pad.left + ((p - pMn) / (pMx - pMn)) * box.pW
       const y = (v: number) =>
-        pad.top + box.pH - ((Math.log10(v) - mMn) / (mMx - mMn)) * box.pH
+        box.pad.top + box.pH - ((Math.log10(v) - mMn) / (mMx - mMn)) * box.pH
       const frontier = pareto(filtered)
       return { pMn, pMx, mMn, mMx, x, y, frontier }
     }
 
     function draw() {
       const box = layout()
+      const pad = box.pad
       const model = compute(box)
       geomRef.current = model
+      const tickFontPx = fpx(11, 10)
+      const tickFont = `${tickFontPx}px 'IBM Plex Mono', monospace`
       ctx!.clearRect(0, 0, box.width, box.height)
       if (!model) {
         ctx!.fillStyle = AXIS
-        ctx!.font = '13px Inter, sans-serif'
-        ctx!.fillText('No drivers match these filters.', pad.left, pad.top + 28)
+        ctx!.font = `${fpx(13, 11)}px Inter, sans-serif`
+        ctx!.fillText('No drivers match these filters.', pad.left, pad.top + fpx(28, 22))
         return
       }
       const { pMn, pMx, mMn, mMx, x, y, frontier } = model
@@ -208,7 +224,10 @@ function WebChart() {
         priceSpan > 1800 ? 400 : priceSpan > 1200 ? 200 : priceSpan > 600 ? 100 : 50
       ctx!.strokeStyle = GRID
       ctx!.lineWidth = 1
-      ctx!.font = "11px 'IBM Plex Mono', monospace"
+      ctx!.font = tickFont
+      const tickOffsetY = fpx(18, 14)
+      const tickOffsetX = fpx(8, 6)
+      const tickNudge = fpx(4, 3)
 
       for (let p = Math.ceil(pMn / step) * step; p <= pMx; p += step) {
         const px = x(p)
@@ -218,7 +237,7 @@ function WebChart() {
         ctx!.stroke()
         ctx!.fillStyle = TICK
         ctx!.textAlign = 'center'
-        ctx!.fillText('$' + p, px, pad.top + box.pH + 18)
+        ctx!.fillText('$' + p, px, pad.top + box.pH + tickOffsetY)
       }
 
       ;[0.05, 0.1, 0.2, 0.5, 1, 2, 4, 8]
@@ -232,40 +251,44 @@ function WebChart() {
           ctx!.stroke()
           ctx!.fillStyle = TICK
           ctx!.textAlign = 'right'
-          ctx!.fillText(t < 1 ? String(t) : t === 1 ? '1.00' : String(t), pad.left - 8, py + 4)
+          ctx!.fillText(t < 1 ? String(t) : t === 1 ? '1.00' : String(t), pad.left - tickOffsetX, py + tickNudge)
         })
 
       ctx!.fillStyle = AXIS
-      ctx!.font = "11px 'IBM Plex Mono', monospace"
+      ctx!.font = tickFont
       ctx!.textAlign = 'center'
-      ctx!.fillText('PRICE', pad.left + box.pW / 2, box.height - 8)
+      ctx!.fillText('PRICE', pad.left + box.pW / 2, box.height - tickOffsetX)
       ctx!.save()
-      ctx!.translate(13, pad.top + box.pH / 2)
+      ctx!.translate(fpx(13, 10), pad.top + box.pH / 2)
       ctx!.rotate(-Math.PI / 2)
       ctx!.fillText('IMPACT - HC-12 = 1.00', 0, 0)
       ctx!.restore()
 
+      const frontierDash = fpx(4, 3)
       if (frontier.length) {
         ctx!.beginPath()
         frontier.forEach((r, i) =>
           i ? ctx!.lineTo(x(r.price), y(r.m)) : ctx!.moveTo(x(r.price), y(r.m)),
         )
         ctx!.strokeStyle = BLUE
-        ctx!.lineWidth = 1.5
-        ctx!.setLineDash([4, 4])
+        ctx!.lineWidth = fpx(1.5, 1.3)
+        ctx!.setLineDash([frontierDash, frontierDash])
         ctx!.stroke()
         ctx!.setLineDash([])
       }
 
+      const dotFrontierR = fpx(5.5, 4.5)
+      const dotDominatedR = fpx(4, 3.2)
+      const dotStrokeW = fpx(1.5, 1.3)
       filtered.forEach((r, i) => {
         if (i === hoverRef.current) return
         ctx!.beginPath()
-        ctx!.arc(x(r.price), y(r.m), frontier.includes(r) ? 5.5 : 4, 0, Math.PI * 2)
+        ctx!.arc(x(r.price), y(r.m), frontier.includes(r) ? dotFrontierR : dotDominatedR, 0, Math.PI * 2)
         ctx!.fillStyle = frontier.includes(r) ? BLUE : rgba(INK, 0.22)
         ctx!.fill()
         if (frontier.includes(r)) {
           ctx!.strokeStyle = '#fff'
-          ctx!.lineWidth = 1.5
+          ctx!.lineWidth = dotStrokeW
           ctx!.stroke()
         }
       })
@@ -273,11 +296,11 @@ function WebChart() {
       if (hoverRef.current >= 0 && filtered[hoverRef.current]) {
         const r = filtered[hoverRef.current]
         ctx!.beginPath()
-        ctx!.arc(x(r.price), y(r.m), 7, 0, Math.PI * 2)
+        ctx!.arc(x(r.price), y(r.m), fpx(7, 5.5), 0, Math.PI * 2)
         ctx!.fillStyle = MAGENTA
         ctx!.fill()
         ctx!.strokeStyle = '#fff'
-        ctx!.lineWidth = 2
+        ctx!.lineWidth = fpx(2, 1.6)
         ctx!.stroke()
       }
     }
@@ -294,7 +317,7 @@ function WebChart() {
       const mx = e.clientX - rect.left
       const my = e.clientY - rect.top
       let best = -1
-      let bestDist = 20
+      let bestDist = fpx(20, 16)
       filtered.forEach((row, i) => {
         const d = Math.hypot(mx - model.x(row.price), my - model.y(row.m))
         if (d < bestDist) {
@@ -309,10 +332,12 @@ function WebChart() {
       if (best >= 0) {
         const r = filtered[best]
         const onFrontier = model.frontier.includes(r)
-        let tx = mx + 16
-        if (tx + 320 > rect.width) tx = Math.max(4, mx - 330)
-        let ty = my - 44
-        if (ty < 0) ty = my + 16
+        const nudge = fpx(16, 13)
+        const tooltipWidthEst = fpx(320, 260)
+        let tx = mx + nudge
+        if (tx + tooltipWidthEst > rect.width) tx = Math.max(fpx(4, 3), mx - tooltipWidthEst - nudge)
+        let ty = my - fpx(44, 36)
+        if (ty < 0) ty = my + nudge
         setTooltip({ row: r, onFrontier, left: tx, top: ty })
       } else {
         setTooltip(null)
@@ -343,6 +368,15 @@ function WebChart() {
   }, [filtered])
 
   const priceLabel = '≤ $' + price.toLocaleString('en-US')
+  const chartMinHeight = useFluidPx(fluid(480, 340))
+  const controlsGap = useFluidPx(fluid(18, 14))
+  const controlsMarginBottom = useFluidPx(fluid(12, 9))
+  const canvasMinHeight = useFluidPx(fluid(300, 220))
+  const legendGap = useFluidPx(fluid(12, 9))
+  const legendMarginTop = useFluidPx(fluid(12, 9))
+  const legendPaddingTop = useFluidPx(fluid(12, 9))
+  const swatchSize = useFluidPx(fluid(10, 8))
+  const dashSwatchWidth = useFluidPx(fluid(18, 14))
 
   return (
     <View
@@ -352,7 +386,7 @@ function WebChart() {
           // We add an explicit min-height since RN doesn't read the
           // .vf-chart CSS rule (was: clamp(360px, 68vw, 520px) — pick 480 here).
           width: '100%',
-          minHeight: 480,
+          minHeight: chartMinHeight,
           backgroundColor: '#fff',
           color: INK,
         } as any
@@ -361,7 +395,13 @@ function WebChart() {
       {/* .vf-controls — flex row wrap, gap 14/18, margin-bottom 12 */}
       <View
         style={
-          { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 18, marginBottom: 12 } as any
+          {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            alignItems: 'flex-start',
+            gap: controlsGap,
+            marginBottom: controlsMarginBottom,
+          } as any
         }
       >
         <ChipGroup label="Size" options={SIZE_OPTIONS} value={size} onChange={setSize} renderOpt={(o) => (o === 'all' ? 'All' : o + '"')} />
@@ -377,7 +417,7 @@ function WebChart() {
             position: 'relative',
             width: '100%',
             flex: 1,
-            minHeight: 300,
+            minHeight: canvasMinHeight,
           } as any
         }
       >
@@ -395,24 +435,24 @@ function WebChart() {
             flexDirection: 'row',
             flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 12,
-            marginTop: 12,
-            paddingTop: 12,
+            gap: legendGap,
+            marginTop: legendMarginTop,
+            paddingTop: legendPaddingTop,
             borderTopWidth: 1,
             borderTopColor: LINE,
           } as any
         }
       >
         <LegendItem>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE }} />
+          <View style={{ width: swatchSize, height: swatchSize, borderRadius: radius.pill, backgroundColor: BLUE } as any} />
           <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>On value frontier</Text>
         </LegendItem>
         <LegendItem>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: rgba(INK, 0.22) }} />
+          <View style={{ width: swatchSize, height: swatchSize, borderRadius: radius.pill, backgroundColor: rgba(INK, 0.22) } as any} />
           <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>Dominated</Text>
         </LegendItem>
         <LegendItem>
-          <View style={{ width: 18, borderTopWidth: 2, borderTopColor: BLUE, borderStyle: 'dashed' } as any} />
+          <View style={{ width: dashSwatchWidth, borderTopWidth: 2, borderTopColor: BLUE, borderStyle: 'dashed' } as any} />
           <Text style={{ fontFamily: FONT_BODY, fontSize: legendSize, color: FG_2 } as any}>Efficient frontier</Text>
         </LegendItem>
       </View>
@@ -435,10 +475,12 @@ function ChipGroup({
   renderOpt: (o: string) => string
 }) {
   const fontSize = useFluidPx(type.meta)
+  const groupGap = useFluidPx(fluid(7, 6))
+  const chipGap = useFluidPx(fluid(5, 4))
   return (
-    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
+    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: groupGap } as any}>
       <Text style={{ ...vfLabelStyle, fontSize } as any}>{label}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 } as any}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: chipGap } as any}>
         {options.map((opt) => (
           <VfChip key={opt} on={value === opt} onPress={() => onChange(opt)}>
             {renderOpt(opt)}
@@ -460,10 +502,13 @@ function PriceGroup({
   setPrice: (n: number) => void
 }) {
   const fontSize = useFluidPx(type.meta)
+  const groupGap = useFluidPx(fluid(7, 6))
+  const marginLeft = useFluidPx(fluid(2, 2))
+  const sliderWidth = useFluidValue(170, 130)
   return (
-    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 7 } as any}>
+    <View style={{ flexDirection: 'column', alignItems: 'flex-start', gap: groupGap } as any}>
       <Text style={{ ...vfLabelStyle, fontSize } as any}>
-        Price <Text style={{ color: INK, textTransform: 'none', marginLeft: 2 }}>{priceLabel}</Text>
+        Price <Text style={{ color: INK, textTransform: 'none', marginLeft } as any}>{priceLabel}</Text>
       </Text>
       {/* <input type=range> is the one HTML primitive with no RN-web equivalent. */}
       {React.createElement('input', {
@@ -474,7 +519,7 @@ function PriceGroup({
         value: price,
         onChange: (e: any) => setPrice(Number(e.target.value)),
         'aria-label': 'Maximum subwoofer price',
-        style: { width: 170, accentColor: BLUE },
+        style: { width: sliderWidth, accentColor: BLUE },
       })}
     </View>
   )
@@ -492,6 +537,8 @@ function VfChip({
 }) {
   const [hovered, setHovered] = useState(false)
   const fontSize = useFluidPx(type.meta)
+  const padY = useFluidPx(fluid(4, 3))
+  const padX = useFluidPx(fluid(7, 5))
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
   const bg = on ? mixAccent8 : hovered ? '#fafbfc' : '#fff'
   const border = on ? BLUE : hovered ? '#cfd3d9' : LINE
@@ -502,14 +549,16 @@ function VfChip({
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
       {...hoverProps}
-      style={{
-        borderWidth: 1,
-        borderColor: border,
-        borderRadius: 5,
-        backgroundColor: bg,
-        paddingVertical: 4,
-        paddingHorizontal: 7,
-      }}
+      style={
+        {
+          borderWidth: 1,
+          borderColor: border,
+          borderRadius: 5,
+          backgroundColor: bg,
+          paddingVertical: padY,
+          paddingHorizontal: padX,
+        } as any
+      }
     >
       <Text style={{ fontFamily: FONT_MONO, fontSize, color, fontWeight: on ? '600' : '400' } as any}>
         {children}
@@ -538,6 +587,9 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
   const titleSize = useFluidPx(type.small)
   const bodySize = useFluidPx(type.meta)
   const bodyLineHeight = fluidLineHeight(bodySize, 19 / 12)
+  const padX = useFluidPx(fluid(13, 10))
+  const padY = useFluidPx(fluid(10, 8))
+  const titleMarginBottom = useFluidPx(fluid(3, 3))
   return (
     <View
       pointerEvents="none"
@@ -550,15 +602,15 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
           borderWidth: 1,
           borderColor: LINE,
           borderRadius: 8,
-          paddingHorizontal: 13,
-          paddingVertical: 10,
+          paddingHorizontal: padX,
+          paddingVertical: padY,
           zIndex: 10,
           // box-shadow: 0 6px 14px rgba(9,8,14,.1)
           boxShadow: '0 6px 14px rgba(9, 8, 14, 0.1)',
         } as any
       }
     >
-      <Text style={{ fontFamily: FONT_BODY, fontSize: titleSize, fontWeight: '600', color: INK, marginBottom: 3 } as any}>
+      <Text style={{ fontFamily: FONT_BODY, fontSize: titleSize, fontWeight: '600', color: INK, marginBottom: titleMarginBottom } as any}>
         {r.name} ({r.sz}")
         {r.tier !== 'untiered' ? ' · ' + r.tier : ''}
       </Text>
@@ -580,7 +632,8 @@ const tipBold = { color: INK, fontWeight: '500' as const }
 
 // ── Legend item ─────────────────────────────────────────────────────────────
 function LegendItem({ children }: { children: React.ReactNode }) {
+  const gap = useFluidPx(fluid(7, 5))
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>{children}</View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap } as any}>{children}</View>
   )
 }
