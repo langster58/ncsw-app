@@ -121,12 +121,13 @@ function Brand() {
   )
 }
 
-// Heading-styled, but modest — the display font/weight reads as a heading
-// without jumping all the way to h2/h3 scale, matching "heading type
-// setting but not too much larger than body text."
+// type.h2sm — the same size SectionIntro defaults to for every section
+// heading on the page (Editorial, Collections, etc. all use it unmodified),
+// so this reads as the same "heading" register as the rest of the site
+// rather than a smaller, bespoke nav-link size.
 function MobileNavLink({ label, href, onNavigate }: { label: string; href: string; onNavigate: () => void }) {
   const [hovered, setHovered] = useState(false)
-  const fontSize = useFluidPx(type.h4)
+  const fontSize = useFluidPx(type.h2sm)
   return (
     <Pressable
       onPress={() => {
