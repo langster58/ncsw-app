@@ -55,7 +55,7 @@ function HeroLede() {
 // (see Hero()), not a section with its own before/after rhythm.
 function HeroCta() {
   return (
-    <Button fullWidth onPress={callShop}>
+    <Button onPress={callShop}>
       Call {PHONE_NUMBER}
     </Button>
   )

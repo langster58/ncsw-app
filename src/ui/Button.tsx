@@ -26,10 +26,6 @@ type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
   disabled?: boolean
-  /** Stretches the button to fill its container instead of sizing to
-   *  content + padding. Off by default — every other call site keeps its
-   *  natural content width. */
-  fullWidth?: boolean
   onPress?: () => void
 }
 
@@ -37,7 +33,6 @@ export function Button({
   children,
   variant = 'secondary',
   disabled = false,
-  fullWidth = false,
   onPress,
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false)
@@ -69,6 +64,17 @@ export function Button({
       {...focusProps}
       style={
         {
+          // alignSelf:'flex-start' keeps this sized to its own content in
+          // every context. Every prior usage happened to sit in a
+          // flexDirection:'row' wrapper, where the default cross-axis
+          // stretch only affects height — so this never had to defend
+          // against it. In a plain column parent (e.g. Hero, stacked
+          // straight below a paragraph) React Native's actual default is
+          // alignItems:'stretch', which silently stretches an unconstrained
+          // child to the full width of its column. Without this, "content
+          // width" was never really the default — it just looked that way
+          // by accident of where the button happened to be used.
+          alignSelf: 'flex-start',
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -81,7 +87,6 @@ export function Button({
           borderRadius: radius.sm,
           backgroundColor: bg,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          ...(fullWidth ? { width: '100%' } : null),
           ...(focused && Platform.OS === 'web'
             ? {
                 outlineWidth: 2,
