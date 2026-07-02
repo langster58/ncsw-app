@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
+// @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
+import { createPortal } from 'react-dom'
 import { IconCheck, IconChevron } from './Icon'
 import { Modal } from './Modal'
 import { colors, fonts, radius } from './tokens'
@@ -56,6 +58,8 @@ export function Dropdown({
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
   const [open, setOpen] = useState(false)
+  const [anchorRect, setAnchorRect] = useState<{ top: number; left: number; width: number } | null>(null)
+  const triggerRef = useRef<any>(null)
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
   const isWeb = Platform.OS === 'web'
@@ -69,16 +73,38 @@ export function Dropdown({
     close()
   }
 
-  // Web-only: Escape closes the popover (Modal already has its own ESC
-  // handling for the native full-screen sheet, so this only needs to exist
-  // on the web branch).
+  // Every React Native View is `position:relative; z-index:0` by default,
+  // which makes each one its own local stacking context — a z-index set
+  // deep inside this component only wins against its own siblings, not
+  // against unrelated DOM elsewhere on the page (like table rows rendered
+  // after this control). Portaling straight to <body>, the same technique
+  // Modal already uses, is what actually guarantees this paints on top of
+  // everything. That means it's no longer nested under the trigger for
+  // position:absolute, so its screen position is measured explicitly.
+  useEffect(() => {
+    if (!isWeb || !open || !triggerRef.current || typeof triggerRef.current.getBoundingClientRect !== 'function') {
+      return
+    }
+    const r = triggerRef.current.getBoundingClientRect()
+    setAnchorRect({ top: r.bottom, left: r.left, width: r.width })
+  }, [isWeb, open])
+
+  // Web-only: Escape closes the popover, and so does any scroll — a
+  // position:fixed panel doesn't track the trigger as the page (or any
+  // scrollable ancestor) scrolls, so closing avoids it drifting away from
+  // the control it's anchored to. Modal already has its own ESC handling
+  // for the native full-screen sheet, so this only needs to exist here.
   useEffect(() => {
     if (!isWeb || !open || typeof document === 'undefined') return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', close, true)
+    }
   }, [isWeb, open])
 
   function optionRow(o: { label: string; value: string }, size: 'compact' | 'comfortable') {
@@ -121,6 +147,7 @@ export function Dropdown({
   return (
     <View style={{ position: 'relative' } as any}>
       <Pressable
+        ref={triggerRef}
         disabled={disabled}
         onPress={() => setOpen(true)}
         accessibilityRole="button"
@@ -193,53 +220,55 @@ export function Dropdown({
         </View>
       </Pressable>
 
-      {isWeb ? (
-        // Compact popover, anchored directly under the trigger — standard
-        // desktop select/combobox behavior. A full-screen takeover for one
-        // value out of a short list reads as broken on a pointer-driven
-        // surface with room to spare right below the control.
-        open ? (
-          <>
-            <Pressable
-              onPress={close}
-              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150 } as any}
-            />
-            <View
-              style={
-                {
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  marginTop: 4,
-                  zIndex: 151,
-                  backgroundColor: colors.white,
-                  borderWidth: 1,
-                  borderColor: colors.line,
-                  borderRadius: radius.sm,
-                  maxHeight: 260,
-                  overflow: 'hidden',
-                  boxShadow: '0 8px 24px rgba(9, 8, 14, 0.14)',
-                } as any
-              }
-            >
-              {React.createElement(
-                'div',
-                { style: { maxHeight: 260, overflowY: 'auto' } },
-                <View style={{ paddingHorizontal: 4 } as any}>
-                  {norm.map((o) => optionRow(o, 'compact'))}
-                </View>,
-              )}
-            </View>
-          </>
-        ) : null
-      ) : (
-        // Native: full-screen sheet via Modal — the standard picker pattern
-        // on a phone.
-        <Modal open={open} onClose={close} title={label}>
-          <Modal.Body>{norm.map((o) => optionRow(o, 'comfortable'))}</Modal.Body>
-        </Modal>
-      )}
+      {isWeb
+        ? // Compact popover, anchored directly under the trigger — standard
+          // desktop select/combobox behavior, portaled to <body> so it
+          // always paints above the rest of the page (see the comment on
+          // the measuring effect above for why).
+          open && anchorRect && typeof document !== 'undefined'
+          ? createPortal(
+              <>
+                <Pressable
+                  onPress={close}
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 299 } as any}
+                />
+                <View
+                  style={
+                    {
+                      position: 'fixed',
+                      top: anchorRect.top + 4,
+                      left: anchorRect.left,
+                      width: anchorRect.width,
+                      zIndex: 300,
+                      backgroundColor: colors.white,
+                      borderWidth: 1,
+                      borderColor: colors.line,
+                      borderRadius: radius.sm,
+                      maxHeight: 260,
+                      overflow: 'hidden',
+                      boxShadow: '0 8px 24px rgba(9, 8, 14, 0.14)',
+                    } as any
+                  }
+                >
+                  {React.createElement(
+                    'div',
+                    { style: { maxHeight: 260, overflowY: 'auto' } },
+                    <View style={{ paddingHorizontal: 4 } as any}>
+                      {norm.map((o) => optionRow(o, 'compact'))}
+                    </View>,
+                  )}
+                </View>
+              </>,
+              document.body,
+            )
+          : null
+        : // Native: full-screen sheet via Modal — the standard picker pattern
+          // on a phone.
+          (
+            <Modal open={open} onClose={close} title={label}>
+              <Modal.Body>{norm.map((o) => optionRow(o, 'comfortable'))}</Modal.Body>
+            </Modal>
+          )}
     </View>
   )
 }
