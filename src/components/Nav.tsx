@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { Container, type, useFluidPx } from '@/ui'
+// @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
+import { createPortal } from 'react-dom'
+import { Container, IconClose, fluid, type, useFluidPx } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
 //   .nav { position:sticky; top:0; z-index:80; background:rgba(255,255,255,.85);
@@ -119,6 +121,100 @@ function Brand() {
   )
 }
 
+// Heading-styled, but modest — the display font/weight reads as a heading
+// without jumping all the way to h2/h3 scale, matching "heading type
+// setting but not too much larger than body text."
+function MobileNavLink({ label, href, onNavigate }: { label: string; href: string; onNavigate: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const fontSize = useFluidPx(type.h4)
+  return (
+    <Pressable
+      onPress={() => {
+        onNavigate()
+        openHref(href)
+      }}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+    >
+      <Text
+        style={
+          {
+            fontFamily: 'Creato Display',
+            fontWeight: '800',
+            fontSize,
+            color: hovered ? '#333333' : '#09080e',
+          } as any
+        }
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+// Full-screen menu opened by the hamburger, mobile web only. Portaled to
+// <body> (same technique as Modal/Dropdown) so it always paints above the
+// rest of the page. Positioned to start right below the nav bar (measured
+// via navBarHeight) rather than covering it, so the bar — and the
+// hamburger, now an X — stays visible and tappable to close.
+function MobileNavMenu({
+  open,
+  onClose,
+  navBarHeight,
+}: {
+  open: boolean
+  onClose: () => void
+  navBarHeight: number
+}) {
+  const gap = useFluidPx(fluid(22, 16))
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, onClose])
+
+  if (!open || typeof document === 'undefined') return null
+
+  return createPortal(
+    <View
+      style={
+        {
+          position: 'fixed',
+          top: navBarHeight,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 90,
+          backgroundColor: '#ffffff',
+          alignItems: 'center',
+          justifyContent: 'center',
+        } as any
+      }
+    >
+      {/* No alignItems override here: RN's default 'stretch' on a
+          column makes every link's box match the width of the widest
+          one (the column itself auto-sizes to that same width), and
+          text default-aligns left within its own box — exactly "align
+          left, centered as a group by the longest link's width." */}
+      <View style={{ gap } as any}>
+        {NAV_LINKS.map(([label, href]) => (
+          <MobileNavLink key={label} label={label} href={href} onNavigate={onClose} />
+        ))}
+      </View>
+    </View>,
+    document.body,
+  )
+}
+
 // Nav's horizontal gutter comes entirely from <Container> — the same
 // primitive every other section uses. No hand-rolled padX/useFluidPx here.
 export function Nav() {
@@ -130,6 +226,23 @@ export function Nav() {
   // Hero.tsx), as a standard heading/copy/CTA layout.
   const showPhoneAsText = Platform.OS === 'web' && !narrow
   const navY = narrow ? 14 : 16
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [navBarHeight, setNavBarHeight] = useState(0)
+  const navBarRef = useRef<any>(null)
+
+  // Not narrow anymore (viewport widened past the breakpoint) — don't leave
+  // the full-screen menu mounted with the desktop link row now also showing.
+  useEffect(() => {
+    if (!narrow) setMobileNavOpen(false)
+  }, [narrow])
+
+  useEffect(() => {
+    if (!mobileNavOpen || !navBarRef.current || typeof navBarRef.current.getBoundingClientRect !== 'function') {
+      return
+    }
+    setNavBarHeight(navBarRef.current.getBoundingClientRect().height)
+  }, [mobileNavOpen])
 
   // Sits as the first row of the page's flex column (see app/index.tsx);
   // the ScrollView below it is what scrolls. No sticky positioning needed,
@@ -143,7 +256,7 @@ export function Nav() {
   }
 
   return (
-    <View style={navStyle}>
+    <View style={navStyle} ref={navBarRef}>
       <Container>
         <View
           style={
@@ -187,19 +300,38 @@ export function Nav() {
               </View>
             ) : null}
 
-            {/* .nav-burger */}
+            {/* .nav-burger — becomes an X in the same spot while the
+                full-screen menu is open, so the tap target that opened it
+                is also what closes it. */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
               {narrow ? (
-                <View style={{ flexDirection: 'column', gap: 5 }}>
-                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                  <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                </View>
+                <Pressable
+                  onPress={() => setMobileNavOpen((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={mobileNavOpen ? 'Close menu' : 'Open menu'}
+                  hitSlop={8}
+                >
+                  {mobileNavOpen ? (
+                    <IconClose size={20} color="#09080e" />
+                  ) : (
+                    <View style={{ flexDirection: 'column', gap: 5 }}>
+                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                    </View>
+                  )}
+                </Pressable>
               ) : null}
             </View>
           </View>
         </View>
       </Container>
+
+      <MobileNavMenu
+        open={narrow && mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        navBarHeight={navBarHeight}
+      />
     </View>
   )
 }
