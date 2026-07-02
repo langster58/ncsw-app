@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Container, Dropdown, fluid, useFluidPx } from '@/ui'
+import { Container, Dropdown, IconClose, fluid, useFluidPx } from '@/ui'
 import { PackageTableModal } from './PackageTableModal.web'
 
 // PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
@@ -282,6 +282,50 @@ function stickyCell(col: Col, zebra: boolean): any {
   return { position: 'sticky', left: 0, zIndex: 10, backgroundColor: bg, boxShadow: '1px 0 0 ' + LINE }
 }
 
+// Tertiary text action, not a bordered button — resetting isn't a primary
+// action and shouldn't visually compete with the dropdowns or Sort & Filter.
+// Stays mounted in the same place whether or not there's anything to clear
+// (muted + inert vs. accent + clickable) so the row doesn't reflow when a
+// field is picked.
+function VehicleResetLink({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const color = disabled ? INK3 : ACCENT
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      accessibilityRole="button"
+      accessibilityLabel="Reset vehicle"
+      style={
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          opacity: disabled ? 0.35 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        } as any
+      }
+    >
+      <IconClose size={11} color={color} />
+      <Text
+        style={{
+          fontFamily: MONO,
+          fontSize: 10.5,
+          fontWeight: '500',
+          letterSpacing: 0.735,
+          textTransform: 'uppercase',
+          color,
+          textDecorationLine: hovered && !disabled ? 'underline' : 'none',
+        }}
+      >
+        Reset
+      </Text>
+    </Pressable>
+  )
+}
+
 /* ---------------- main table ---------------- */
 export function PackageTable() {
   const vehicleFieldWidth = useFluidPx(VEHICLE_FIELD_WIDTH)
@@ -302,6 +346,13 @@ export function PackageTable() {
   }
   const onVehModelChange = (v: string) => {
     setVehModel(v)
+    setVehTrim('')
+  }
+  const hasVehicleSelection = !!(vehYear || vehMake || vehModel || vehTrim)
+  const onVehicleReset = () => {
+    setVehYear('')
+    setVehMake('')
+    setVehModel('')
     setVehTrim('')
   }
   const [tier, setTier] = useState('All')
@@ -458,6 +509,7 @@ export function PackageTable() {
               />
             </View>
           ))}
+          <VehicleResetLink disabled={!hasVehicleSelection} onPress={onVehicleReset} />
         </View>
         <Pressable
           onPress={() => setSheet(true)}
