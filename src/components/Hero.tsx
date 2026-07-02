@@ -50,14 +50,14 @@ function HeroLede() {
   return <Lead size="heroLead">{STATEMENT}</Lead>
 }
 
-// .hero-call — the CTA button, mobile web/tablet/native only.
+// .hero-call — the CTA button, mobile web/tablet/native only. No spacing
+// of its own — it's a sibling of HeroLede inside the same gapped column
+// (see Hero()), not a section with its own before/after rhythm.
 function HeroCta() {
   return (
-    <View style={{ marginTop: 22 } as any}>
-      <Button variant="primary" onPress={callShop}>
-        Call {PHONE_NUMBER}
-      </Button>
-    </View>
+    <Button fullWidth onPress={callShop}>
+      Call {PHONE_NUMBER}
+    </Button>
   )
 }
 

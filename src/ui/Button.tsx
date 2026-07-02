@@ -26,6 +26,10 @@ type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
   disabled?: boolean
+  /** Stretches the button to fill its container instead of sizing to
+   *  content + padding. Off by default — every other call site keeps its
+   *  natural content width. */
+  fullWidth?: boolean
   onPress?: () => void
 }
 
@@ -33,6 +37,7 @@ export function Button({
   children,
   variant = 'secondary',
   disabled = false,
+  fullWidth = false,
   onPress,
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false)
@@ -76,6 +81,7 @@ export function Button({
           borderRadius: radius.sm,
           backgroundColor: bg,
           cursor: disabled ? 'not-allowed' : 'pointer',
+          ...(fullWidth ? { width: '100%' } : null),
           ...(focused && Platform.OS === 'web'
             ? {
                 outlineWidth: 2,
