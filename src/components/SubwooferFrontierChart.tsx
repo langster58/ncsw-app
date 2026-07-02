@@ -173,8 +173,11 @@ function WebChart() {
     function layout() {
       const pad = currentPad()
       const rect = plot.getBoundingClientRect()
-      const width = Math.max(320, Math.round(rect.width))
-      const height = Math.max(300, Math.round(rect.height))
+      // Sanity guards only — the real floor is the wrap's CSS min-height.
+      // Hard JS floors here (was 320/300) styled the canvas at least that
+      // tall regardless of what the layout had actually given it.
+      const width = Math.max(50, Math.round(rect.width))
+      const height = Math.max(50, Math.round(rect.height))
       canvas!.width = width * dpr
       canvas!.height = height * dpr
       canvas!.style.width = width + 'px'
@@ -436,9 +439,16 @@ function WebChart() {
           } as any
         }
       >
+        {/* Absolutely positioned so the pixel size the draw loop assigns
+            (canvas.style.height = Npx) never re-enters layout. In normal
+            flow, that explicit height became part of the chart's natural
+            content height on the next grid row-sizing pass — so the row
+            could never shrink below whatever the canvas was last measured
+            at, the wrap never resized, ResizeObserver never fired, and the
+            chart's height ratcheted permanently to its largest value. */}
         {React.createElement('canvas', {
           ref: canvasRef,
-          style: { display: 'block', width: '100%', height: '100%', cursor: 'crosshair' },
+          style: { position: 'absolute', top: 0, left: 0, cursor: 'crosshair' },
         })}
         {tooltip ? <Tooltip tooltip={tooltip} /> : null}
       </View>
