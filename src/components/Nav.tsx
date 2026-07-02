@@ -62,8 +62,37 @@ function NavLink({ label, href }: { label: string; href: string }) {
   )
 }
 
+// Plain phone-number text — desktop web only. There's no in-page action a
+// desktop click could take (no dialer, no tel: handoff worth offering), so
+// this is deliberately inert: no href, no press handling, just text.
+function PhoneText({ number }: { number: string }) {
+  const fontSize = useFluidPx(type.meta)
+  return (
+    <Text
+      style={
+        {
+          fontFamily: 'Inter',
+          fontSize,
+          fontWeight: '600',
+          color: '#09080e',
+        } as any
+      }
+    >
+      {number}
+    </Text>
+  )
+}
+
+// Divider between the link list and the phone number — desktop web only.
+function Pipe() {
+  const fontSize = useFluidPx(type.meta)
+  return <Text style={{ fontFamily: 'Inter', fontSize, color: '#dcdcdc' } as any}>|</Text>
+}
+
 // .nav-cta — white outline button; hover -> bg #fafbfc, border #b8b8b8 (.btn:hover).
-function NavCta() {
+// Shown on mobile web (<=900) and native, where tapping can actually open
+// the dialer. Desktop renders PhoneText instead — see above.
+function CallButton() {
   const [hovered, setHovered] = useState(false)
   const fontSize = useFluidPx(type.meta)
   const hoverProps: any =
@@ -140,7 +169,13 @@ function Brand() {
 // primitive every other section uses. No hand-rolled padX/useFluidPx here.
 export function Nav() {
   const { width } = useWindowDimensions()
+  // Web-only breakpoint that collapses the link list into a hamburger.
   const narrow = Platform.OS === 'web' && width <= 900
+  // Anywhere tapping can actually open the dialer: mobile web, and native
+  // (which has no "desktop" — it's always the compact chrome). Only true
+  // desktop web renders the phone number as inert text instead.
+  const showCallButton = narrow || Platform.OS !== 'web'
+  const showPhoneAsText = Platform.OS === 'web' && !narrow
   const navY = narrow ? 14 : 16
 
   // Sits as the first row of the page's flex column (see app/index.tsx);
@@ -177,18 +212,26 @@ export function Nav() {
             <Brand />
           </Pressable>
 
-          {/* .nav-menu (hidden <=900) */}
+          {/* .nav-menu (hidden <=900) — desktop web appends a pipe + the
+              plain-text phone number after the links, flush right as one
+              group. */}
           {!narrow ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
               {NAV_LINKS.map(([label, href]) => (
                 <NavLink key={label} label={label} href={href} />
               ))}
+              {showPhoneAsText ? (
+                <>
+                  <Pipe />
+                  <PhoneText number="(216) 555-0114" />
+                </>
+              ) : null}
             </View>
           ) : null}
 
           {/* right group: .nav-cta + .nav-burger — flush right */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            {!narrow ? <NavCta /> : null}
+            {showCallButton ? <CallButton /> : null}
             {narrow ? (
               <View style={{ flexDirection: 'column', gap: 5 }}>
                 <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
