@@ -12,8 +12,6 @@ export interface Vehicles {
   cab_type: string | null
   generation: string | null
   trim: string | null
-  drive: string | null
-  gearbox: string | null
   seats: number | null
   segment: string | null
   start_year_production: number | null
@@ -214,6 +212,7 @@ export interface DspProcessors {
   in_stock: boolean | null
   coming_soon: boolean | null
   dsp_resolution: string | null
+  requires_fullrange_input: boolean | null
 }
 
 export interface FrontSubs {
