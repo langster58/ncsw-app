@@ -91,56 +91,6 @@ function Pipe() {
   return <Text style={{ fontFamily: 'Inter', fontSize, color: '#dcdcdc' } as any}>|</Text>
 }
 
-// .nav-cta — white outline button; hover -> bg #fafbfc, border #b8b8b8 (.btn:hover).
-// Shown on mobile web (<=900) and native, where tapping can actually open
-// the dialer. Desktop renders PhoneText instead — see above. Label is the
-// number itself (not "Call now") so it reads the same as PhoneText and
-// there's exactly one visual form of the phone number on the page instead
-// of two competing ones.
-function CallButton({ number }: { number: string }) {
-  const [hovered, setHovered] = useState(false)
-  const fontSize = useFluidPx(type.meta)
-  const digits = number.replace(/\D/g, '')
-  const hoverProps: any =
-    Platform.OS === 'web'
-      ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
-      : {}
-  return (
-    <Pressable
-      onPress={() => openHref(`tel:+1${digits}`)}
-      {...hoverProps}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 9,
-        minHeight: 36,
-        borderWidth: 1,
-        borderColor: hovered ? '#b8b8b8' : '#dcdcdc',
-        borderRadius: 8, // var(--radius-sm)
-        backgroundColor: hovered ? '#fafbfc' : '#ffffff',
-        paddingVertical: 7,
-        paddingHorizontal: 14,
-      }}
-    >
-      <Text
-        style={
-          {
-            fontFamily: 'Inter',
-            fontSize,
-            lineHeight: fontSize,
-            fontWeight: '600',
-            color: '#09080e',
-          } as any
-        }
-      >
-        {number}
-      </Text>
-      <Text style={{ fontSize, lineHeight: fontSize, color: '#09080e' } as any}>→</Text>
-    </Pressable>
-  )
-}
-
 // .nav-brand img.word (height 23) — text fallback on native.
 function Brand() {
   const fontSize = useFluidPx(type.h4)
@@ -175,10 +125,9 @@ export function Nav() {
   const { width } = useWindowDimensions()
   // Web-only breakpoint that collapses the link list into a hamburger.
   const narrow = Platform.OS === 'web' && width <= 900
-  // Anywhere tapping can actually open the dialer: mobile web, and native
-  // (which has no "desktop" — it's always the compact chrome). Only true
-  // desktop web renders the phone number as inert text instead.
-  const showCallButton = narrow || Platform.OS !== 'web'
+  // Desktop web only. Mobile web/tablet/native don't get a call affordance
+  // in the nav at all — that lives below the Hero paragraph instead (see
+  // Hero.tsx), as a standard heading/copy/CTA layout.
   const showPhoneAsText = Platform.OS === 'web' && !narrow
   const navY = narrow ? 14 : 16
 
@@ -238,9 +187,8 @@ export function Nav() {
               </View>
             ) : null}
 
-            {/* .nav-cta + .nav-burger */}
+            {/* .nav-burger */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              {showCallButton ? <CallButton number={PHONE_NUMBER} /> : null}
               {narrow ? (
                 <View style={{ flexDirection: 'column', gap: 5 }}>
                   <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />

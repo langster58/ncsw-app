@@ -1,6 +1,6 @@
 import React from 'react'
-import { Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Container, Lead, Section, type, useFluidPx } from '@/ui'
+import { Linking, Platform, Text, View, useWindowDimensions } from 'react-native'
+import { Button, Container, Lead, Section, type, useFluidPx } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
 //   .hero { padding: 64px 0 0 }
@@ -8,8 +8,10 @@ import { Container, Lead, Section, type, useFluidPx } from '@/ui'
 //   .hero-wordmark { display:block; width:100%; max-width:760px; height:auto }
 //   .hero-statement { display:grid; grid-template-columns:1fr; gap:28px; margin-top:24px }
 //   .hero-lede { max-width:760px; font-size:22px; line-height:1.45; font-weight:400; color:#09080e }
-//   .hero-call — dropped: the nav's own call button (mobile web + native)
-//   already covers this, so a second call affordance here just duplicated it.
+//   .hero-call — the CTA below the paragraph, mobile web/tablet/native only
+//   (standard heading -> copy -> CTA hero pattern). Desktop nav already
+//   shows the number as plain text, so no CTA is shown here on desktop —
+//   see Nav.tsx.
 //   .montage { margin-top:56px }
 //   .montage-grid { grid; repeat(4,1fr); gap:1px; background:#1b1b1b; overflow:hidden }  (1fr 1fr mobile)
 //   .montage-cell { aspect-ratio:3/4; overflow:hidden; background:#000 }
@@ -31,10 +33,32 @@ const MONTAGE = [
   '/video/install-kia.mp4',
 ]
 
+const PHONE_NUMBER = '(216) 555-0114'
+
+function callShop() {
+  const href = 'tel:+12165550114'
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.location.href = href
+  } else {
+    Linking.openURL(href).catch(() => {})
+  }
+}
+
 // .hero-lede — uses the Lead primitive at heroLead size (22px ref) so
 // body color / max-width / line-height flow from tokens.
 function HeroLede() {
   return <Lead size="heroLead">{STATEMENT}</Lead>
+}
+
+// .hero-call — the CTA button, mobile web/tablet/native only.
+function HeroCta() {
+  return (
+    <View style={{ marginTop: 22 } as any}>
+      <Button variant="primary" onPress={callShop}>
+        Call {PHONE_NUMBER}
+      </Button>
+    </View>
+  )
 }
 
 // One .montage-cell with its <video> and the ::after gradient overlay (web).
@@ -85,6 +109,10 @@ export function Hero() {
   const narrow = width <= 760
   const cols = isWeb && !narrow ? 4 : 2
   const nativeWordmarkSize = useFluidPx(type.h2)
+  // Mobile web, tablet, and native — anywhere the nav doesn't show the
+  // phone number (see Nav.tsx's showPhoneAsText, which is the desktop-only
+  // inverse of this).
+  const showCta = !isWeb || width <= 900
 
   // ---- Native fallback: text wordmark (SVG <Image> needs react-native-svg) ----
   const Wordmark = isWeb ? (
@@ -118,6 +146,7 @@ export function Hero() {
         <View>{Wordmark}</View>
         <View style={{ marginTop: 24, gap: 28 }}>
           <HeroLede />
+          {showCta ? <HeroCta /> : null}
         </View>
       </Container>
 
