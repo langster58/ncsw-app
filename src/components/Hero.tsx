@@ -1,5 +1,5 @@
 import React from 'react'
-import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
+import { Platform, Text, View, useWindowDimensions } from 'react-native'
 import { Container, Lead, Section, type, useFluidPx } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
@@ -8,7 +8,8 @@ import { Container, Lead, Section, type, useFluidPx } from '@/ui'
 //   .hero-wordmark { display:block; width:100%; max-width:760px; height:auto }
 //   .hero-statement { display:grid; grid-template-columns:1fr; gap:28px; margin-top:24px }
 //   .hero-lede { max-width:760px; font-size:22px; line-height:1.45; font-weight:400; color:#09080e }
-//   .hero-call { display:none; ->inline-flex <=900px; color:#0576cc; Inter 15/600; underline }
+//   .hero-call — dropped: the nav's own call button (mobile web + native)
+//   already covers this, so a second call affordance here just duplicated it.
 //   .montage { margin-top:56px }
 //   .montage-grid { grid; repeat(4,1fr); gap:1px; background:#1b1b1b; overflow:hidden }  (1fr 1fr mobile)
 //   .montage-cell { aspect-ratio:3/4; overflow:hidden; background:#000 }
@@ -30,47 +31,10 @@ const MONTAGE = [
   '/video/install-kia.mp4',
 ]
 
-function callShop() {
-  const href = 'tel:+12165550114'
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined') window.location.href = href
-  } else {
-    Linking.openURL(href).catch(() => {})
-  }
-}
-
 // .hero-lede — uses the Lead primitive at heroLead size (22px ref) so
 // body color / max-width / line-height flow from tokens.
 function HeroLede() {
   return <Lead size="heroLead">{STATEMENT}</Lead>
-}
-
-// .hero-call (shown <=900px / on native)
-function HeroCall() {
-  const fontSize = useFluidPx(type.body)
-  return (
-    <Pressable
-      onPress={callShop}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 22 }}
-    >
-      <Text
-        style={
-          {
-            fontFamily: 'Inter',
-            fontWeight: '600',
-            fontSize,
-            color: '#0576cc', // var(--accent) -> var(--ncsw-primary)
-            textDecorationLine: 'underline',
-            // .hero-call: text-underline-offset:4px; text-decoration-thickness:1px (web)
-            textUnderlineOffset: 4,
-            textDecorationThickness: 1,
-          } as any
-        }
-      >
-        Call (216) 555-0114 →
-      </Text>
-    </Pressable>
-  )
 }
 
 // One .montage-cell with its <video> and the ::after gradient overlay (web).
@@ -119,7 +83,6 @@ export function Hero() {
   const { width } = useWindowDimensions()
   const isWeb = Platform.OS === 'web'
   const narrow = width <= 760
-  const showCall = !isWeb || width <= 900
   const cols = isWeb && !narrow ? 4 : 2
   const nativeWordmarkSize = useFluidPx(type.h2)
 
@@ -155,7 +118,6 @@ export function Hero() {
         <View>{Wordmark}</View>
         <View style={{ marginTop: 24, gap: 28 }}>
           <HeroLede />
-          {showCall ? <HeroCall /> : null}
         </View>
       </Container>
 

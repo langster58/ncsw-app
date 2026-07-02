@@ -26,6 +26,8 @@ const NAV_LINKS: [string, string][] = [
   ['Location', '/#location'],
 ]
 
+const PHONE_NUMBER = '(216) 555-0114'
+
 function openHref(href: string) {
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined') window.location.href = href
@@ -91,17 +93,21 @@ function Pipe() {
 
 // .nav-cta — white outline button; hover -> bg #fafbfc, border #b8b8b8 (.btn:hover).
 // Shown on mobile web (<=900) and native, where tapping can actually open
-// the dialer. Desktop renders PhoneText instead — see above.
-function CallButton() {
+// the dialer. Desktop renders PhoneText instead — see above. Label is the
+// number itself (not "Call now") so it reads the same as PhoneText and
+// there's exactly one visual form of the phone number on the page instead
+// of two competing ones.
+function CallButton({ number }: { number: string }) {
   const [hovered, setHovered] = useState(false)
   const fontSize = useFluidPx(type.meta)
+  const digits = number.replace(/\D/g, '')
   const hoverProps: any =
     Platform.OS === 'web'
       ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
       : {}
   return (
     <Pressable
-      onPress={() => openHref('tel:+12165550114')}
+      onPress={() => openHref(`tel:+1${digits}`)}
       {...hoverProps}
       style={{
         flexDirection: 'row',
@@ -121,8 +127,6 @@ function CallButton() {
         style={
           {
             fontFamily: 'Inter',
-            textTransform: 'uppercase',
-            letterSpacing: 1.2, // .12em * 10
             fontSize,
             lineHeight: fontSize,
             fontWeight: '600',
@@ -130,7 +134,7 @@ function CallButton() {
           } as any
         }
       >
-        Call now
+        {number}
       </Text>
       <Text style={{ fontSize, lineHeight: fontSize, color: '#09080e' } as any}>→</Text>
     </Pressable>
@@ -228,7 +232,7 @@ export function Nav() {
                 {showPhoneAsText ? (
                   <>
                     <Pipe />
-                    <PhoneText number="(216) 555-0114" />
+                    <PhoneText number={PHONE_NUMBER} />
                   </>
                 ) : null}
               </View>
@@ -236,7 +240,7 @@ export function Nav() {
 
             {/* .nav-cta + .nav-burger */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              {showCallButton ? <CallButton /> : null}
+              {showCallButton ? <CallButton number={PHONE_NUMBER} /> : null}
               {narrow ? (
                 <View style={{ flexDirection: 'column', gap: 5 }}>
                   <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
