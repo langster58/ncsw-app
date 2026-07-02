@@ -10,19 +10,12 @@ export interface Vehicles {
   body_style: string | null
   doors: number | null
   cab_type: string | null
-  generation: string | null
   trim: string | null
-  seats: number | null
-  segment: string | null
-  start_year_production: number | null
-  end_year_production: number | null
-  epa_vclass: string | null
   body_class: string | null
   passenger_volume_cuft: number | null
   luggage_volume_cuft: number | null
   acoustic_volume_cuft: number | null
   volume_source: string | null
-  has_fold_down_seats: boolean | null
   vehicle_category: string | null
   vehicle_size: string | null
   vehicle_subtype: string | null
