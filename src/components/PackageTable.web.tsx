@@ -64,32 +64,68 @@ const monoWattsOf: Record<string, number> = {
 }
 
 // Vehicle selector — cascading Year -> Make -> Model -> Trim. The source
-// reads window.NCSW_VEHICLES (external/CMS), not present in this port. YEARS
-// below is real; MAKE/MODEL/TRIM are a small representative set standing in
-// for that feed so the control is genuinely interactive instead of chrome
-// with no options behind it.
-const YEARS = ['2026', '2025', '2024', '2023', '2022', '2021', '2020']
-const MAKES = ['Volkswagen', 'BMW', 'Audi', 'Subaru']
+// reads window.NCSW_VEHICLES (external/CMS), not present in this port. This
+// is real/realistic-volume standing data (years back to 1950, a full make
+// list, real-length model lineups) so the picker lists are genuinely long
+// enough to need the scrolling container they get, not just a few token
+// entries. Trim still comes from a shared placeholder list — real per-model
+// trim data isn't something worth hand-authoring for a stand-in feed.
+const CURRENT_MODEL_YEAR = 2026
+const YEARS = Array.from({ length: CURRENT_MODEL_YEAR - 1950 + 1 }, (_, i) => String(CURRENT_MODEL_YEAR - i))
+const MAKES = [
+  'Acura', 'Audi', 'BMW', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'Dodge',
+  'Ford', 'Genesis', 'GMC', 'Honda', 'Hyundai', 'Infiniti', 'Jeep', 'Kia',
+  'Lexus', 'Lincoln', 'Mazda', 'Mercedes-Benz', 'Mini', 'Mitsubishi', 'Nissan',
+  'Porsche', 'Ram', 'Subaru', 'Tesla', 'Toyota', 'Volkswagen', 'Volvo',
+]
 const MODELS_BY_MAKE: Record<string, string[]> = {
-  Volkswagen: ['Golf Alltrack', 'GTI', 'Atlas'],
-  BMW: ['3 Series', 'X3', 'M4'],
-  Audi: ['A4', 'Q5', 'S3'],
-  Subaru: ['Outback', 'WRX', 'Forester'],
+  Acura: ['Integra', 'TLX', 'RDX', 'MDX', 'ZDX'],
+  Audi: ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'Q8', 'S3', 'RS5', 'e-tron GT'],
+  BMW: ['2 Series', '3 Series', '4 Series', '5 Series', '7 Series', 'X1', 'X3', 'X5', 'X7', 'M4', 'i4'],
+  Buick: ['Encore GX', 'Envision', 'Enclave'],
+  Cadillac: ['CT4', 'CT5', 'XT4', 'XT5', 'XT6', 'Escalade', 'Lyriq'],
+  Chevrolet: [
+    'Spark', 'Malibu', 'Camaro', 'Corvette', 'Trax', 'Trailblazer', 'Equinox',
+    'Blazer', 'Traverse', 'Tahoe', 'Suburban', 'Colorado', 'Silverado 1500',
+  ],
+  Chrysler: ['300', 'Pacifica'],
+  Dodge: ['Charger', 'Durango', 'Hornet'],
+  Ford: [
+    'Maverick', 'Mustang', 'Bronco Sport', 'Bronco', 'Escape', 'Edge',
+    'Explorer', 'Expedition', 'Ranger', 'F-150', 'F-250', 'Mustang Mach-E',
+  ],
+  Genesis: ['G70', 'G80', 'G90', 'GV70', 'GV80'],
+  GMC: ['Terrain', 'Acadia', 'Yukon', 'Canyon', 'Sierra 1500'],
+  Honda: ['Civic', 'Accord', 'Insight', 'HR-V', 'CR-V', 'Passport', 'Pilot', 'Ridgeline', 'Odyssey'],
+  Hyundai: ['Elantra', 'Sonata', 'Venue', 'Kona', 'Tucson', 'Santa Fe', 'Palisade', 'Ioniq 5', 'Ioniq 6'],
+  Infiniti: ['Q50', 'Q60', 'QX50', 'QX55', 'QX60', 'QX80'],
+  Jeep: ['Compass', 'Cherokee', 'Grand Cherokee', 'Wrangler', 'Gladiator', 'Wagoneer'],
+  Kia: ['Forte', 'K5', 'Soul', 'Seltos', 'Sportage', 'Sorento', 'Telluride', 'EV6', 'EV9'],
+  Lexus: ['IS', 'ES', 'LS', 'UX', 'NX', 'RX', 'GX', 'LX', 'RZ'],
+  Lincoln: ['Corsair', 'Nautilus', 'Aviator', 'Navigator'],
+  Mazda: ['Mazda3', 'CX-30', 'CX-5', 'CX-50', 'CX-90', 'MX-5 Miata'],
+  'Mercedes-Benz': ['A-Class', 'C-Class', 'E-Class', 'S-Class', 'GLA', 'GLC', 'GLE', 'GLS', 'EQE', 'EQS'],
+  Mini: ['Cooper', 'Cooper Countryman', 'Cooper Clubman'],
+  Mitsubishi: ['Mirage', 'Outlander', 'Outlander Sport', 'Eclipse Cross'],
+  Nissan: [
+    'Versa', 'Sentra', 'Altima', 'Maxima', 'Kicks', 'Rogue', 'Murano',
+    'Pathfinder', 'Armada', 'Frontier', 'Titan', 'Ariya', 'Z',
+  ],
+  Porsche: ['718 Cayman', '718 Boxster', '911', 'Taycan', 'Macan', 'Cayenne', 'Panamera'],
+  Ram: ['1500', '2500', '3500', 'ProMaster'],
+  Subaru: ['Impreza', 'Legacy', 'WRX', 'Crosstrek', 'Forester', 'Outback', 'Ascent', 'BRZ', 'Solterra'],
+  Tesla: ['Model 3', 'Model Y', 'Model S', 'Model X', 'Cybertruck'],
+  Toyota: [
+    'Corolla', 'Camry', 'Crown', 'Prius', 'C-HR', 'Venza', 'RAV4', 'Highlander',
+    '4Runner', 'Sequoia', 'Tacoma', 'Tundra', 'Sienna',
+  ],
+  Volkswagen: ['Jetta', 'Golf GTI', 'Golf Alltrack', 'ID.4', 'Taos', 'Tiguan', 'Atlas', 'Atlas Cross Sport'],
+  Volvo: ['S60', 'S90', 'XC40', 'XC60', 'XC90', 'C40 Recharge'],
 }
-const TRIMS_BY_MODEL: Record<string, string[]> = {
-  'Golf Alltrack': ['SE', 'SEL'],
-  GTI: ['S', 'SE', 'Autobahn'],
-  Atlas: ['SE', 'SEL'],
-  '3 Series': ['330i', 'M340i'],
-  X3: ['xDrive30i', 'M40i'],
-  M4: ['Base', 'Competition'],
-  A4: ['Premium', 'Prestige'],
-  Q5: ['Premium', 'Prestige'],
-  S3: ['Premium Plus', 'Prestige'],
-  Outback: ['Premium', 'Limited', 'Touring'],
-  WRX: ['Premium', 'GT'],
-  Forester: ['Premium', 'Sport', 'Limited'],
-}
+// Placeholder — real trim data would come from the CMS feed alongside the
+// rest of this. A generic ladder is enough to demonstrate the picker
+// without hand-authoring trims for ~150 models.
+const TRIM_OPTIONS = ['Base', 'S', 'SE', 'SEL', 'Sport', 'Limited', 'Premium', 'Touring', 'Platinum']
 
 // Sized to comfortably fit the longest realistic label + value (e.g. "MODEL"
 // + "Golf Alltrack") without the box stretching to fill leftover row width.
@@ -372,55 +408,57 @@ export function PackageTable() {
           borderBottomColor: LINE,
           flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'space-between',
           gap: 8,
         }}
       >
-        {[
-          {
-            label: 'Year',
-            value: vehYear,
-            options: YEARS,
-            onChange: onVehYearChange,
-            placeholder: 'Select year',
-            disabled: false,
-          },
-          {
-            label: 'Make',
-            value: vehMake,
-            options: MAKES,
-            onChange: onVehMakeChange,
-            placeholder: 'Select make',
-            disabled: !vehYear,
-          },
-          {
-            label: 'Model',
-            value: vehModel,
-            options: vehMake ? (MODELS_BY_MAKE[vehMake] ?? []) : [],
-            onChange: onVehModelChange,
-            placeholder: 'Select model',
-            disabled: !vehMake,
-          },
-          {
-            label: 'Trim',
-            value: vehTrim,
-            options: vehModel ? (TRIMS_BY_MODEL[vehModel] ?? []) : [],
-            onChange: setVehTrim,
-            placeholder: 'Select trim',
-            disabled: !vehModel,
-          },
-        ].map((f) => (
-          <View key={f.label} style={{ width: vehicleFieldWidth } as any}>
-            <Dropdown
-              label={f.label}
-              value={f.value}
-              options={f.options}
-              onChange={f.onChange}
-              placeholder={f.placeholder}
-              disabled={f.disabled}
-            />
-          </View>
-        ))}
-        <View style={{ width: 12 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
+          {[
+            {
+              label: 'Year',
+              value: vehYear,
+              options: YEARS,
+              onChange: onVehYearChange,
+              placeholder: 'Select year',
+              disabled: false,
+            },
+            {
+              label: 'Make',
+              value: vehMake,
+              options: MAKES,
+              onChange: onVehMakeChange,
+              placeholder: 'Select make',
+              disabled: !vehYear,
+            },
+            {
+              label: 'Model',
+              value: vehModel,
+              options: vehMake ? (MODELS_BY_MAKE[vehMake] ?? []) : [],
+              onChange: onVehModelChange,
+              placeholder: 'Select model',
+              disabled: !vehMake,
+            },
+            {
+              label: 'Trim',
+              value: vehTrim,
+              options: vehModel ? TRIM_OPTIONS : [],
+              onChange: setVehTrim,
+              placeholder: 'Select trim',
+              disabled: !vehModel,
+            },
+          ].map((f) => (
+            <View key={f.label} style={{ width: vehicleFieldWidth } as any}>
+              <Dropdown
+                label={f.label}
+                value={f.value}
+                options={f.options}
+                onChange={f.onChange}
+                placeholder={f.placeholder}
+                disabled={f.disabled}
+              />
+            </View>
+          ))}
+        </View>
         <Pressable
           onPress={() => setSheet(true)}
           style={{
