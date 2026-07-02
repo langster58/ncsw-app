@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Platform } from 'react-native'
+import { colors } from './tokens'
 
 // First-visit preloader: NCSW wordmark fades in on a white field, holds, then
 // dissolves. Web only; skipped entirely on native. Shown once per session
@@ -47,7 +48,7 @@ function PreloaderWeb() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#ffffff',
+        background: colors.white,
         opacity,
         transition: 'opacity .5s ease',
         pointerEvents: 'none',

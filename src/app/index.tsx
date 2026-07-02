@@ -1,5 +1,5 @@
 import { Platform, ScrollView, View } from 'react-native'
-import { Preloader, Reveal } from '@/ui'
+import { Preloader, Reveal, colors } from '@/ui'
 import { Nav } from '@/components/Nav'
 import { Hero } from '@/components/Hero'
 import { Packages } from '@/components/Packages'
@@ -25,7 +25,7 @@ export default function HomeScreen() {
       <View style={outerStyle}>
         <Nav />
         <ScrollView
-          style={{ flex: 1, backgroundColor: '#ffffff' }}
+          style={{ flex: 1, backgroundColor: colors.white }}
           contentContainerStyle={{ flexGrow: 1 }}
         >
           <Hero />

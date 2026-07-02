@@ -22,18 +22,18 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Container, Section, SectionIntro, fluidLineHeight, type, useFluidPx } from '@/ui';
+import { Container, Section, SectionIntro, colors, fluidLineHeight, type, useFluidPx } from '@/ui';
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
-const INK = '#09080e'; // --ncsw-ink / --fg-1
-const GRAY = '#333333'; // --ncsw-gray / --fg-2
-const LINE = '#ececec'; // --ncsw-line / --border
-const WHITE = '#ffffff'; // --ncsw-white
-const ACCENT = '#0576cc'; // --accent / --data / --ncsw-primary
-const ACCENT_2 = '#09080e'; // --accent-2 (ink)
-const FIG_BG = '#fafafa'; // .minichart background
-const DOT_DOMINATED = '#cfcfcf';
-const AXIS_GRAY = '#aaaaaa';
+const INK = colors.ink;
+const GRAY = colors.body;
+const LINE = colors.line;
+const WHITE = colors.white;
+const ACCENT = colors.accent;
+const ACCENT_2 = colors.ink;
+const FIG_BG = colors.figBg;
+const DOT_DOMINATED = colors.chartDotMuted;
+const AXIS_GRAY = colors.chartAxisSoft;
 
 const FONT_DISPLAY = 'Creato Display';
 const FONT_BODY = 'Inter';

@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { Container, Section, SectionIntro, fluidLineHeight, type, useFluidPx } from '@/ui';
+import { Container, Section, SectionIntro, colors, fluidLineHeight, type, useFluidPx } from '@/ui';
 
 /* ============================================================
    Collections — "Sub-stage / collections" section
@@ -18,11 +18,11 @@ import { Container, Section, SectionIntro, fluidLineHeight, type, useFluidPx } f
      radius-lg 16
    ============================================================ */
 
-const INK = '#09080e';
-const GRAY = '#333333';
-const LINE = '#ececec';
-const SHAPE = '#f5f5f5';
-const ACCENT = '#0576cc';
+const INK = colors.ink;
+const GRAY = colors.body;
+const LINE = colors.line;
+const SHAPE = colors.surface;
+const ACCENT = colors.accent;
 const FONT_BODY = 'Inter';
 const FONT_MONO = 'IBM Plex Mono';
 const FONT_DISPLAY = 'Creato Display';
@@ -163,7 +163,7 @@ export function Collections() {
                 borderColor: LINE,
                 borderRadius: 16, // --radius-lg
                 overflow: 'hidden',
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.white,
                 flex: 1,
               }}
             >
@@ -199,7 +199,7 @@ export function Collections() {
                         letterSpacing: 1.2, // .12em * 10
                         fontSize: tagSize,
                         fontWeight: '600',
-                        color: '#ffffff',
+                        color: colors.white,
                       } as any
                     }
                   >
@@ -254,7 +254,7 @@ export function Collections() {
                     marginTop: 'auto',
                     paddingTop: 16,
                     borderTopWidth: 1,
-                    borderTopColor: '#f0f0f0',
+                    borderTopColor: colors.lineSoft,
                   }}
                 >
                   {c.meta.map(([k, v], i) => (

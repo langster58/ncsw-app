@@ -169,6 +169,28 @@ export const colors = {
 
   // focus
   focusRing: '#0576cc',
+
+  // dark media surfaces
+  mediaDark: '#1b1b1b', // montage grid gutter
+  mediaDarker: '#0a0b0f', // door media background
+
+  lineSoft: '#f0f0f0', // nav bottom hairline (pre-scroll)
+  figBg: '#fafafa', // minichart background
+
+  // dense table palette (PackageTable + modal)
+  tableInk: '#16181d',
+  tableLine: '#e7e9ee',
+  tableLineStrong: '#d3d7e0',
+
+  // chart (SubwooferFrontierChart + Editorial figures)
+  chartAxis: '#6b6b70',
+  chartTick: '#8a8a8e',
+  chartAxisSoft: '#aaaaaa',
+  chartDotMuted: '#cfcfcf',
+  chartMagenta: '#e941bc',
+  chartGridStrong: '#d8d8dc', // emphasized axis line
+  chartChipBorderHover: '#cfd3d9',
+  accentTint: '#eef5fb', // ~8% accent on white (chip active bg)
 }
 
 // ── Fonts ───────────────────────────────────────────────────────────────────

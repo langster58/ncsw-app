@@ -1,6 +1,6 @@
 import React from 'react'
 import { Linking, Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Button, Container, Lead, Section, type, useFluidPx } from '@/ui'
+import { Button, Container, Lead, Section, colors, type, useFluidPx } from '@/ui'
 
 // Hero — values taken verbatim from the source tokens.css / home.css:
 //   .hero { padding: 64px 0 0 }
@@ -69,7 +69,7 @@ function MontageCell({ src }: { src: string }) {
         position: 'relative',
         aspectRatio: 3 / 4,
         overflow: 'hidden',
-        backgroundColor: '#000',
+        backgroundColor: colors.black,
       }}
     >
       {React.createElement('video', {
@@ -131,7 +131,7 @@ export function Hero() {
         fontSize: nativeWordmarkSize as number,
         fontWeight: '700',
         letterSpacing: -1.4,
-        color: '#09080e',
+        color: colors.ink,
       }}
     >
       NORTH COAST SOUNDWORKS
@@ -159,7 +159,7 @@ export function Hero() {
                 display: isWeb ? 'grid' : 'flex',
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
                 gap: 1,
-                backgroundColor: '#1b1b1b',
+                backgroundColor: colors.mediaDark,
                 overflow: 'hidden',
                 ...(isWeb ? {} : { flexDirection: 'row', flexWrap: 'wrap' }),
               } as any
@@ -172,7 +172,7 @@ export function Hero() {
                 // Native: dark placeholder cell (no web <video>), 2-up, aspect 3/4.
                 <View
                   key={src}
-                  style={{ width: '50%', aspectRatio: 3 / 4, backgroundColor: '#000' }}
+                  style={{ width: '50%', aspectRatio: 3 / 4, backgroundColor: colors.black }}
                 />
               )
             )}

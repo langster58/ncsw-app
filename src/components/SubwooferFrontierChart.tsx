@@ -10,17 +10,17 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
-import { fluid, fluidLineHeight, fluidNumber, radius, type, useFluidPx, useFluidValue } from '@/ui'
+import { colors, fluid, fluidLineHeight, fluidNumber, radius, type, useFluidPx, useFluidValue } from '@/ui'
 
 // ── Source constants (verbatim) ─────────────────────────────────────────────
-const INK = '#09080E'
-const BLUE = '#0576CC'
-const MAGENTA = '#E941BC'
-const GRID = '#ECECEC'
-const TICK = '#8A8A8E'
-const AXIS = '#6B6B70'
-const LINE = '#ECECEC'
-const FG_2 = '#656565'
+const INK = colors.ink
+const BLUE = colors.accent
+const MAGENTA = colors.chartMagenta
+const GRID = colors.line
+const TICK = colors.chartTick
+const AXIS = colors.chartAxis
+const LINE = colors.line
+const FG_2 = colors.gray
 const FONT_MONO = 'IBM Plex Mono'
 const FONT_BODY = 'Inter'
 
@@ -84,7 +84,7 @@ function NativePlaceholder() {
       style={{
         width: '100%',
         aspectRatio: 16 / 9,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -247,7 +247,7 @@ function WebChart() {
         .filter((t) => Math.log10(t) >= mMn && Math.log10(t) <= mMx)
         .forEach((t) => {
           const py = y(t)
-          ctx!.strokeStyle = t === 1 ? '#D8D8DC' : GRID
+          ctx!.strokeStyle = t === 1 ? colors.chartGridStrong : GRID
           ctx!.beginPath()
           ctx!.moveTo(pad.left, py)
           ctx!.lineTo(pad.left + box.pW, py)
@@ -290,7 +290,7 @@ function WebChart() {
         ctx!.fillStyle = frontier.includes(r) ? BLUE : rgba(INK, 0.22)
         ctx!.fill()
         if (frontier.includes(r)) {
-          ctx!.strokeStyle = '#fff'
+          ctx!.strokeStyle = colors.white
           ctx!.lineWidth = dotStrokeW
           ctx!.stroke()
         }
@@ -302,7 +302,7 @@ function WebChart() {
         ctx!.arc(x(r.price), y(r.m), fpx(7, 5.5), 0, Math.PI * 2)
         ctx!.fillStyle = MAGENTA
         ctx!.fill()
-        ctx!.strokeStyle = '#fff'
+        ctx!.strokeStyle = colors.white
         ctx!.lineWidth = fpx(2, 1.6)
         ctx!.stroke()
       }
@@ -403,7 +403,7 @@ function WebChart() {
           // inner canvas-wrap instead, kept small.
           width: '100%',
           height: '100%',
-          backgroundColor: '#fff',
+          backgroundColor: colors.white,
           color: INK,
         } as any
       }
@@ -565,8 +565,8 @@ function VfChip({
   const padY = useFluidPx(fluid(4, 3))
   const padX = useFluidPx(fluid(7, 5))
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
-  const bg = on ? mixAccent8 : hovered ? '#fafbfc' : '#fff'
-  const border = on ? BLUE : hovered ? '#cfd3d9' : LINE
+  const bg = on ? mixAccent8 : hovered ? colors.surfaceHover : colors.white
+  const border = on ? BLUE : hovered ? colors.chartChipBorderHover : LINE
   const color = on ? BLUE : hovered ? INK : FG_2
   return (
     <Pressable
@@ -604,7 +604,7 @@ const vfLabelStyle = {
 }
 
 // color-mix(in srgb, #0576CC 8%, #fff) ≈ #eef5fb (precomputed)
-const mixAccent8 = '#eef5fb'
+const mixAccent8 = colors.accentTint
 
 // ── .vf-tooltip ─────────────────────────────────────────────────────────────
 function Tooltip({ tooltip }: { tooltip: TooltipState }) {
@@ -623,7 +623,7 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
           position: 'absolute',
           left: tooltip.left,
           top: tooltip.top,
-          backgroundColor: '#fff',
+          backgroundColor: colors.white,
           borderWidth: 1,
           borderColor: LINE,
           borderRadius: 8,

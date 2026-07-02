@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
-import { Container, Section, fluid, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
+import { Container, Section, colors, fluid, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
 
-const INK = '#09080e';
+const INK = colors.ink;
 const FONT_BODY = 'Inter';
 const FONT_MONO = 'IBM Plex Mono';
 
@@ -47,7 +47,7 @@ function FooterLink({ label }: { label: string }) {
         style={
           {
             display: 'block',
-            color: hovered ? '#ffffff' : 'rgba(255,255,255,0.82)',
+            color: hovered ? colors.white : 'rgba(255,255,255,0.82)',
             fontFamily: FONT_BODY,
             fontSize,
             transition: 'color .2s ease-in-out',
@@ -92,7 +92,7 @@ function BrandBlock() {
         <Text
           style={
             {
-              color: '#ffffff',
+              color: colors.white,
               fontFamily: 'Creato Display',
               fontSize: nativeMarkSize,
               fontWeight: '800',

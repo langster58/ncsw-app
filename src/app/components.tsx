@@ -219,7 +219,7 @@ export default function ComponentsPage() {
   })
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fafafa' }} contentContainerStyle={{ flexGrow: 1 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.figBg }} contentContainerStyle={{ flexGrow: 1 }}>
       <Section>
         <Container>
           <Text

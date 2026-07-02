@@ -1,6 +1,7 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
 import {
+  colors,
   Card,
   Container,
   Heading,
@@ -154,7 +155,7 @@ function IconArrow({ s }: { s?: number }) {
       React.createElement('polyline', { points: '9 6 15 12 9 18' })
     )
   }
-  return <Text style={{ color: '#0576cc' }}>{'›'}</Text>
+  return <Text style={{ color: colors.accent }}>{'›'}</Text>
 }
 
 // .door — "Continue reading ›" link row (font-mono-ish accent label).
@@ -180,7 +181,7 @@ function DoorLink() {
             fontSize,
             fontWeight: '600',
             letterSpacing: 0.6, // .04em * ~15px (.door uses mono caps elsewhere)
-            color: '#0576cc', // var(--accent)
+            color: colors.accent, // var(--accent)
           } as any
         }
       >
@@ -206,7 +207,7 @@ function DoorMedia({ img, label }: { img?: string; label: string }) {
         position: 'relative',
         aspectRatio: 16 / 9,
         overflow: 'hidden',
-        backgroundColor: '#0a0b0f', // .mc-door-media background
+        backgroundColor: colors.mediaDarker, // .mc-door-media background
       }}
     >
       {/* .mc-door-bg */}
@@ -249,7 +250,7 @@ function DoorMedia({ img, label }: { img?: string; label: string }) {
             fontWeight: '600',
             letterSpacing: 0.52, // .04em * 13px
             textTransform: 'uppercase',
-            color: '#fff',
+            color: colors.white,
             textShadow: '0 1px 3px rgba(0,0,0,.85)',
           } as any
         }
@@ -280,10 +281,10 @@ function MethodDoor({
       style={{
         flex: 1,
         borderWidth: 1,
-        borderColor: '#ececec', // var(--ncsw-line)
+        borderColor: colors.line, // var(--ncsw-line)
         borderRadius: 14, // .mc-door
         overflow: 'hidden',
-        backgroundColor: '#fff',
+        backgroundColor: colors.white,
       }}
     >
       <DoorMedia img={img} label={label} />
@@ -296,7 +297,7 @@ function MethodDoor({
               fontFamily: 'Inter',
               fontSize: copySize,
               lineHeight: copyLineHeight,
-              color: '#333333', // var(--fg-2)
+              color: colors.body, // var(--fg-2)
             } as any
           }
         >

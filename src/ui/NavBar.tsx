@@ -36,7 +36,7 @@ function Root({ children }: NavBarProps) {
           right: 0,
           backgroundColor: scrolled ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.85)',
           borderBottomWidth: 1,
-          borderBottomColor: scrolled ? colors.line : '#f0f0f0',
+          borderBottomColor: scrolled ? colors.line : colors.lineSoft,
           backdropFilter: 'blur(12px)',
           transition: 'background-color 0.2s, border-color 0.2s',
           zIndex: 100,

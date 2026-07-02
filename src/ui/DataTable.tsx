@@ -186,7 +186,7 @@ function DataRow<T>({
 }) {
   const [hovered, setHovered] = useState(false)
 
-  const baseBg = zebra ? '#fafbfc' : colors.white
+  const baseBg = zebra ? colors.surfaceHover : colors.white
   const bg = hovered ? colors.surfaceHoverNeutral : baseBg
 
   const hoverProps: any =

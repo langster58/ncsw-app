@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 // @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
-import { Container, IconClose, fluid, type, useFluidPx } from '@/ui'
+import { Container, IconClose, colors, fluid, type, useFluidPx } from '@/ui'
 
 // Nav — values taken verbatim from the source home.css / tokens.css:
 //   .nav { position:sticky; top:0; z-index:80; background:rgba(255,255,255,.85);
@@ -56,7 +56,7 @@ function NavLink({ label, href }: { label: string; href: string }) {
             letterSpacing: 1.32, // .12em * 11
             fontSize,
             fontWeight: '600',
-            color: hovered ? '#333333' : '#09080e', // :hover -> var(--fg-2)
+            color: hovered ? colors.body : colors.ink, // :hover -> var(--fg-2)
           } as any
         }
       >
@@ -78,7 +78,7 @@ function PhoneText({ number }: { number: string }) {
           fontFamily: 'Inter',
           fontSize,
           fontWeight: '600',
-          color: '#09080e',
+          color: colors.ink,
         } as any
       }
     >
@@ -90,7 +90,7 @@ function PhoneText({ number }: { number: string }) {
 // Divider between the link list and the phone number — desktop web only.
 function Pipe() {
   const fontSize = useFluidPx(type.meta)
-  return <Text style={{ fontFamily: 'Inter', fontSize, color: '#dcdcdc' } as any}>|</Text>
+  return <Text style={{ fontFamily: 'Inter', fontSize, color: colors.borderStrong } as any}>|</Text>
 }
 
 // .nav-brand img.word (height 23) — text fallback on native.
@@ -112,7 +112,7 @@ function Brand() {
           fontWeight: '800',
           letterSpacing: -0.5,
           textTransform: 'uppercase',
-          color: '#09080e',
+          color: colors.ink,
         } as any
       }
     >
@@ -143,7 +143,7 @@ function MobileNavLink({ label, href, onNavigate }: { label: string; href: strin
             fontFamily: 'Creato Display',
             fontWeight: '800',
             fontSize,
-            color: hovered ? '#333333' : '#09080e',
+            color: hovered ? colors.body : colors.ink,
           } as any
         }
       >
@@ -195,7 +195,7 @@ function MobileNavMenu({
           right: 0,
           bottom: 0,
           zIndex: 90,
-          backgroundColor: '#ffffff',
+          backgroundColor: colors.white,
           alignItems: 'center',
           justifyContent: 'center',
         } as any
@@ -250,9 +250,9 @@ export function Nav() {
   // and the scrolled-state background swap (which depended on window.scrollY)
   // is gone since the window no longer scrolls.
   const navStyle: any = {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.lineSoft,
     ...(Platform.OS === 'web' ? { zIndex: 80 } : null),
   }
 
@@ -313,12 +313,12 @@ export function Nav() {
                   hitSlop={8}
                 >
                   {mobileNavOpen ? (
-                    <IconClose size={20} color="#09080e" />
+                    <IconClose size={20} color={colors.ink} />
                   ) : (
                     <View style={{ flexDirection: 'column', gap: 5 }}>
-                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
-                      <View style={{ width: 24, height: 2, backgroundColor: '#09080e' }} />
+                      <View style={{ width: 24, height: 2, backgroundColor: colors.ink }} />
+                      <View style={{ width: 24, height: 2, backgroundColor: colors.ink }} />
+                      <View style={{ width: 24, height: 2, backgroundColor: colors.ink }} />
                     </View>
                   )}
                 </Pressable>

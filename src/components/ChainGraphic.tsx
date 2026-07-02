@@ -1,5 +1,6 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
+import { colors } from '@/ui'
 
 // ChainGraphic — the "what every package contains" interactive signal-chain band.
 // Ported from ChainGraphic.jsx (CHAIN_NODES) and home.css (.chainband .flow / .gnode).
@@ -20,10 +21,10 @@ import { Platform, Text, View, useWindowDimensions } from 'react-native'
 //   .gnode .glabel { mono 11.5px/600 uppercase #09080e; margin-top:13px; letter-spacing:.04em }
 //   mobile (<=720): .flow { flex-wrap:wrap } / ::before hidden / .gnode flex:0 0 33.33%
 
-const INK = '#09080e' // --ncsw-ink
-const LINE = '#ececec' // --ncsw-line
-const ACCENT = '#0576cc' // --accent / --ncsw-primary
-const WHITE = '#ffffff'
+const INK = colors.ink
+const LINE = colors.line
+const ACCENT = colors.accent
+const WHITE = colors.white
 const MONO = 'IBM Plex Mono'
 
 // .04em letter-spacing on the mono num (11px) and glabel (11.5px) -> points.

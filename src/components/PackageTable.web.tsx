@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Container, Dropdown, IconClose, fluid, useFluidPx } from '@/ui'
+import { Container, Dropdown, IconClose, colors, fluid, useFluidPx } from '@/ui'
 import { PackageTableModal } from './PackageTableModal.web'
 
 // PackageTable — web-only. Ported from PackagesTable.jsx with exact values from the
@@ -16,15 +16,15 @@ import { PackageTableModal } from './PackageTableModal.web'
 //   - YMMT vehicle selector reads window.NCSW_VEHICLES (external/CMS); not present here,
 //     so the vehicle control row renders its exact chrome but has no options (flagged).
 
-const INK = '#16181d'
-const INK2 = '#5b6270'
-const INK3 = '#8b92a1'
-const LINE = '#e7e9ee'
-const LINES = '#d3d7e0'
-const ZEBRA = '#fafbfc'
-const ACCENT = '#0576cc'
-const ACCENT_SOFT = '#e6f1fb'
-const WHITE = '#ffffff'
+const INK = colors.tableInk
+const INK2 = colors.inkSoft
+const INK3 = colors.inkFaint
+const LINE = colors.tableLine
+const LINES = colors.tableLineStrong
+const ZEBRA = colors.surfaceHover
+const ACCENT = colors.accent
+const ACCENT_SOFT = colors.accentSoft
+const WHITE = colors.white
 const FONT = 'Inter'
 const MONO = 'IBM Plex Mono'
 

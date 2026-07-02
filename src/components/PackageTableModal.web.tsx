@@ -1,20 +1,20 @@
 import React, { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Modal } from '@/ui'
+import { Modal, colors } from '@/ui'
 
 // Sort & Filter modal — ported from PackagesTable.jsx (the ReactDOM.createPortal sheet
 // plus its Facet and RangeSlider helpers). Web only; full-screen, portaled to
 // document.body. Controlled component: all filter state + setters come from PackageTable.
 
-const INK = '#16181d'
-const INK2 = '#5b6270'
-const INK3 = '#8b92a1'
-const LINE = '#e7e9ee'
-const LINES = '#d3d7e0'
-const ACCENT = '#0576cc'
-const ACCENT_SOFT = '#e6f1fb'
-const HOV = '#f3f6fb'
-const WHITE = '#ffffff'
+const INK = colors.tableInk
+const INK2 = colors.inkSoft
+const INK3 = colors.inkFaint
+const LINE = colors.tableLine
+const LINES = colors.tableLineStrong
+const ACCENT = colors.accent
+const ACCENT_SOFT = colors.accentSoft
+const HOV = colors.surfaceHoverNeutral
+const WHITE = colors.white
 const FONT = 'Inter'
 const MONO = 'IBM Plex Mono'
 
@@ -201,8 +201,8 @@ function SheetButton({
         borderWidth: 1,
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderColor: primary ? (h ? '#0569b7' : ACCENT) : h ? INK3 : LINES,
-        backgroundColor: primary ? (h ? '#0569b7' : ACCENT) : h ? HOV : WHITE,
+        borderColor: primary ? (h ? colors.accentHover : ACCENT) : h ? INK3 : LINES,
+        backgroundColor: primary ? (h ? colors.accentHover : ACCENT) : h ? HOV : WHITE,
       }}
     >
       <Text
