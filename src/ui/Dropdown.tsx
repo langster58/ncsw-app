@@ -60,6 +60,7 @@ export function Dropdown({
   const [open, setOpen] = useState(false)
   const [anchorRect, setAnchorRect] = useState<{ top: number; left: number; width: number } | null>(null)
   const triggerRef = useRef<any>(null)
+  const listRef = useRef<any>(null)
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
   const isWeb = Platform.OS === 'web'
@@ -89,21 +90,30 @@ export function Dropdown({
     setAnchorRect({ top: r.bottom, left: r.left, width: r.width })
   }, [isWeb, open])
 
-  // Web-only: Escape closes the popover, and so does any scroll — a
-  // position:fixed panel doesn't track the trigger as the page (or any
-  // scrollable ancestor) scrolls, so closing avoids it drifting away from
-  // the control it's anchored to. Modal already has its own ESC handling
-  // for the native full-screen sheet, so this only needs to exist here.
+  // Web-only: Escape closes the popover, and so does scrolling anything
+  // OTHER than the option list itself — a position:fixed panel doesn't
+  // track the trigger as the page (or any scrollable ancestor) scrolls, so
+  // closing avoids it drifting away from the control it's anchored to.
+  // Scroll events don't bubble but do have a capture phase starting at
+  // window, so a capture listener there fires for the list's own internal
+  // scroll too; without filtering that out, scrolling the option list
+  // closed it immediately, which is a real bug and not what a listbox
+  // should do. Modal already has its own ESC handling for the native
+  // full-screen sheet, so this only needs to exist here.
   useEffect(() => {
     if (!isWeb || !open || typeof document === 'undefined') return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
     }
+    const onScroll = (e: Event) => {
+      if (listRef.current && e.target && listRef.current.contains(e.target)) return
+      close()
+    }
     document.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [isWeb, open])
 
@@ -252,7 +262,7 @@ export function Dropdown({
                 >
                   {React.createElement(
                     'div',
-                    { style: { maxHeight: 260, overflowY: 'auto' } },
+                    { ref: listRef, style: { maxHeight: 260, overflowY: 'auto' } },
                     <View style={{ paddingHorizontal: 4 } as any}>
                       {norm.map((o) => optionRow(o, 'compact'))}
                     </View>,
