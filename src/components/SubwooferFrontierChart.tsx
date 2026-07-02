@@ -370,8 +370,15 @@ function WebChart() {
   const priceLabel = '≤ $' + price.toLocaleString('en-US')
   const controlsGap = useFluidPx(fluid(18, 14))
   const controlsMarginBottom = useFluidPx(fluid(12, 9))
-  const canvasMinHeight = useFluidPx(fluid(300, 220))
-  const chartMinHeight = useFluidPx(fluid(480, 340))
+  // Kept small on purpose: CSS grid treats height:'100%' below as 'auto'
+  // while computing the row's natural height (percentages can't resolve
+  // before the row size is known), but a real minHeight number DOES count
+  // toward that natural size. A generous floor here would make the chart
+  // win "who's naturally taller" almost every time and become the row's
+  // height driver again — the exact bug this is fixing. This is just
+  // enough to keep the canvas usable before the card's real height (photo
+  // + paragraph, reliably taller) takes over via the stretch below.
+  const canvasMinHeight = useFluidPx(fluid(180, 140))
   const legendGap = useFluidPx(fluid(12, 9))
   const legendMarginTop = useFluidPx(fluid(12, 9))
   const legendPaddingTop = useFluidPx(fluid(12, 9))
@@ -388,11 +395,11 @@ function WebChart() {
           // whatever height the CSS-grid row stretches its column to —
           // via height:'100%' resolving against that grid-stretched
           // ancestor, not a fixed/aspect-ratio guess that only matched the
-          // card by coincidence at one reference width. minHeight is a
-          // floor for the rare case this is the taller sibling.
+          // card by coincidence at one reference width. No minHeight here
+          // — see canvasMinHeight above for why that has to live on the
+          // inner canvas-wrap instead, kept small.
           width: '100%',
           height: '100%',
-          minHeight: chartMinHeight,
           backgroundColor: '#fff',
           color: INK,
         } as any
