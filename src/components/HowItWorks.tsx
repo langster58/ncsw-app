@@ -331,7 +331,11 @@ function MethodologyHub() {
             display: isWeb ? 'grid' : 'flex',
             gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
             gap: gridGutter,
-            alignItems: 'stretch',
+            // 'stretch' let the shorter sibling silently inherit blank space
+            // from the taller one instead of both sizing off their own fluid
+            // content — that's what made the chart look height-locked. Each
+            // column now sizes to its own content/aspect-ratio.
+            alignItems: 'flex-start',
             ...(isWeb ? {} : { flexDirection: 'column' }),
           } as any
         }

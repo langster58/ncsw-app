@@ -368,10 +368,9 @@ function WebChart() {
   }, [filtered])
 
   const priceLabel = '≤ $' + price.toLocaleString('en-US')
-  const chartMinHeight = useFluidPx(fluid(480, 340))
   const controlsGap = useFluidPx(fluid(18, 14))
   const controlsMarginBottom = useFluidPx(fluid(12, 9))
-  const canvasMinHeight = useFluidPx(fluid(300, 220))
+  const canvasMinHeight = useFluidPx(fluid(220, 170))
   const legendGap = useFluidPx(fluid(12, 9))
   const legendMarginTop = useFluidPx(fluid(12, 9))
   const legendPaddingTop = useFluidPx(fluid(12, 9))
@@ -382,11 +381,14 @@ function WebChart() {
     <View
       style={
         {
-          // .vf-chart: width 100%, height 100%, flex column, background white.
-          // We add an explicit min-height since RN doesn't read the
-          // .vf-chart CSS rule (was: clamp(360px, 68vw, 520px) — pick 480 here).
+          // .vf-chart: width 100%, flex column, background white. Height is
+          // no longer pinned by min-height/flex:1 — that only grew when a
+          // CSS-grid `stretch` sibling handed it extra space, so it never
+          // actually shrank on its own as the viewport narrowed. The plot
+          // area below is sized by its own aspect-ratio instead, so total
+          // height is a direct function of this component's own width at
+          // every viewport, in lockstep with everything around it.
           width: '100%',
-          minHeight: chartMinHeight,
           backgroundColor: '#fff',
           color: INK,
         } as any
@@ -409,14 +411,16 @@ function WebChart() {
         <PriceGroup priceLabel={priceLabel} price={price} setPrice={setPrice} />
       </View>
 
-      {/* .vf-canvas-wrap — relative, flex 1, min-height 300 */}
+      {/* .vf-canvas-wrap — relative, sized by its own aspect ratio so it
+          scales with this component's rendered width instead of borrowing
+          height from a flex/grid ancestor. */}
       <View
         ref={plotRef}
         style={
           {
             position: 'relative',
             width: '100%',
-            flex: 1,
+            aspectRatio: 2,
             minHeight: canvasMinHeight,
           } as any
         }
