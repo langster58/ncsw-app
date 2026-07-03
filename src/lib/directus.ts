@@ -8,7 +8,11 @@
 // The URL is public by nature (the browser calls it); the env var just lets a
 // staging instance override it at build time.
 
-const BASE = process.env.EXPO_PUBLIC_DIRECTUS_URL ?? 'https://directus-latest-g9tm.onrender.com'
+const BASE = (
+  process.env.EXPO_PUBLIC_DIRECTUS_URL ??
+  process.env.DIRECTUS_URL ??
+  'https://directus-latest-g9tm.onrender.com'
+).replace(/\/$/, '')
 
 export type ItemsQuery = {
   fields?: string[]
@@ -72,6 +76,63 @@ export function getItem<T>(collection: string, id: string | number, query: Items
 /** Fetch a singleton collection (e.g. homepage copy). */
 export function getSingleton<T>(collection: string, query: ItemsQuery = {}): Promise<T> {
   return request<T>(`/items/${collection}${buildParams(query)}`)
+}
+
+type DirectusWriteMethod = 'POST' | 'PATCH' | 'DELETE'
+
+async function writeRequest<T>(
+  path: string,
+  method: DirectusWriteMethod,
+  body?: unknown,
+  adminKey?: string,
+): Promise<T> {
+  const res = await fetch(`/api/directus${path}`, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(adminKey ? { 'x-ncsw-admin-key': adminKey } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      const json = await res.json()
+      detail = json?.errors?.[0]?.message ?? json?.error ?? detail
+    } catch {}
+    throw new DirectusError(res.status, `Directus write ${res.status}: ${detail}`)
+  }
+  const json = await res.json()
+  return json.data as T
+}
+
+/** Create an item through the private server-side Directus proxy. */
+export function createItem<T>(
+  collection: string,
+  item: Record<string, unknown>,
+  adminKey?: string,
+): Promise<T> {
+  return writeRequest<T>(`/${encodeURIComponent(collection)}`, 'POST', item, adminKey)
+}
+
+/** Update an item through the private server-side Directus proxy. */
+export function updateItem<T>(
+  collection: string,
+  id: string | number,
+  item: Record<string, unknown>,
+  adminKey?: string,
+): Promise<T> {
+  return writeRequest<T>(`/${encodeURIComponent(collection)}/${encodeURIComponent(String(id))}`, 'PATCH', item, adminKey)
+}
+
+/** Delete an item through the private server-side Directus proxy. */
+export function deleteItem<T>(
+  collection: string,
+  id: string | number,
+  adminKey?: string,
+): Promise<T> {
+  return writeRequest<T>(`/${encodeURIComponent(collection)}/${encodeURIComponent(String(id))}`, 'DELETE', undefined, adminKey)
 }
 
 /**
