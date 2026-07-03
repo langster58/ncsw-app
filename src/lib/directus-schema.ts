@@ -29,6 +29,8 @@ export interface Vehicles {
   has_fullrange_output: boolean | null
   audio_option_base: string | null
   audio_option_premium: string | null
+  audio_option_base_fullrange: boolean | null
+  audio_option_premium_fullrange: boolean | null
 }
 
 export interface Packages {
