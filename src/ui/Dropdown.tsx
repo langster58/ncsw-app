@@ -162,6 +162,7 @@ export function Dropdown({
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={`${label}${current ? `: ${current.label}` : ''}`}
+        accessibilityHint={!current && placeholder ? placeholder : undefined}
         {...hoverProps}
         style={
           {
@@ -213,13 +214,6 @@ export function Dropdown({
               }}
             >
               {current.label}
-            </Text>
-          ) : placeholder ? (
-            <Text
-              numberOfLines={1}
-              style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint, flexShrink: 1 }}
-            >
-              {placeholder}
             </Text>
           ) : null}
         </View>
