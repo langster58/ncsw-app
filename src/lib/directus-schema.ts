@@ -1,4 +1,4 @@
-// GENERATED from the live Directus schema (2026-07-02).
+// GENERATED from the live Directus schema (2026-07-03).
 // Regenerate with scripts/gen-directus-types.py — do not hand-edit field lists.
 
 export interface Vehicles {
