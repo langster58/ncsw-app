@@ -1,4 +1,4 @@
-// GENERATED from the live Directus schema (2026-07-03).
+// GENERATED from the live Directus schema (2026-07-04).
 // Regenerate with scripts/gen-directus-types.py — do not hand-edit field lists.
 
 export interface Vehicles {
@@ -7,18 +7,16 @@ export interface Vehicles {
   model: string | null
   year_range: string | null
   year: number | null
-  body_style: string | null
+  body_style: string | null  // Sedan | Coupe | Hatchback | SUV / Crossover | Wagon | Truck | Minivan | Convertible
   doors: number | null
-  cab_type: string | null
+  cab_type: string | null    // crew | ext | single | null (trucks only)
   trim: string | null
-  body_class: string | null
   passenger_volume_cuft: number | null
   luggage_volume_cuft: number | null
   acoustic_volume_cuft: number | null
   volume_source: string | null
-  vehicle_category: string | null
-  vehicle_size: string | null
-  vehicle_subtype: string | null
+  vehicle_category: string | null  // cargo | trunk | truck
+  segment: string | null           // two_seat | subcompact | compact | midsize | fullsize | extended | oversized
   image: string | null
   head_unit_replacement_supported: boolean | null
   behind_seat_install_supported: boolean | null
@@ -29,25 +27,31 @@ export interface Vehicles {
   has_fullrange_output: boolean | null
   audio_option_base: string | null
   audio_option_premium: string | null
-  audio_option_base_fullrange: boolean | null
   audio_option_premium_fullrange: boolean | null
+  audio_option_base_fullrange: boolean | null
 }
 
 export interface Packages {
   id: string
+  sku: string | null
+  vehicle_category: string | null   // cargo | trunk | truck
+  min_segment: string | null        // two_seat | subcompact | compact | midsize | fullsize | extended | oversized
+  cab_type: string | null           // crew | ext | single | null (trucks only)
   sub_id: string | null
   sub_count: number | null
-  enclosure_id: string | null
   mono_amp_id: string | null
-  front_stage_format: string | null
-  component_set_id: string | null
-  front_sub_id: string | null
   multichannel_amp_id: string | null
   dsp_id: string | null
+  component_set_id: string | null
+  front_sub_id: string | null
+  sub_enclosure_id: string | null
+  tweeter_integration_id: string | null
+  front_sub_enclosure_id: string | null
+  big3_id: string | null
   alternator_id: string | null
   battery_id: string | null
-  big3_upgrade: boolean | null
-  electrical_tier: string
+  installation_id: string | null
+  materials_id: string | null
 }
 
 export interface Subwoofers {
@@ -312,6 +316,89 @@ export interface VehicleEditorial {
   editorial_text: string | null
   source_url: string | null
   wikipedia_title: string | null
+}
+
+export interface SubEnclosures {
+  slug: string
+  type: string | null
+  size: string | null
+  driver_count: number | null
+  pr_count: number | null
+  pr_size: string | null
+  construction: string | null
+  volume_cuft: number | null
+  tuning_fb_hz: number | null
+  materials_cost: number | null
+  labor_hours: number | null
+  labor_rate: number | null
+  vehicle_constraint: string | null
+  notes: string | null
+  description: string | null
+  wood_sheets: number | null
+  finish_sqft: number | null
+  gallery: unknown | null
+  in_stock: boolean | null
+  coming_soon: boolean | null
+  manufacturer: string | null
+  vendor_url: string | null
+  vendor_price: number | null
+  image_url: string | null
+  firing: string | null
+  chambers: number | null
+  max_drivers: number | null
+  cutout_sizes_available: unknown | null
+  mounting_depth_in: number | null
+  vehicle_label_raw: string | null
+}
+
+export interface SubEnclosureFitments {
+  id: string
+  sub_enclosure_slug: string
+  vehicle_id: number
+  source: string | null
+  notes: string | null
+}
+
+export interface TweeterIntegrations {
+  slug: string
+  name: string | null
+  description: string | null
+  image: string | null
+  notes: string | null
+  labor_cost: number | null
+  materials_cost: number | null
+}
+
+export interface FrontSubEnclosures {
+  slug: string
+  name: string | null
+  type: string | null   // sealed | IB
+  description: string | null
+  image: string | null
+  notes: string | null
+  labor_cost: number | null
+  materials_cost: number | null
+}
+
+export interface Electrical {
+  slug: string
+  name: string | null
+  description: string | null
+  image: string | null
+  notes: string | null
+  labor_cost: number | null
+  materials_cost: number | null
+  part_cost: number | null
+}
+
+export interface Installation {
+  slug: string
+  name: string | null
+  description: string | null
+  image: string | null
+  notes: string | null
+  labor_cost: number | null
+  materials_cost: number | null
 }
 
 export interface InstallTypes {
