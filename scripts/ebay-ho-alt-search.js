@@ -19,7 +19,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_FILE = path.join(__dirname, 'ebay-ho-alt-results.csv');
+
+// TARGETS_FILE mode: process only the (year,make,model) list in that JSON file
+// (a curated sample) instead of the whole ICE database; results go to a separate CSV.
+const TARGETS_FILE = process.env.TARGETS_FILE || null;
+const OUTPUT_FILE = path.join(__dirname, TARGETS_FILE ? 'ebay-target-results.csv' : 'ebay-ho-alt-results.csv');
 
 const DIRECTUS_URL = process.env.DIRECTUS_URL;
 const DIRECTUS_TOKEN = process.env.DIRECTUS_TOKEN;
@@ -272,7 +276,19 @@ async function main() {
     if (!v) { console.error(`Missing ${k} — check .env / .env.local`); process.exit(1); }
   }
 
-  const models = await fetchIceVehicles();
+  let models;
+  if (TARGETS_FILE) {
+    const list = JSON.parse(fs.readFileSync(TARGETS_FILE, 'utf8'));
+    models = new Map();
+    for (const v of list) {
+      const key = `${v.make}|${v.model}`;
+      if (!models.has(key)) models.set(key, new Set());
+      models.get(key).add(v.year);
+    }
+    console.log(`TARGETS MODE: ${list.length} curated vehicles from ${TARGETS_FILE}`);
+  } else {
+    models = await fetchIceVehicles();
+  }
   const done = loadDone();
   writeHeaderIfNeeded();
 

@@ -1,0 +1,22 @@
+[
+  { "year": 2015, "make": "Chevrolet", "model": "Silverado 1500" },
+  { "year": 2016, "make": "Ford", "model": "F-150" },
+  { "year": 2015, "make": "GMC", "model": "Sierra 1500" },
+  { "year": 2015, "make": "Ram", "model": "1500" },
+  { "year": 2015, "make": "Toyota", "model": "Tundra" },
+  { "year": 2016, "make": "Chevrolet", "model": "Tahoe" },
+  { "year": 2015, "make": "Chevrolet", "model": "Suburban" },
+  { "year": 2016, "make": "GMC", "model": "Yukon" },
+  { "year": 2015, "make": "Ford", "model": "Expedition" },
+  { "year": 2015, "make": "Cadillac", "model": "Escalade" },
+  { "year": 2015, "make": "Ford", "model": "Mustang" },
+  { "year": 2016, "make": "Chevrolet", "model": "Camaro" },
+  { "year": 2015, "make": "Dodge", "model": "Charger" },
+  { "year": 2016, "make": "Dodge", "model": "Challenger" },
+  { "year": 2016, "make": "Honda", "model": "Civic" },
+  { "year": 2016, "make": "Honda", "model": "Accord" },
+  { "year": 2015, "make": "Chevrolet", "model": "Impala" },
+  { "year": 2016, "make": "Nissan", "model": "Altima" },
+  { "year": 2015, "make": "Jeep", "model": "Wrangler" },
+  { "year": 2016, "make": "Jeep", "model": "Grand Cherokee" }
+]
