@@ -40,7 +40,13 @@ const parseLine = l => {
 };
 const sampleRows = lines.slice(1).map(parseLine);
 
-// (make|model) -> Map(year -> { price|null })  — price = cheapest quality listing
+// Named HO builders (Mechman, Singer, Power Bastards tier): honestly-rated,
+// hand-built units — the install-grade market, ~2.5x the generic-import floor.
+const BUILDER_RE = /mechman|singer|dc power|powermaster|power bastard|js alternators|ohio gen|excessive amperage|nations|balmar/i;
+
+// (make|model) -> Map(year -> { price|null, builder|null })
+//   price   = cheapest quality (>=250A) listing — the marketplace floor
+//   builder = cheapest named-builder listing — install-grade
 const sampled = new Map();
 const allQualityPrices = [];
 const builderPrices = [];
@@ -49,19 +55,23 @@ for (const r of sampleRows) {
   const year = +r.year;
   if (!sampled.has(key)) sampled.set(key, new Map());
   const yearMap = sampled.get(key);
-  if (!yearMap.has(year)) yearMap.set(year, { price: null });
+  if (!yearMap.has(year)) yearMap.set(year, { price: null, builder: null });
 
   const amps = +r.amps, price = parseFloat(r.price_value);
   if (r.meets_amp_floor === 'true' && Number.isFinite(amps) && amps >= QUALITY_AMPS && Number.isFinite(price)) {
     const pt = yearMap.get(year);
     if (pt.price === null || price < pt.price) pt.price = price;
     allQualityPrices.push(price);
-    if (amps >= BUILDER_AMPS) builderPrices.push(price);
+    if (BUILDER_RE.test(r.title)) {
+      if (pt.builder === null || price < pt.builder) pt.builder = price;
+      builderPrices.push(price);
+    }
   }
 }
 
 const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
-const CUSTOM_EST = median(builderPrices) ?? 550; // custom-build cost ~ premium builder tier
+const BUILDER_MEDIAN = median(builderPrices) ?? 550; // install-grade fallback
+const CUSTOM_EST = BUILDER_MEDIAN;                    // custom builds price at builder tier
 const globalMedian = median(allQualityPrices) ?? GLOBAL_FALLBACK;
 
 // make -> median priced point (for unsampled-model fallback)
@@ -87,14 +97,18 @@ while (true) {
 }
 
 // ---- estimate --------------------------------------------------------------
-const out = ['vehicle_id,year,make,model,powertrain,availability,est_part_cost,basis,nearest_sample_year,sample_distance'];
+// est_part_cost      = marketplace floor (cheapest quality listing on eBay)
+// est_install_grade  = named-builder tier (Mechman/Singer/Power Bastards class);
+//                      vehicle-matched builder listing when the sweep caught one,
+//                      otherwise the builder-tier median
+const out = ['vehicle_id,year,make,model,powertrain,availability,est_part_cost,est_install_grade,basis,nearest_sample_year,sample_distance'];
 const tally = {};
 for (const v of vehicles) {
-  let availability, est = '', basis, nearestYear = '', dist = '';
+  let availability, est = '', grade = '', basis, nearestYear = '', dist = '';
 
   if (v.powertrain !== 'ICE') {
     // EVs/hybrids have no alternator — no price, labeled plainly
-    availability = 'no_alternator'; est = ''; basis = 'no_alternator';
+    availability = 'no_alternator'; basis = 'no_alternator';
   } else {
     const yearMap = sampled.get(`${v.make}|${v.model}`);
     if (yearMap && yearMap.size && Number.isFinite(+v.year)) {
@@ -108,19 +122,20 @@ for (const v of vehicles) {
       const pt = yearMap.get(best.y);
       if (pt.price !== null) {
         availability = 'off_shelf'; est = pt.price;
+        grade = pt.builder ?? BUILDER_MEDIAN;
         basis = best.d === 0 ? 'sampled_exact' : 'nearest_year';
       } else {
-        availability = 'custom'; est = CUSTOM_EST; basis = 'nearest_gap';
+        availability = 'custom'; est = CUSTOM_EST; grade = BUILDER_MEDIAN; basis = 'nearest_gap';
       }
     } else if (makeMedian[v.make] != null) {
-      availability = 'estimated'; est = makeMedian[v.make]; basis = 'make_median';
+      availability = 'estimated'; est = makeMedian[v.make]; grade = BUILDER_MEDIAN; basis = 'make_median';
     } else {
-      availability = 'estimated'; est = globalMedian; basis = 'global_median';
+      availability = 'estimated'; est = globalMedian; grade = BUILDER_MEDIAN; basis = 'global_median';
     }
   }
 
   tally[availability] = (tally[availability] || 0) + 1;
-  out.push([v.vehicle_id, v.year, csv(v.make), csv(v.model), v.powertrain, availability, est, basis, nearestYear, dist].join(','));
+  out.push([v.vehicle_id, v.year, csv(v.make), csv(v.model), v.powertrain, availability, est, grade, basis, nearestYear, dist].join(','));
 }
 
 function csv(s) { s = String(s ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
@@ -137,5 +152,5 @@ if (offShelf.length) {
   const avg = offShelf.reduce((s, x) => s + x, 0) / offShelf.length;
   console.log(`\noff_shelf est: avg $${avg.toFixed(0)}, median $${median(offShelf)}, n=${offShelf.length}`);
 }
-console.log(`custom-build estimate used: $${CUSTOM_EST} (median of ${builderPrices.length} listings >= ${BUILDER_AMPS}A)`);
+console.log(`install-grade / custom estimate: $${BUILDER_MEDIAN} (median of ${builderPrices.length} named-builder listings)`);
 console.log(`global median (fallback): $${globalMedian}`);
