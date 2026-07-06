@@ -202,8 +202,8 @@ export const fonts = {
 
 // ── Spacing / layout ────────────────────────────────────────────────────────
 // Layout spacing scales with the viewport on the same fluid curve as type.
-// No max-width: the page fills the viewport at every size and keeps growing
-// past the 1920 anchor with no ceiling. Floors protect narrow phones.
+// The container caps at `containerMax` (below) and centers; gutters stay
+// fluid inside it. Floors protect narrow phones.
 //
 // Resolve fluid spec values via useFluidPx() at the call site (same pattern
 // as the type scale).
@@ -222,6 +222,13 @@ export const radius = {
   xl: 20,
   pill: 100,
 }
+
+// ── Container max width ─────────────────────────────────────────────────────
+// The .container (Container.tsx) caps here and centers; the fluid gutters
+// (containerPadX) sit inside it. One value shared by every page — landing,
+// product detail, articles — so the whole app reads at the same measure.
+// Splits the difference between an earlier 1410 cap and full-bleed.
+export const containerMax = 1680
 
 // ── Shared text constraint ──────────────────────────────────────────────────
 // All headings + body paragraphs use this. Single edit point. Also used for

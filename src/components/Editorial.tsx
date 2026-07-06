@@ -22,7 +22,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Container, Section, SectionIntro, colors, fluidLineHeight, type, useFluidPx } from '@/ui';
+import { Container, Section, SectionIntro, colors, containerMax, fluidLineHeight, type, useFluidPx } from '@/ui';
 
 // ── Resolved design tokens (RN cannot read CSS vars) ────────────────────────
 const INK = colors.ink;
@@ -531,7 +531,8 @@ export function Editorial() {
   const gutter = Math.max(20, Math.min(32, width * 0.017));
 
   // .edit-grid → 3 cols on web wide; single column @<=900 (mobile breakpoint).
-  const containerInner = Math.min(1410, width) - horizontalPadding * 2;
+  // Match the shared Container cap so the figure math tracks the real content width.
+  const containerInner = Math.min(containerMax, width) - horizontalPadding * 2;
   const webCardWidth = isNarrow
     ? undefined
     : (containerInner - gutter * 2) / 3;

@@ -424,7 +424,7 @@ export default function ComponentsPage() {
             </Text>
             <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: 16, backgroundColor: colors.surface }}>
               <Mono size="sm" tone="gray">
-                Full-bleed (no max-width) · gutters clamp(22, 2.083vw, 56) · section padding-top clamp(56, 5vw, 128) — all anchored at 1920px
+                Max-width 1680px, centered · gutters clamp(22, 2.083vw, 56) · section padding-top clamp(56, 5vw, 128) — all anchored at 1920px
               </Mono>
             </View>
           </Block>
