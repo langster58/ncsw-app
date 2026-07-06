@@ -5,12 +5,12 @@
 // high-output-alternator part cost for EVERY row in the Directus vehicles
 // collection. No Directus writes — output is a CSV.
 //
-// Estimation rules, per vehicle row:
-//   non-ICE            -> not_applicable (no belt-driven alternator)
-//   ICE, model sampled -> nearest sampled year of the same (make, model):
-//                           priced point  -> off_shelf, that price
-//                           gap point     -> custom, custom-build estimate
-//   ICE, model missing -> make median of priced points, else global median
+// Estimation rules, per vehicle row — every row gets a price:
+//   model sampled -> nearest sampled year of the same (make, model):
+//                      priced point  -> off_shelf, that price
+//                      gap point     -> custom, custom-build estimate
+//   otherwise     -> make median of priced points, else global median
+//   (EV/hybrid rows fall through to custom: no off-the-shelf part exists)
 //
 // "Priced" means a quality listing (>= QUALITY_AMPS amps) was found for that
 // sampled year; 200-249A bargain units are recorded in the raw CSV but are
@@ -93,7 +93,8 @@ for (const v of vehicles) {
   let availability, est = '', basis, nearestYear = '', dist = '';
 
   if (v.powertrain !== 'ICE') {
-    availability = 'not_applicable'; basis = 'non_ice';
+    // EVs/hybrids have no alternator — no price, labeled plainly
+    availability = 'no_alternator'; est = ''; basis = 'no_alternator';
   } else {
     const yearMap = sampled.get(`${v.make}|${v.model}`);
     if (yearMap && yearMap.size && Number.isFinite(+v.year)) {
