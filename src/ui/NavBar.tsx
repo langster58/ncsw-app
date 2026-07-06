@@ -1,56 +1,39 @@
-import React, { useEffect, useState } from 'react'
-import { Linking, Platform, Pressable, View } from 'react-native'
-import { Button } from './Button'
-import { colors, fonts, space, useFluidPx } from './tokens'
+import React from 'react'
+import { Platform, Pressable, Text, View } from 'react-native'
+import { colors, fonts, space, type, useFluidPx } from './tokens'
 
-// NavBar — sticky top chrome with slots for brand / menu / phone.
+// NavBar — top chrome with slots for brand / menu / phone.
 //   <NavBar>
 //     <NavBar.Brand href="/">…</NavBar.Brand>
-//     <NavBar.Menu>…link list…</NavBar.Menu>
-//     <NavBar.Phone number="(216) 555-0114" />
+//     <NavBar.Menu>…link list…<NavBar.Pipe /><NavBar.Phone number="(216) 555-0114" /></NavBar.Menu>
 //   </NavBar>
-
-const HEIGHT = 56
-const SCROLL_TRIGGER = 40
+//
+// Mirrors the landing-page nav (src/components/Nav.tsx): a STATIC first-row bar,
+// not sticky/fixed. The page's ScrollView scrolls below it, so there's no
+// scroll-triggered background swap and no backdrop blur — solid white, a soft
+// bottom hairline, and (on web) a stacking context above the scroll region.
 
 type NavBarProps = { children: React.ReactNode }
 
 function Root({ children }: NavBarProps) {
-  const [scrolled, setScrolled] = useState(false)
   const padX = useFluidPx(space.containerPadX)
 
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return
-    const onScroll = () => setScrolled(window.scrollY > SCROLL_TRIGGER)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const webBarStyle: any =
-    Platform.OS === 'web'
-      ? {
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: scrolled ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.85)',
-          borderBottomWidth: 1,
-          borderBottomColor: scrolled ? colors.line : colors.lineSoft,
-          backdropFilter: 'blur(12px)',
-          transition: 'background-color 0.2s, border-color 0.2s',
-          zIndex: 100,
-        }
-      : { backgroundColor: colors.white }
+  const barStyle: any = {
+    width: '100%',
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineSoft,
+    ...(Platform.OS === 'web' ? { zIndex: 80 } : null),
+  }
 
   return (
-    <View style={[{ width: '100%', height: HEIGHT }, webBarStyle]}>
+    <View style={barStyle}>
       <View
         style={
           {
             width: '100%',
-            height: HEIGHT,
             paddingHorizontal: padX,
+            paddingVertical: 16,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -78,58 +61,53 @@ function Brand({
     }
   }
   return (
-    <Pressable onPress={go} accessibilityRole="link">
+    <Pressable onPress={go} accessibilityRole="link" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
       {children}
     </Pressable>
   )
 }
 
-// Menu slot — flexible link list container.
+// Menu slot — flexible link list container. Gap matches the landing link row.
 function Menu({ children }: { children: React.ReactNode }) {
-  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>{children}</View>
+  return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>{children}</View>
 }
 
-// Phone slot — platform-aware. On desktop there's nowhere to navigate to and
-// no in-page action to take, so we render the phone number as plain styled
-// text (wrapped in a tel: anchor — clicking still hands off to FaceTime /
-// Continuity on Apple desktops, no-op elsewhere). On a phone, render an
-// actual button that opens the dialer.
+// Divider between the link list and the phone number (landing .nav Pipe).
+function Pipe() {
+  const fontSize = useFluidPx(type.meta)
+  return <Text style={{ fontFamily: fonts.body, fontSize, color: colors.borderStrong } as any}>|</Text>
+}
+
+// Phone slot — inert plain text, exactly as the landing renders it. There's no
+// in-page action a desktop click could take (no dialer, no tel: handoff worth
+// offering), so this is deliberately non-interactive: just styled text.
 function Phone({ number }: { number: string }) {
-  const digits = number.replace(/\D/g, '')
-  const tel = `tel:+1${digits}`
-
-  if (Platform.OS === 'web') {
-    return React.createElement(
-      'a',
-      {
-        href: tel,
-        style: {
-          fontFamily: fonts.body,
-          fontSize: 14,
-          fontWeight: 600,
-          color: colors.ink,
-          textDecoration: 'none',
-          letterSpacing: '-0.005em',
-        },
-      },
-      number,
-    )
-  }
-
+  const fontSize = useFluidPx(type.meta)
   return (
-    <Button variant="primary" onPress={() => Linking.openURL(tel)}>
-      Call now
-    </Button>
+    <Text
+      style={
+        {
+          fontFamily: fonts.body,
+          fontSize,
+          fontWeight: '600',
+          color: colors.ink,
+        } as any
+      }
+    >
+      {number}
+    </Text>
   )
 }
 
 type NavBarComponent = ((p: NavBarProps) => React.ReactElement) & {
   Brand: typeof Brand
   Menu: typeof Menu
+  Pipe: typeof Pipe
   Phone: typeof Phone
 }
 
 export const NavBar = Root as NavBarComponent
 NavBar.Brand = Brand
 NavBar.Menu = Menu
+NavBar.Pipe = Pipe
 NavBar.Phone = Phone

@@ -544,7 +544,7 @@ export default function ComponentsPage() {
               </View>
             </View>
             <Mono size="sm" tone="gray">
-              Slots: Brand · Menu · Phone. On web the Phone slot renders as plain styled text (tel: anchor — no button chrome). On native it renders a Button that opens the system dialer via Linking.
+              Slots: Brand · Menu · Pipe · Phone. Matches the landing nav — a static bar (not sticky), solid white with a soft bottom hairline. The Phone slot is inert plain styled text, no tel: handoff or button chrome.
             </Mono>
           </Block>
 
