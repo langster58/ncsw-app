@@ -3,16 +3,16 @@
 // Test on N models first: MAX_MODELS=20 node --env-file=.env --env-file=.env.local scripts/ebay-ho-alt-search.js
 //
 // Establishes a cost basis for high-output alternators for every ICE vehicle in
-// the Directus vehicles collection. Alternators are shared across a vehicle
-// generation, so we DON'T search every model-year: we search the newest uncovered
-// year, read the fitment year-range from the eBay listing title (via OrcaRouter,
-// free), and mark every year in that range as covered by the same part. This
-// self-discovers generation boundaries and collapses ~9,781 year-combos toward
-// ~2,500-4,000 searches.
+// the Directus vehicles collection. For each (year,make,model) it queries the
+// eBay Browse API (category 177697 + compatibility_filter for correct fitment),
+// extracts the amp rating from each listing title via regex, and records EVERY
+// option rated >= 220A (the install floor) as its own row — so the full spread of
+// amp tiers and prices is visible per vehicle. Vehicles with no 220A+ option get a
+// single gap row (the custom-build / quote-at-booking cases).
 //
 // Non-ICE (EV/PHEV/hybrid) is excluded — no conventional belt-driven alternator.
-// Writes one row per covered (year,make,model) to scripts/ebay-ho-alt-results.csv.
-// Resumes automatically (skips combos already in the CSV).
+// Writes to scripts/ebay-ho-alt-results.csv; resumes automatically (skips any
+// (year,make,model) already present).
 
 import fs from 'fs';
 import path from 'path';
@@ -43,9 +43,6 @@ const INSTALL_FLOOR_AMPS = 220;
 // Exclude sub-$80 listings — those are brushes, holders, bearings, connectors,
 // not complete alternators. A real HO alternator is well above this.
 const PRICE_FLOOR_USD = 80;
-
-// Sanity bounds for LLM-extracted fitment ranges (guards against hallucinated spans)
-const MAX_FITMENT_SPAN = 20;
 
 let ebayToken = null;
 let ebayTokenExpiry = 0;
@@ -226,69 +223,43 @@ function appendNoResults(year, make, model, anchorYear, tag = 'NO_RESULTS') {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+const priceOf = r => parseFloat(r.item?.price?.value ?? 'NaN');
+
 async function processModel(make, model, years, done) {
-  // years still needing a price, newest first
-  let needed = [...years].filter(y => !done.has(`${y}|${make}|${model}`)).sort((a, b) => b - a);
-  const minNeeded = Math.min(...years), maxNeeded = Math.max(...years);
+  const needed = [...years].filter(y => !done.has(`${y}|${make}|${model}`)).sort((a, b) => b - a);
   let searches = 0;
 
-  while (needed.length > 0) {
-    const anchor = needed[0]; // newest uncovered
-    const { items, matchMode } = await searchEbay(anchor, make, model);
+  for (const year of needed) {
+    const { items, matchMode } = await searchEbay(year, make, model);
     searches++;
 
     if (items === null || items.length === 0) {
-      appendNoResults(anchor, make, model, anchor);
-      needed = needed.filter(y => y !== anchor);
+      appendNoResults(year, make, model, year);
       await sleep(DELAY_MS);
       continue;
     }
 
-    // Extract amps + fitment from each title (local regex, instant). Best-Match ordered.
+    // Extract amps + fitment from each title (local regex, instant).
     const rows = items.map(item => ({ item, c: extractFromTitle(item.title) }));
+    const qualifying = rows.filter(r => Number.isFinite(r.c.amps) && r.c.amps >= INSTALL_FLOOR_AMPS);
 
-    // Apply the 220A install floor in code. Among qualifying units prefer eBay
-    // EXACT fitment over POSSIBLE (cuts wrong-vehicle parts), then cheapest.
-    const priceOf = r => parseFloat(r.item?.price?.value ?? 'NaN');
-    const byPrice = (a, b) => priceOf(a) - priceOf(b);
-    const meetsFloor = r => Number.isFinite(r.c.amps) && r.c.amps >= INSTALL_FLOOR_AMPS;
-    const isExact = r => r.item?.compatibilityMatch === 'EXACT';
-    const qualifying = rows.filter(meetsFloor);
-    const exactQual = qualifying.filter(isExact);
-    const pool = exactQual.length > 0 ? exactQual : qualifying;
-
-    let best, floorFlag, collapse;
-    if (pool.length > 0) {
-      best = [...pool].sort(byPrice)[0];
-      floorFlag = 'true';
-      collapse = true; // a real >=220A part MAY cover its whole fitment range
+    if (qualifying.length === 0) {
+      // No 220A+ option for this vehicle. Record the cheapest complete alternator
+      // as a gap signal (these are the custom-build / quote-at-booking cases).
+      const best = [...rows].sort((a, b) => priceOf(a) - priceOf(b))[0];
+      const flag = Number.isFinite(best.c.amps) ? 'false' : 'unknown';
+      appendRow(year, make, model, year, best.item?.compatibilityMatch ?? matchMode, best.item, best.c, flag);
     } else {
-      // No >=220A part fits this year. Record cheapest complete alternator as a GAP
-      // signal, but DON'T let it collapse siblings — each year still needs its own
-      // search so we don't stamp a generation with a below-floor part and miss a
-      // real HO unit that only appears at a different year.
-      best = [...rows].sort(byPrice)[0];
-      floorFlag = Number.isFinite(best.c.amps) ? 'false' : 'unknown';
-      collapse = false;
-    }
-
-    // Year span to cover: qualifying part -> its fitment range; gap -> anchor only
-    let start = anchor, end = anchor;
-    if (collapse) {
-      const s = best.c.fit_year_start, e = best.c.fit_year_end;
-      if (Number.isFinite(s) && Number.isFinite(e) && e >= s && (e - s) <= MAX_FITMENT_SPAN) {
-        start = Math.max(s, minNeeded);
-        end = Math.min(e, maxNeeded);
+      // Capture EVERY 220A+ option (one row each, dedup by listing), so the full
+      // spread of amp tiers and prices is visible per vehicle. Ascending amps, then price.
+      const seen = new Set();
+      const options = qualifying
+        .filter(r => { const id = r.item?.itemId; if (!id || seen.has(id)) return false; seen.add(id); return true; })
+        .sort((a, b) => (a.c.amps - b.c.amps) || (priceOf(a) - priceOf(b)));
+      for (const r of options) {
+        appendRow(year, make, model, year, r.item?.compatibilityMatch ?? matchMode, r.item, r.c, 'true');
       }
     }
-
-    const covered = needed.filter(y => y >= start && y <= end);
-    if (!covered.includes(anchor)) covered.push(anchor); // guarantee progress
-
-    // Prefer eBay's per-item fitment verdict (EXACT/POSSIBLE) when present
-    const label = best.item?.compatibilityMatch ?? matchMode;
-    for (const y of covered) appendRow(y, make, model, anchor, label, best.item, best.c, floorFlag);
-    needed = needed.filter(y => !covered.includes(y));
 
     await sleep(DELAY_MS);
   }
@@ -322,16 +293,14 @@ async function main() {
     combosCovered += yearSet.size;
     modelsDone++;
     if (modelsDone % 25 === 0 || MAX_MODELS !== Infinity) {
-      const ratio = totalSearches > 0 ? (combosCovered / totalSearches).toFixed(2) : '0';
-      console.log(`${modelsDone}/${modelEntries.length} models — ${totalSearches} eBay searches for ${combosCovered} combos (${ratio}x collapse)`);
+      console.log(`${modelsDone}/${modelEntries.length} models — ${combosCovered}/${totalCombos} vehicles, ${ebayCallCount} eBay calls`);
     }
   }
 
   if (cappedOut) {
-    console.log(`\nReached MAX_SEARCHES (${MAX_SEARCHES}) — stopped before eBay's daily cap. Re-run tomorrow to resume.`);
+    console.log(`\nReached MAX_SEARCHES (${MAX_SEARCHES}) — stopped before eBay's daily cap. Re-run to resume.`);
   }
-  const ratio = totalSearches > 0 ? (totalCombos / totalSearches).toFixed(2) : '0';
-  console.log(`\n${totalSearches} eBay searches this run covered ${combosCovered}/${totalCombos} combos (${ratio}x collapse). Total eBay API calls: ${ebayCallCount}`);
+  console.log(`\n${combosCovered}/${totalCombos} vehicles processed this run. Total eBay API calls: ${ebayCallCount}`);
   console.log(`Results: ${OUTPUT_FILE}`);
 }
 
