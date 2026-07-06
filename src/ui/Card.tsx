@@ -287,26 +287,25 @@ function CardHeader({ children, right }: { children: React.ReactNode; right?: Re
   )
 }
 
-// Footer row — typically a door link. Has a top hairline divider.
+// Footer row — typically a door link. No divider and no button-like hover fill:
+// `marginTop: 'auto'` pushes it to the bottom of the card so the CTA aligns
+// across a row of cards (the flex space above it absorbs the height difference).
+// The whole card is the tap surface, and the door link inside shifts color on
+// card hover via HoverContext, so the footer needs no chrome of its own.
 function CardFooter({ children }: { children: React.ReactNode }) {
   const layout = React.useContext(CardLayoutContext)
-  const hovered = React.useContext(HoverContext)
-  const padXSplit = useFluidPx(fluid(32, 22))
-  const padXStack = useFluidPx(fluid(22, 16))
-  const padX = layout === 'split' ? padXSplit : padXStack
-  const padY = useFluidPx(fluid(18, 14))
+  const padSplit = useFluidPx(fluid(32, 22))
+  const padStack = useFluidPx(fluid(22, 16))
+  const pad = layout === 'split' ? padSplit : padStack
   return (
     <View
       style={
         {
-          paddingHorizontal: padX,
-          paddingVertical: padY,
-          borderTopWidth: 1,
-          borderTopColor: colors.line,
+          paddingHorizontal: pad,
+          paddingBottom: pad,
+          marginTop: 'auto',
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: hovered ? colors.accentSoft : 'transparent',
-          ...(Platform.OS === 'web' ? { transition: 'background-color 140ms ease' } : null),
         } as any
       }
     >
