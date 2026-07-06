@@ -533,15 +533,30 @@ export default function ComponentsPage() {
 
           <Block title="NavBar">
             <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 8, overflow: 'hidden' }}>
-              <View style={{ height: 56, backgroundColor: 'rgba(255,255,255,0.96)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
-                <Text style={{ fontFamily: fonts.display, fontSize: 18, fontWeight: '800', color: colors.ink }}>NCSW</Text>
-                <View style={{ flexDirection: 'row', gap: 24 }}>
+              <NavBar>
+                <NavBar.Brand href="#">
+                  {Platform.OS === 'web'
+                    ? React.createElement('img', {
+                        src: '/brand/NCSW-wordmark.svg',
+                        alt: 'North Coast Soundworks',
+                        style: { height: 23, width: 'auto', display: 'block' },
+                      })
+                    : (
+                      <Text style={{ fontFamily: fonts.display, fontSize: 18, fontWeight: '800', color: colors.ink }}>
+                        NCSW
+                      </Text>
+                    )}
+                </NavBar.Brand>
+                {/* Links + pipe + phone travel together as one flush right-hand
+                    group, so the links sit against the divider (not centered). */}
+                <NavBar.Menu>
                   <Link variant="nav" href="#">Packages</Link>
                   <Link variant="nav" href="#">Editorial</Link>
                   <Link variant="nav" href="#">Location</Link>
-                </View>
-                <NavBar.Phone number="(216) 555-0114" />
-              </View>
+                  <NavBar.Pipe />
+                  <NavBar.Phone number="(216) 555-0114" />
+                </NavBar.Menu>
+              </NavBar>
             </View>
             <Mono size="sm" tone="gray">
               Slots: Brand · Menu · Pipe · Phone. Matches the landing nav — a static bar (not sticky), solid white with a soft bottom hairline. The Phone slot is inert plain styled text, no tel: handoff or button chrome.
