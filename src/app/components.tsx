@@ -12,6 +12,7 @@ import {
   Chip,
   Container,
   DataColumn,
+  DataList,
   DataTable,
   Dropdown,
   Eyebrow,
@@ -28,12 +29,16 @@ import {
   Image,
   Lead,
   Link,
+  Metaline,
   Modal,
   NavBar,
   PriceRangeSlider,
+  PriceSummary,
+  Schematic,
   ScoreMeter,
   Section,
   SectionIntro,
+  Shelf,
   Tag,
   colors,
   fonts,
@@ -357,6 +362,46 @@ export default function ComponentsPage() {
             </Row>
           </Block>
 
+          <Block title="Metaline">
+            <Metaline
+              items={[
+                { text: 'Performance tier', tone: 'ink' },
+                'Sealed alignment',
+                { text: 'In stock', tone: 'accent' },
+                'SKU GTI-P12S-26A',
+              ]}
+            />
+            <Mono size="sm" tone="gray">
+              Static metadata: mono, middot-separated. The standard treatment for read-only metadata (tiers, specs, SKUs). Pills/chips are reserved for interactive filters.
+            </Mono>
+          </Block>
+
+          <Block title="DataList">
+            <DataList
+              rows={[
+                { label: 'Acoustic volume', value: '111 ft³' },
+                { label: 'Head unit', value: 'Factory, retained' },
+                { label: 'Charging system', value: 'Stock verified', accent: true },
+              ]}
+            />
+            <Mono size="sm" tone="gray">
+              Label → value rows with hairlines for a single record's data. <Text style={{ fontFamily: fonts.mono }}>accent</Text> tints a positive value.
+            </Mono>
+          </Block>
+
+          <Block title="PriceSummary">
+            <PriceSummary
+              lines={[
+                { label: 'Components', value: '$2,716.99' },
+                { label: 'Installation', value: '$1,552.76' },
+              ]}
+              total={{ label: 'Total, installed & tuned', value: '$4,270' }}
+            />
+            <Mono size="sm" tone="gray">
+              Subtotal lines, short rule, total. Right-aligned by default (<Text style={{ fontFamily: fonts.mono }}>align="left"</Text> to flip).
+            </Mono>
+          </Block>
+
           <Block title="FilterChipGroup">
             <FilterChipGroup
               label="Size"
@@ -581,6 +626,50 @@ export default function ComponentsPage() {
             />
             <Mono size="sm" tone="gray">
               Sortable header · sticky left column ("Price") · per-row hover state. Pass <Text style={{ fontFamily: fonts.mono }}>maxVisible</Text> to cap height and enable lazy-load scrolling for thousands of rows.
+            </Mono>
+          </Block>
+
+          <Block title="Shelf">
+            <Shelf>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 260,
+                    borderWidth: 1,
+                    borderColor: colors.line,
+                    borderRadius: 16,
+                    padding: 18,
+                    backgroundColor: colors.white,
+                  }}
+                >
+                  <Text style={{ fontFamily: fonts.display, fontWeight: '800', fontSize: 18, color: colors.ink }}>
+                    System {i + 1}
+                  </Text>
+                  <Mono size="sm" tone="gray">$3,140 installed</Mono>
+                </View>
+              ))}
+            </Shelf>
+            <Mono size="sm" tone="gray">
+              Horizontal-scroll row of fixed-width cards (related systems, build logs). The cut-off edge signals it scrolls.
+            </Mono>
+          </Block>
+
+          <Block title="Schematic">
+            <Schematic
+              diagram={
+                <View style={{ height: 180, alignItems: 'center', justifyContent: 'center' }}>
+                  <Mono size="sm" tone="gray">[ system diagram — SVG per topology ]</Mono>
+                </View>
+              }
+              legend={[
+                { n: 1, name: 'Factory head unit', loc: 'Dash · retained source' },
+                { n: 2, name: 'Helix DSP MINI MK2', loc: 'Under passenger seat' },
+                { n: 3, name: 'IDMAX12 V4', loc: 'Cargo bay · sealed 1.2 ft³' },
+              ]}
+            />
+            <Mono size="sm" tone="gray">
+              Caller supplies the diagram (generated per topology); the component frames it and renders the numbered legend keyed to its callouts.
             </Mono>
           </Block>
 
