@@ -6,9 +6,9 @@
 // the Directus vehicles collection. For each (year,make,model) it queries the
 // eBay Browse API (category 177697 + compatibility_filter for correct fitment),
 // extracts the amp rating from each listing title via regex, and records EVERY
-// option rated >= 220A (the install floor) as its own row — so the full spread of
-// amp tiers and prices is visible per vehicle. Vehicles with no 220A+ option get a
-// single gap row (the custom-build / quote-at-booking cases).
+// option at or above the amp floor (see INSTALL_FLOOR_AMPS) as its own row — so the
+// full spread of amp tiers and prices is visible per vehicle. Vehicles with no
+// qualifying option get a single gap row (the custom-build / quote-at-booking cases).
 //
 // Non-ICE (EV/PHEV/hybrid) is excluded — no conventional belt-driven alternator.
 // Writes to scripts/ebay-ho-alt-results.csv; resumes automatically (skips any
@@ -37,8 +37,9 @@ const EBAY_SCOPE = 'https://api.ebay.com/oauth/api_scope';
 
 const DELAY_MS = 800; // between eBay searches; keeps us under 5000/day
 
-// NCSW won't install anything below this. Cost basis only cares about 220A+ parts.
-const INSTALL_FLOOR_AMPS = 220;
+// Amp floor for a "high output" alternator worth capturing. Set to 200 for margin;
+// genuine HO builds cluster at 220+, but 200 avoids missing anything near the edge.
+const INSTALL_FLOOR_AMPS = 200;
 
 // Exclude sub-$80 listings — those are brushes, holders, bearings, connectors,
 // not complete alternators. A real HO alternator is well above this.
@@ -81,7 +82,7 @@ async function searchEbay(year, make, model, useCompat = true) {
   url.searchParams.set('limit', '15'); // wide net; Best Match ranks real HO units up top
   url.searchParams.set('filter', `price:[${PRICE_FLOOR_USD}..],priceCurrency:USD`); // drop accessories
   // No sort => Best Match relevance, which surfaces actual "high output" units rather
-  // than the cheapest scrap. We pick the cheapest 220A+ result in code afterward.
+  // than the cheapest scrap. We apply the amp floor in code afterward.
   if (useCompat) {
     url.searchParams.set('compatibility_filter', `Year:${year};Make:${make};Model:${model}`);
   }
@@ -119,8 +120,8 @@ async function searchEbay(year, make, model, useCompat = true) {
 }
 
 // EXTRACTION ONLY, from the terse/formulaic listing title — no LLM needed.
-// Regex is instant, deterministic, and free; the 220A floor is applied in code,
-// so sellers' "High Output" wording on sub-220A units can't fool the gate.
+// Regex is instant, deterministic, and free; the amp floor is applied in code,
+// so sellers' "High Output" wording on underpowered units can't fool the gate.
 // Returns { amps, fit_year_start, fit_year_end } (nulls when not stated).
 function extractFromTitle(title) {
   const t = title || '';
@@ -193,7 +194,7 @@ function csvEscape(val) {
 function writeHeaderIfNeeded() {
   if (fs.existsSync(OUTPUT_FILE)) return;
   fs.writeFileSync(OUTPUT_FILE,
-    'year,make,model,anchor_year,match_mode,ebay_item_id,title,price_value,price_currency,condition,amps,meets_220a_floor,fit_year_start,fit_year_end,listing_url,seller,search_timestamp\n');
+    'year,make,model,anchor_year,match_mode,ebay_item_id,title,price_value,price_currency,condition,amps,meets_amp_floor,fit_year_start,fit_year_end,listing_url,seller,search_timestamp\n');
 }
 
 function appendRow(year, make, model, anchorYear, matchMode, item, c, meetsFloor) {
@@ -244,13 +245,13 @@ async function processModel(make, model, years, done) {
     const qualifying = rows.filter(r => Number.isFinite(r.c.amps) && r.c.amps >= INSTALL_FLOOR_AMPS);
 
     if (qualifying.length === 0) {
-      // No 220A+ option for this vehicle. Record the cheapest complete alternator
+      // No qualifying option for this vehicle. Record the cheapest complete alternator
       // as a gap signal (these are the custom-build / quote-at-booking cases).
       const best = [...rows].sort((a, b) => priceOf(a) - priceOf(b))[0];
       const flag = Number.isFinite(best.c.amps) ? 'false' : 'unknown';
       appendRow(year, make, model, year, best.item?.compatibilityMatch ?? matchMode, best.item, best.c, flag);
     } else {
-      // Capture EVERY 220A+ option (one row each, dedup by listing), so the full
+      // Capture EVERY qualifying option (one row each, dedup by listing), so the full
       // spread of amp tiers and prices is visible per vehicle. Ascending amps, then price.
       const seen = new Set();
       const options = qualifying
