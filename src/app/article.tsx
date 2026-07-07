@@ -78,13 +78,6 @@ const ARTICLE = {
     'Plot every subwoofer we carry against its installed price and a curve appears. The bend in that curve is where more money stops buying more bass you can actually hear. We build to the bend — and here is the data that decides where it is.',
 }
 
-// The hero data figure — the flagship value-frontier scatter.
-const HERO_FIGURE: FigureSpec = {
-  type: 'frontier',
-  caption:
-    'Every subwoofer in our evaluation: installed price on the x-axis, measured impact on the y. The dashed line is the value frontier — the drivers that return the most output for each dollar. Everything below it is dominated.',
-}
-
 // The article body — a sequence of typographic blocks with one figure spliced
 // in. In the wired version these come from `article.body` (Markdown) plus the
 // `article.figures` JSON; the template only ever renders the resolved blocks.
@@ -349,18 +342,6 @@ function Prose({ blocks }: { blocks: Block[] }) {
   )
 }
 
-// ── Byline row ──────────────────────────────────────────────────────────────
-// Sits directly under the eyebrow: no avatar circle, no separating rule.
-// Named-voice format: date / person, org.
-function Byline() {
-  const metaSize = useFluidPx(type.meta)
-  return (
-    <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, letterSpacing: 0.4, color: colors.gray } as any}>
-      {`${ARTICLE.publish_date} / ${ARTICLE.author}, NCSW`}
-    </Text>
-  )
-}
-
 // ── Author card (E-E-A-T anchor) ────────────────────────────────────────────
 function AuthorCard() {
   const bioSize = useFluidPx(type.small)
@@ -378,9 +359,6 @@ function AuthorCard() {
         padding: useVal(28, 22) as any,
       } as any}
     >
-      <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: fonts.mono, fontSize: bioSize, color: colors.inkFaint } as any}>Photo</Text>
-      </View>
       <View style={{ flex: 1 }}>
         <Eyebrow>Written by</Eyebrow>
         <View style={{ height: 8 }} />
@@ -480,26 +458,20 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          {/* Header — eyebrow, then the byline directly beneath it (no rule, no
-              avatar), then the full-width h2 title and lead. */}
+          {/* Header — a rule with the byline flush-right (eyebrow format),
+              then the full-width h2 title and lead. */}
           <Container>
             <View style={{ paddingTop: useVal(30, 22) as any } as any}>
-              <Eyebrow>{`${ARTICLE.category} · ${ARTICLE.reading_time}`}</Eyebrow>
-              <View style={{ height: 8 }} />
-              <Byline />
-              <View style={{ height: 22 }} />
+              {/* Rule carrying the byline flush-right, in eyebrow format. */}
+              <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, paddingTop: 14, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' } as any}>
+                <Eyebrow>{`By ${ARTICLE.author} / ${ARTICLE.publish_date}`}</Eyebrow>
+              </View>
+              <View style={{ height: 24 }} />
               <FullWidthCopyContext.Provider value={true}>
                 <Heading level="h2">{ARTICLE.title}</Heading>
               </FullWidthCopyContext.Provider>
               <View style={{ height: 20 }} />
               <Lead>{ARTICLE.excerpt}</Lead>
-            </View>
-          </Container>
-
-          {/* Hero figure */}
-          <Container>
-            <View style={{ marginTop: useVal(36, 28) as any } as any}>
-              <ArticleFigure figure={HERO_FIGURE} />
             </View>
           </Container>
 
