@@ -8,6 +8,7 @@ import {
   Eyebrow,
   Heading,
   IconArrow,
+  Image,
   Lead,
   Link,
   FullWidthCopyContext,
@@ -349,21 +350,14 @@ function Prose({ blocks }: { blocks: Block[] }) {
 }
 
 // ── Byline row ──────────────────────────────────────────────────────────────
+// Sits directly under the eyebrow: no avatar circle, no separating rule.
+// Named-voice format: date / person, org.
 function Byline() {
-  const nameSize = useFluidPx(type.small)
   const metaSize = useFluidPx(type.meta)
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flexWrap: 'wrap' } as any}>
-      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, color: colors.inkFaint } as any}>BC</Text>
-      </View>
-      <View>
-        <Text style={{ fontFamily: fonts.body, fontSize: nameSize, fontWeight: '600', color: colors.ink } as any}>By {ARTICLE.author}</Text>
-        <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginTop: 3 } as any}>
-          {ARTICLE.author_role} · {ARTICLE.publish_date}
-        </Text>
-      </View>
-    </View>
+    <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, letterSpacing: 0.4, color: colors.gray } as any}>
+      {`${ARTICLE.publish_date} / ${ARTICLE.author}, NCSW`}
+    </Text>
   )
 }
 
@@ -436,8 +430,6 @@ const LD = {
 
 export default function ArticleScreen() {
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-  // Match the PDP hero spacing exactly (breadcrumb → heading breathing room).
-  const heroTop = useVal(80, 52)
 
   return (
     <>
@@ -460,20 +452,47 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          {/* Header — same construction + spacing as the PDP hero lockup:
-              breadcrumb, an Eyebrow, then a full-width h2 title. */}
+          {/* Hero image — a landing-page methodology photo, labelled top-left. */}
           <Container>
-            <View style={{ paddingTop: heroTop } as any}>
+            <View
+              style={{
+                marginTop: useVal(28, 20) as any,
+                aspectRatio: 16 / 9,
+                borderRadius: radius.lg,
+                overflow: 'hidden',
+                backgroundColor: colors.surface,
+                position: 'relative',
+              } as any}
+            >
+              <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt={ARTICLE.title} />
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0) 55%)',
+                } as any}
+              />
+              <View style={{ position: 'absolute', top: 16, left: 16 }}>
+                <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: colors.white } as any}>
+                  {ARTICLE.category}
+                </Text>
+              </View>
+            </View>
+          </Container>
+
+          {/* Header — eyebrow, then the byline directly beneath it (no rule, no
+              avatar), then the full-width h2 title and lead. */}
+          <Container>
+            <View style={{ paddingTop: useVal(30, 22) as any } as any}>
               <Eyebrow>{`${ARTICLE.category} · ${ARTICLE.reading_time}`}</Eyebrow>
-              <View style={{ height: 18 }} />
+              <View style={{ height: 8 }} />
+              <Byline />
+              <View style={{ height: 22 }} />
               <FullWidthCopyContext.Provider value={true}>
                 <Heading level="h2">{ARTICLE.title}</Heading>
               </FullWidthCopyContext.Provider>
               <View style={{ height: 20 }} />
               <Lead>{ARTICLE.excerpt}</Lead>
-              <View style={{ marginTop: useVal(30, 24) as any, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line } as any}>
-                <Byline />
-              </View>
             </View>
           </Container>
 
