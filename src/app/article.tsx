@@ -216,12 +216,10 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          {/* Body — full width */}
+          {/* Body — paragraph text at 75% */}
           <Container>
             <View style={{ marginTop: useVal(28, 22) as any } as any}>
-              <FullWidthCopyContext.Provider value={true}>
-                <Prose blocks={BODY} />
-              </FullWidthCopyContext.Provider>
+              <Prose blocks={BODY} measure="75%" />
             </View>
           </Container>
 
