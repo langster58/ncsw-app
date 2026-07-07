@@ -445,9 +445,9 @@ export default function PdpScreen() {
               <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: useVal(28, 22) as any }} />
               <View>
                 <Lead>
-                  An install is billed by the hour, so what those hours buy is the whole value. This is what a North Coast install
-                  covers, held to the same standard on every car: the intake review, the way a connector is crimped, where a panel
-                  is treated, how a driver is mounted, and what the electrical honestly needs.
+                  The hours on the ledger buy a sequence we run on every car. The vehicle goes on record before a tool comes out,
+                  the wiring is built to come apart, treatment goes where it earns its keep, hardware is mounted to be forgotten,
+                  and the electrical is settled by arithmetic.
                 </Lead>
               </View>
 
@@ -458,28 +458,28 @@ export default function PdpScreen() {
                       <WebImg src={BUILD_IMG} alt="NCSW intake documentation of a Golf" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </View>
                   }
-                  title="Intake & documentation"
-                  desc="Before a panel comes off, we review the car and its electrical system and document it as it arrived: photographs, condition notes, and a written record of the work authorized. You leave with paperwork that describes your vehicle and the transaction, the same file a shop worth trusting keeps. Nothing about the car is a surprise later."
+                  title="The car goes on record"
+                  desc="Intake is a professional review of the vehicle and its electrical system before any panel comes off. We photograph the car as it arrived, note its condition, and write up the scope of work, so you hold documents that describe both your vehicle and the transaction. The file follows the build and comes home with the car."
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nFerrules & disconnects'} />}
-                  title="Wiring, and putting it back"
-                  desc="Every connection is made to be inspected and undone. We crimp into ferrules, solder only where a joint genuinely needs it, and use solderless connectors and keyed quick-disconnects everywhere else, so any component can be pulled without cutting. Where the vehicle allows, the install is reversible to factory condition, harness and all."
+                  title="Connections built to come apart"
+                  desc="Stranded ends get ferrules, so terminals clamp copper instead of crushing loose wire. Solder appears only where a joint genuinely calls for it; everywhere else we use solderless connectors and keyed quick-disconnects, which means a component comes out in minutes without a wire cutter. Where the vehicle allows, the whole install reverses to factory condition."
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nDamping coverage'} />}
                   title="Treatment, in the right places"
-                  desc="Sound treatment exists to keep any part of the car from being excited into an instrument of its own. We damp the resonant metal, decouple the plastic that would rattle, and absorb energy inside doors and cavities. Each material is chosen on its measured spec rather than its brand, and placed only where the panel needs it — so a fraction of the material does the job, and you don't pay for square footage that buys nothing."
+                  desc="Sound treatment exists to keep any part of the car from being excited into an instrument of its own. We damp the resonant metal, decouple the plastic that would rattle, and absorb energy inside doors and cavities. Each material is chosen on its measured spec rather than its brand, and placed only where the panel needs it, so a fraction of the material does the job and none of the money buys idle square footage."
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nDriver & amp mounting'} />}
-                  title="Mounting that holds"
-                  desc="Door drivers bolt and rivet to a proper baffle, never thread into plastic that works loose. Amplifiers and processors are placed where the specific vehicle has room, chosen to keep wire runs short and install hours down rather than wherever is fastest to reach."
+                  title="Mounted to be forgotten"
+                  desc="Door drivers are bolted and riveted to a baffle that holds torque through ten thousand door slams. Amplifiers and processors go where this specific vehicle has room, with short power runs and factory panels closing back over them. Choosing those locations per chassis is where install hours quietly come down."
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nCharging system'} />}
-                  title="The electrical, read honestly"
-                  desc="We tell you what your car's charging system already provides and what this system actually draws, then size the electrical to the gap, or tell you there isn't one. This build lives inside the factory alternator and battery, so it carries no electrical line. When a system needs more, the BIG3, alternator, or battery appears with the reason it is there."
+                  title="The electrical, in two numbers"
+                  desc="What the charging system provides and what the system draws: intake measures the first, the package spec fixes the second, and the electrical is sized to the difference. On this build the difference is zero, so the line reads $0.00. When a system does outrun the car, the BIG3, alternator, or battery shows up with the arithmetic that put it there."
                   last
                 />
               </View>
