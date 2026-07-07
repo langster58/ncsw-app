@@ -436,8 +436,8 @@ const LD = {
 
 export default function ArticleScreen() {
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-  // Match the PDP hero spacing exactly.
-  const heroTop = useVal(44, 34)
+  // Match the PDP hero spacing exactly (breadcrumb → heading breathing room).
+  const heroTop = useVal(80, 52)
 
   return (
     <>

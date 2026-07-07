@@ -279,7 +279,7 @@ export default function PdpScreen() {
   const { width } = useWindowDimensions()
   const narrow = width <= 900
   const gap = useVal(28, 22)
-  const heroTop = useVal(44, 34)
+  const heroTop = useVal(80, 52) // breadcrumb → hero heading breathing room
   const bigGap = useVal(160, 90)
   // Precomputed so nothing calls a hook inside a .map() below.
   const smallSize = useFluidPx(type.small)
