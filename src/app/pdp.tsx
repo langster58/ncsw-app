@@ -11,6 +11,7 @@ import {
   IconArrow,
   Lead,
   Link,
+  FullWidthCopyContext,
   Metaline,
   PriceSummary,
   Schematic,
@@ -236,13 +237,13 @@ const SCHEMATIC_LEGEND = [
   { n: 1, name: 'Factory head unit — retained', loc: 'Dash · Harman Kardon source' },
   { n: 2, name: 'SounDigital 800.5 EVO', loc: 'Under driver seat · front amplification' },
   { n: 3, name: 'Helix DSP MINI MK2', loc: 'Console · signal reconstruction' },
-  { n: 4, name: 'IDMAX12 V4 · sealed 1.2 ft³', loc: 'Cargo bay · fabricated enclosure' },
+  { n: 4, name: 'Fi HC-15 · sealed enclosure', loc: 'Cargo bay · fabricated enclosure' },
   { n: 5, name: 'Audison Voce II tweeters', loc: 'Front pillars' },
   { n: 6, name: 'Audison Voce II midbass', loc: 'Front doors' },
 ]
 
 const RELATED = [
-  { rel: 'Below this system', title: 'Essentials Prefab Sealed 12', sum: 'Same IDMAX12 in a prefab box, mid front stage, phone-tuned DSP.', price: '$3,140 installed', img: '/images/pattern-floor.png' },
+  { rel: 'Below this system', title: 'Essentials Prefab Sealed 12', sum: 'Same HC-15 in a prefab box, mid front stage, phone-tuned DSP.', price: '$3,140 installed', img: '/images/pattern-floor.png' },
   { rel: 'Below this system', title: 'Essentials Sealed 10', sum: 'A sealed 10 for the driver who wants the front stage first.', price: '$2,480 installed', img: '/images/pattern-frontstage.png' },
   { rel: 'Above this system', title: 'Reference Ported 12', sum: 'The 12W7AE in a tuned ported build. More output, at the cost of the cargo floor.', price: '$5,390 installed', img: '/images/pattern-floor.png' },
   { rel: 'NCSW Pick', title: 'Cargo Infinite Baffle 15', sum: 'The value-calculation winner for this chassis. The cargo floor becomes the enclosure.', price: '$4,890 installed', img: '/images/pattern-reference.png' },
@@ -323,11 +324,11 @@ export default function PdpScreen() {
             </View>
             <View style={{ flexDirection: narrow ? 'column' : 'row', gap, alignItems: 'flex-start' }}>
               <View style={{ flex: narrow ? undefined : 1.5, width: narrow ? '100%' : undefined } as any}>
+                <FullWidthCopyContext.Provider value={true}>
                 <Lead>
                   The Performance Sealed 12 pairs the highest-impact sealed 12 in our evaluation with a reference two-way front
-                  stage, in a hatch whose 111 ft³ cabin does real work for it. The IDMAX12 V4 loads into a 1.2 ft³ sealed box that
-                  keeps the cargo floor usable; extension comes from the alignment and from cabin gain below 80 Hz, not from brute
-                  power.
+                  stage, in a hatch whose 111 ft³ cabin does real work for it. The Fi HC-15 loads into a sealed box that keeps the
+                  cargo floor usable; extension comes from the alignment and from cabin gain below 80 Hz, not from brute power.
                 </Lead>
                 <View style={{ height: 14 }} />
                 <Lead>
@@ -365,6 +366,7 @@ export default function PdpScreen() {
                     ]}
                   />
                 </View>
+                </FullWidthCopyContext.Provider>
               </View>
 
               <View style={{ flex: narrow ? undefined : 1, width: narrow ? '100%' : undefined } as any}>
@@ -388,12 +390,12 @@ export default function PdpScreen() {
 
             <View style={{ marginTop: useVal(26, 22) as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
               <SysRow
-                media={<PhotoSlot label={'Product photo\nIDMAX12 V4'} />}
-                title="Image Dynamics IDMAX12 V4"
-                meta={<Metaline items={['Sub stage', '12″', 'Upper-mid tier', { text: 'Impact 2.28, highest of 41 sealed 12s', tone: 'ink' }]} />}
-                desc="The highest unified-impact score of every sealed 12 we evaluated. A 19 mm-excursion SQ classic whose Qts of 0.626 produces a naturally extended sealed alignment in a compact box, chosen to use the cabin gain the GTI gives away for free."
+                media={<ProductMedia src="/images/products/fi-hc15.webp" alt="Fi Car Audio HC-15" />}
+                title="Fi Car Audio HC-15"
+                meta={<Metaline items={['Sub stage', '15″', 'Upper-mid tier', { text: 'Impact 2.975', tone: 'ink' }]} />}
+                desc="A 2,500 W upper-mid 15 chosen for this cabin: enough cone area and excursion to load the sealed box the hatch allows, with the alignment tuned to use cabin gain below 80 Hz rather than raw power."
                 doorLabel="Read the full evaluation"
-                price="$469.00"
+                price="$675.00"
               />
               <SysRow
                 media={<ProductMedia src="/images/products/helix-dsp-mini-mk2.png" alt="Helix DSP MINI MK2" />}
@@ -422,7 +424,7 @@ export default function PdpScreen() {
                 media={<ProductMedia src="/images/products/ct-1000-1d.webp" alt="CT Sounds CT-1000.1D" />}
                 title="CT Sounds CT-1000.1D"
                 meta={<Metaline items={['Sub amplification', '1,000 W @ 1Ω', 'Class D', '93 dB SNR']} />}
-                desc="Sized by rule, not by upsell: 1,000 W is 2.0× the IDMAX's continuous rating, inside our R1 pairing window. Enough headroom that the amp never runs compressed; not so much that the electrical system pays for watts the driver cannot use."
+                desc="Sized by rule, not by upsell: 1,000 W is 1.0× the HC-15's continuous rating, inside our R1 pairing window. Enough headroom that the amp never runs compressed; not so much that the electrical system pays for watts the driver cannot use."
                 price="$159.99"
               />
               <SysRow
@@ -467,7 +469,7 @@ export default function PdpScreen() {
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nEnclosure fabrication'} />}
                   title="Sealed enclosure fabrication"
-                  desc="Built at 1.2 ft³ to the IDMAX's alignment, sized to the hatch floor so the cargo cover still closes. Materials are on the ledger: void-free plywood, automotive carpet, terminal hardware."
+                  desc="Built to the HC-15's alignment, sized to the hatch floor so the cargo cover still closes. Materials are on the ledger: void-free plywood, automotive carpet, terminal hardware."
                   price="6 hr"
                   priceSub="$600 + $96 materials"
                 />

@@ -3,6 +3,7 @@
 
 // Tokens
 export * from './tokens'
+export { FullWidthCopyContext } from './CopyContext'
 
 // Atoms
 export {
