@@ -165,7 +165,7 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
 
 export default function ArticleScreen() {
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-  const heroTop = useVal(48, 34)
+  const heroTop = useVal(80, 52) // breadcrumb → headline breathing room (matches PDP)
 
   return (
     <>
