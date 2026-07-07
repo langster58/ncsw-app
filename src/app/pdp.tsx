@@ -468,8 +468,8 @@ export default function PdpScreen() {
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nDamping coverage'} />}
-                  title="Damping, in the right places"
-                  desc="Damping adds mass and constraint to the panels that ring; it is not a blanket spread over everything. We treat the panels that actually move, in the coverage that actually changes the measurement, and stop there. Used this way a fraction of the material does the job, and you don't pay for square footage that buys nothing."
+                  title="Treatment, in the right places"
+                  desc="Sound treatment exists to keep any part of the car from being excited into an instrument of its own. We damp the resonant metal, decouple the plastic that would rattle, and absorb energy inside doors and cavities. Each material is chosen on its measured spec rather than its brand, and placed only where the panel needs it — so a fraction of the material does the job, and you don't pay for square footage that buys nothing."
                 />
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nDriver & amp mounting'} />}
