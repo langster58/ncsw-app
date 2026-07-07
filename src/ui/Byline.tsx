@@ -1,33 +1,18 @@
-import { Text, View } from 'react-native'
-import { colors, fonts, tracking, type, useFluidPx } from './tokens'
+import { View } from 'react-native'
+import { Eyebrow } from './Eyebrow'
+import { colors } from './tokens'
 
-// Byline — article authorship. Named-voice: NCSW publishes, the named person
-// carries editorial. Author name in body ink; date in mono meta beneath it.
+// Byline — the eyebrow band that closes an article's hero (headline, dek, lead
+// image) and opens the body. A rule with "By {author} / {date}" set flush-right
+// in eyebrow format. It sits AFTER the hero, where it separates two real things
+// — the intro from the body — so the rule marks an actual boundary.
 
 export function Byline({ author, date }: { author: string; date?: string }) {
-  const nameSize = useFluidPx(type.small)
-  const metaSize = useFluidPx(type.meta)
   return (
-    <View>
-      <Text style={{ fontFamily: fonts.body, fontSize: nameSize, fontWeight: '600', color: colors.ink } as any}>
-        By {author}
-      </Text>
-      {date ? (
-        <Text
-          style={
-            {
-              fontFamily: fonts.mono,
-              fontSize: metaSize,
-              letterSpacing: tracking.label,
-              textTransform: 'uppercase',
-              color: colors.gray,
-              marginTop: 4,
-            } as any
-          }
-        >
-          {date}
-        </Text>
-      ) : null}
+    <View
+      style={{ borderTopWidth: 1, borderTopColor: colors.ink, paddingTop: 14, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' } as any}
+    >
+      <Eyebrow>{date ? `By ${author} / ${date}` : `By ${author}`}</Eyebrow>
     </View>
   )
 }

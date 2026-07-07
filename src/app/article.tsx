@@ -190,9 +190,6 @@ export default function ArticleScreen() {
             <View style={{ paddingTop: heroTop } as any}>
               <Heading level="h2">{ARTICLE.title}</Heading>
               <View style={{ marginTop: space.blockGap } as any}>
-                <Byline author={ARTICLE.author} date={ARTICLE.publish_date} />
-              </View>
-              <View style={{ marginTop: space.blockGap } as any}>
                 <Lead>{ARTICLE.excerpt}</Lead>
               </View>
             </View>
@@ -204,6 +201,13 @@ export default function ArticleScreen() {
               style={{ marginTop: useVal(36, 28) as any, width: '100%', maxWidth: copyMaxWidth, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface } as any}
             >
               <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt="" />
+            </View>
+          </Container>
+
+          {/* Byline eyebrow — divides the hero (headline/dek/image) from the body. */}
+          <Container>
+            <View style={{ marginTop: useVal(40, 30) as any } as any}>
+              <Byline author={ARTICLE.author} date={ARTICLE.publish_date} />
             </View>
           </Container>
 
