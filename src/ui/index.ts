@@ -51,7 +51,7 @@ export type { DataColumn } from './DataTable'
 
 // Editorial / article
 export { Byline } from './Byline'
-export { Prose } from './Prose'
+export { Prose, proseSlug } from './Prose'
 export type { ProseBlock } from './Prose'
 export { CtaBar } from './CtaBar'
 

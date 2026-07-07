@@ -1,5 +1,5 @@
 import React from 'react'
-import { Platform, ScrollView, Text, View } from 'react-native'
+import { Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import Head from 'expo-router/head'
 import {
   Button,
@@ -8,17 +8,18 @@ import {
   Container,
   CtaBar,
   Eyebrow,
+  FullWidthCopyContext,
   Heading,
   IconArrow,
   Image,
   Lead,
   Link,
   Prose,
+  proseSlug,
   Section,
   SectionIntro,
   Shelf,
   colors,
-  copyMaxWidth,
   fluid,
   fonts,
   radius,
@@ -30,12 +31,12 @@ import {
 import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 
-// Article template — the editorial render pattern. Published as a static route
-// so it can be reviewed live on Vercel (same as pdp.tsx); it will be
-// parameterised from the Directus `articles` collection later. The page is an
-// arrangement of shared components: the TOP is identical to the PDP (breadcrumb
-// + hero heading), and the article that follows is composed from Byline, Lead,
-// Image, Prose, SectionIntro + Card/Shelf, and CtaBar — no bespoke markup.
+// Article template — the editorial render pattern. Two-column reading layout:
+// a bounded prose column (kept to a readable measure) beside a sticky meta rail
+// (byline + in-this-article), so the page uses the width instead of leaving the
+// right half empty. Everything is composed from shared components; the rail and
+// TOC are the only article-specific arrangement. Content is a sample record; it
+// will come from the Directus `articles` collection later.
 
 const NAV_LINKS: NavLinkItem[] = [
   ['Packages', '/#packages'],
@@ -48,6 +49,13 @@ const NAV_LINKS: NavLinkItem[] = [
 const PHONE = '(216) 555-0114'
 const IS_WEB = Platform.OS === 'web'
 
+// A narrower centered measure than the full-bleed 1680 — an article reads as a
+// column, not a full-width dashboard.
+const ARTICLE_MAX = 1120
+const RAIL_W = 300
+const COL_GAP = 64
+const NARROW = 900
+
 function useVal(anchor: number, floor: number) {
   return useFluidPx(fluid(anchor, floor))
 }
@@ -56,6 +64,7 @@ function useVal(anchor: number, floor: number) {
 const ARTICLE = {
   slug: 'sub-value-frontier',
   category: 'Methodology',
+  reading_time: '8 min read',
   title: 'The Sub Value Frontier',
   author: 'Brett Combs',
   publish_date: 'June 18, 2026',
@@ -108,6 +117,8 @@ const BODY: ProseBlock[] = [
   },
 ]
 
+const SUBHEADS = BODY.filter((b): b is Extract<ProseBlock, { type: 'h' }> => b.type === 'h').map((b) => b.text)
+
 const RELATED = [
   {
     cat: 'Methodology',
@@ -139,6 +150,45 @@ const LD = {
   publisher: { '@type': 'Organization', name: 'North Coast Soundworks' },
 }
 
+// Meta rail — byline + category/read + "in this article" jump links. Sticky on
+// web so it follows the reader down the body.
+function Rail() {
+  const linkSize = useFluidPx(type.small)
+  return (
+    <View style={{ width: RAIL_W, ...(IS_WEB ? { position: 'sticky', top: 28 } : {}) } as any}>
+      <Byline author={ARTICLE.author} date={ARTICLE.publish_date} />
+      <View style={{ height: 10 }} />
+      <Eyebrow>{`${ARTICLE.category} · ${ARTICLE.reading_time}`}</Eyebrow>
+      {SUBHEADS.length ? (
+        <View style={{ marginTop: 30, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 18 } as any}>
+          <Eyebrow>In this article</Eyebrow>
+          <View style={{ marginTop: 14, gap: 12 } as any}>
+            {SUBHEADS.map((text) => {
+              const slug = proseSlug(text)
+              if (IS_WEB) {
+                return React.createElement(
+                  'a',
+                  {
+                    key: slug,
+                    href: `#${slug}`,
+                    style: { fontFamily: fonts.body, fontSize: linkSize, color: colors.body, textDecoration: 'none', lineHeight: 1.4, display: 'block' },
+                  },
+                  text,
+                )
+              }
+              return (
+                <Text key={slug} style={{ fontFamily: fonts.body, fontSize: linkSize, color: colors.body } as any}>
+                  {text}
+                </Text>
+              )
+            })}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
   const dekSize = useFluidPx(type.body)
   const metaSize = useFluidPx(type.meta)
@@ -162,8 +212,10 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
 }
 
 export default function ArticleScreen() {
+  const { width } = useWindowDimensions()
+  const narrow = width <= NARROW
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-  const heroTop = useVal(80, 52) // identical to the PDP hero spacing
+  const heroTop = useVal(48, 32)
 
   return (
     <>
@@ -175,8 +227,8 @@ export default function ArticleScreen() {
       <View style={outer}>
         <SiteNav links={NAV_LINKS} phone={PHONE} />
         <ScrollView style={{ flex: 1, backgroundColor: colors.white }} contentContainerStyle={{ flexGrow: 1 }}>
-          {/* TOP — identical to the PDP: breadcrumb + hero heading lockup. */}
-          <Container>
+          {/* Breadcrumb */}
+          <Container max={ARTICLE_MAX}>
             <View style={{ paddingTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
               <Eyebrow>Home</Eyebrow>
               <Eyebrow>/</Eyebrow>
@@ -186,41 +238,42 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          <Container>
-            <View style={{ paddingTop: heroTop } as any}>
-              <Heading level="h2">{ARTICLE.title}</Heading>
-              <View style={{ marginTop: space.blockGap } as any}>
-                <Lead>{ARTICLE.excerpt}</Lead>
-              </View>
-            </View>
-          </Container>
-
-          {/* Lead image — content measure, not full-bleed. */}
-          <Container>
+          {/* Article body — prose column + meta rail */}
+          <Container max={ARTICLE_MAX}>
             <View
-              style={{ marginTop: useVal(36, 28) as any, width: '100%', maxWidth: copyMaxWidth, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface } as any}
+              style={{ paddingTop: heroTop as any, flexDirection: narrow ? 'column' : 'row', gap: narrow ? 0 : COL_GAP, alignItems: 'flex-start' } as any}
             >
-              <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt="" />
-            </View>
-          </Container>
+              {/* Prose column */}
+              <View style={{ flex: 1, width: narrow ? '100%' : undefined } as any}>
+                <FullWidthCopyContext.Provider value={true}>
+                  <Heading level="h2">{ARTICLE.title}</Heading>
+                  {narrow ? (
+                    <View style={{ marginTop: space.blockGap } as any}>
+                      <Byline author={ARTICLE.author} date={ARTICLE.publish_date} />
+                    </View>
+                  ) : null}
+                  <View style={{ marginTop: space.blockGap } as any}>
+                    <Lead>{ARTICLE.excerpt}</Lead>
+                  </View>
+                  <View
+                    style={{ marginTop: useVal(32, 24) as any, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface } as any}
+                  >
+                    <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt="" />
+                  </View>
+                  <View style={{ marginTop: useVal(32, 24) as any } as any}>
+                    <Prose blocks={BODY} />
+                  </View>
+                </FullWidthCopyContext.Provider>
+              </View>
 
-          {/* Byline eyebrow — divides the hero (headline/dek/image) from the body. */}
-          <Container>
-            <View style={{ marginTop: useVal(40, 30) as any } as any}>
-              <Byline author={ARTICLE.author} date={ARTICLE.publish_date} />
-            </View>
-          </Container>
-
-          {/* Body */}
-          <Container>
-            <View style={{ marginTop: useVal(28, 22) as any } as any}>
-              <Prose blocks={BODY} />
+              {/* Meta rail (wide only) */}
+              {!narrow ? <Rail /> : null}
             </View>
           </Container>
 
           {/* Related */}
           <Section>
-            <Container>
+            <Container max={ARTICLE_MAX}>
               <SectionIntro label="Keep reading" heading="More from the workshop" actionLabel="All articles" actionHref="/" level="h2sm" />
               <Shelf>
                 {RELATED.map((item) => (
@@ -236,6 +289,7 @@ export default function ArticleScreen() {
             body="Tell us the vehicle and we'll show you where its value frontier lands — and the exact system we'd build to it."
             phone={PHONE}
             actions={<Button variant="primary">Find my system</Button>}
+            max={ARTICLE_MAX}
           />
 
           <Footer />
