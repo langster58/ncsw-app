@@ -8,16 +8,14 @@ import { containerMax, space, useFluidPx } from './tokens'
 // `alignSelf: 'center'` centers the capped box on both web and native (the
 // default column stretch is what would otherwise pin it left).
 
-// `max` overrides the default containerMax — e.g. an article body that wants a
-// narrower centered measure than the full-bleed 1680.
-export function Container({ children, max }: { children: ReactNode; max?: number }) {
+export function Container({ children }: { children: ReactNode }) {
   const padX = useFluidPx(space.containerPadX)
   return (
     <View
       style={
         {
           width: '100%',
-          maxWidth: max ?? containerMax,
+          maxWidth: containerMax,
           alignSelf: 'center',
           paddingHorizontal: padX,
         } as any

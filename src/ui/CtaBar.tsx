@@ -13,13 +13,11 @@ export function CtaBar({
   body,
   phone,
   actions,
-  max,
 }: {
   heading: string
   body?: string
   phone?: string
   actions?: ReactNode
-  max?: number
 }) {
   const top = useFluidPx(fluid(96, 56))
   const padT = useFluidPx(fluid(40, 34))
@@ -28,7 +26,7 @@ export function CtaBar({
   const phoneSize = useFluidPx(type.h4)
   return (
     <View style={{ marginTop: top as any, borderTopWidth: 1, borderTopColor: colors.ink } as any}>
-      <Container max={max}>
+      <Container>
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 28, flexWrap: 'wrap', paddingTop: padT as any, paddingBottom: padB as any } as any}
         >
