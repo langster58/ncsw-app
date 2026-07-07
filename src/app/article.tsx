@@ -430,34 +430,6 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          {/* Hero image — a landing-page methodology photo, labelled top-left. */}
-          <Container>
-            <View
-              style={{
-                marginTop: useVal(28, 20) as any,
-                aspectRatio: 16 / 9,
-                borderRadius: radius.lg,
-                overflow: 'hidden',
-                backgroundColor: colors.surface,
-                position: 'relative',
-              } as any}
-            >
-              <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt={ARTICLE.title} />
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,0) 55%)',
-                } as any}
-              />
-              <View style={{ position: 'absolute', top: 16, left: 16 }}>
-                <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: colors.white } as any}>
-                  {ARTICLE.category}
-                </Text>
-              </View>
-            </View>
-          </Container>
-
           {/* Header — a rule with the byline flush-right (eyebrow format),
               then the full-width h2 title and lead. */}
           <Container>
@@ -472,6 +444,14 @@ export default function ArticleScreen() {
               </FullWidthCopyContext.Provider>
               <View style={{ height: 20 }} />
               <Lead>{ARTICLE.excerpt}</Lead>
+            </View>
+          </Container>
+
+          {/* Hero image — POFC placeholder (landing "Source" methodology
+              photo), at the content measure — replaces the old chart. */}
+          <Container>
+            <View style={{ marginTop: useVal(36, 28) as any, width: '100%', maxWidth: copyMaxWidth, aspectRatio: 16 / 9, borderRadius: radius.md, overflow: 'hidden', borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface } as any}>
+              <Image src="/images/methodology/signal.webp" fill objectFit="cover" alt="" />
             </View>
           </Container>
 
