@@ -135,7 +135,8 @@ function PhotoSlot({ label }: { label: string }) {
   )
 }
 
-// Real product photo, framed like the slot (contain, since products are cutouts).
+// Real product photo. The library is full-bleed studio photography, so the
+// image covers the 4:3 frame edge-to-edge (no letterboxing padding).
 function ProductMedia({ src, alt }: { src: string; alt: string }) {
   return (
     <View
@@ -146,12 +147,9 @@ function ProductMedia({ src, alt }: { src: string; alt: string }) {
         borderRadius: radius.sm,
         backgroundColor: colors.figBg,
         overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
       }}
     >
-      <WebImg src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      <WebImg src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     </View>
   )
 }
