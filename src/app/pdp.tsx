@@ -173,7 +173,7 @@ function SysRow({
   meta?: React.ReactNode
   desc: string
   doorLabel?: string
-  price: string
+  price?: string
   priceSub?: string
   priceAccent?: boolean
   last?: boolean
@@ -214,18 +214,20 @@ function SysRow({
           </View>
         ) : null}
       </View>
-      <View style={{ minWidth: 96, alignItems: narrow ? 'flex-start' : 'flex-end' }}>
-        <Text
-          style={
-            { fontFamily: fonts.mono, fontSize: priceSize, fontWeight: '500', color: priceAccent ? colors.accent : colors.tableInk } as any
-          }
-        >
-          {price}
-        </Text>
-        {priceSub ? (
-          <Text style={{ fontFamily: fonts.mono, fontSize: subSize, color: colors.gray, marginTop: 3 } as any}>{priceSub}</Text>
-        ) : null}
-      </View>
+      {price ? (
+        <View style={{ minWidth: 96, alignItems: narrow ? 'flex-start' : 'flex-end' }}>
+          <Text
+            style={
+              { fontFamily: fonts.mono, fontSize: priceSize, fontWeight: '500', color: priceAccent ? colors.accent : colors.tableInk } as any
+            }
+          >
+            {price}
+          </Text>
+          {priceSub ? (
+            <Text style={{ fontFamily: fonts.mono, fontSize: subSize, color: colors.gray, marginTop: 3 } as any}>{priceSub}</Text>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -443,14 +445,9 @@ export default function PdpScreen() {
               <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: useVal(28, 22) as any }} />
               <View>
                 <Lead>
-                  An install is billed by the hour, so the plan is where your money is saved. Every system we sell is
-                  bench-configured before the car arrives: crossover points, alignment targets, and gain structure are set from this
-                  package's spec, then verified by measurement in the vehicle.
-                </Lead>
-                <View style={{ height: 14 }} />
-                <Lead>
-                  Wire runs follow the factory harness paths documented for this chassis. The enclosure is built to the driver's
-                  alignment before install day. Nothing on this list is discovered in the bay; it is executed there.
+                  An install is billed by the hour, so what those hours buy is the whole value. This is what a North Coast install
+                  covers, held to the same standard on every car: the intake review, the way a connector is crimped, where a panel
+                  is treated, how a driver is mounted, and what the electrical honestly needs.
                 </Lead>
               </View>
 
@@ -458,41 +455,31 @@ export default function PdpScreen() {
                 <SysRow
                   media={
                     <View style={{ aspectRatio: 4 / 3, borderRadius: radius.sm, overflow: 'hidden', borderWidth: 1, borderColor: colors.line }}>
-                      <WebImg src={BUILD_IMG} alt="NCSW fabricated enclosure install in a Golf cargo bay" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <WebImg src={BUILD_IMG} alt="NCSW intake documentation of a Golf" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </View>
                   }
-                  title="Base system install"
-                  desc="Power and signal runs along factory harness paths, amplifier and processor mounting, factory head-unit integration, front-stage swap in the factory locations, sub wiring, measured tune, and road test. This is the line every package carries."
-                  price="6 hr"
-                  priceSub="$600"
+                  title="Intake & documentation"
+                  desc="Before a panel comes off, we review the car and its electrical system and document it as it arrived: photographs, condition notes, and a written record of the work authorized. You leave with paperwork that describes your vehicle and the transaction, the same file a shop worth trusting keeps. Nothing about the car is a surprise later."
                 />
                 <SysRow
-                  media={<PhotoSlot label={'Install photo\nEnclosure fabrication'} />}
-                  title="Sealed enclosure fabrication"
-                  desc="Built to the HC-15's alignment, sized to the hatch floor so the cargo cover still closes. Materials are on the ledger: void-free plywood, automotive carpet, terminal hardware."
-                  price="6 hr"
-                  priceSub="$600 + $96 materials"
+                  media={<PhotoSlot label={'Install photo\nFerrules & disconnects'} />}
+                  title="Wiring, and putting it back"
+                  desc="Every connection is made to be inspected and undone. We crimp into ferrules, solder only where a joint genuinely needs it, and use solderless connectors and keyed quick-disconnects everywhere else, so any component can be pulled without cutting. Where the vehicle allows, the install is reversible to factory condition, harness and all."
                 />
                 <SysRow
-                  media={<PhotoSlot label={'Install photo\nAmplifier rack'} />}
-                  title="Additional amplifier"
-                  desc="The second amplifier adds one hour: mounting, a fused power branch, signal, and ground. Running the front stage and front sub from one five-channel chassis is what keeps this line at one hour instead of two."
-                  price="1 hr"
-                  priceSub="$100"
+                  media={<PhotoSlot label={'Install photo\nDamping coverage'} />}
+                  title="Damping, in the right places"
+                  desc="Damping adds mass and constraint to the panels that ring; it is not a blanket spread over everything. We treat the panels that actually move, in the coverage that actually changes the measurement, and stop there. Used this way a fraction of the material does the job, and you don't pay for square footage that buys nothing."
                 />
                 <SysRow
-                  media={<PhotoSlot label={'Install photo\nTreatment & wiring'} />}
-                  title="Treatment, wiring, consumables"
-                  desc="CLD damping on the door skins and hatch floor where the hardware mounts, a fused 4 AWG OFC power run, OFC speaker wire throughout, and the enclosure finish. Quantities are itemized in the system ledger above."
-                  price="$156.76"
-                  priceSub="materials"
+                  media={<PhotoSlot label={'Install photo\nDriver & amp mounting'} />}
+                  title="Mounting that holds"
+                  desc="Door drivers bolt and rivet to a proper baffle, never thread into plastic that works loose. Amplifiers and processors are placed where the specific vehicle has room, chosen to keep wire runs short and install hours down rather than wherever is fastest to reach."
                 />
                 <SysRow
-                  media={<PhotoSlot label={'Install photo\nElectrical'} />}
-                  title="Electrical"
-                  desc="No upgrades required: the system's 1,000 W draw is verified against the stock alternator and battery. When a build needs more, the BIG3, alternator, and battery lines appear here, priced the same way."
-                  price="$0.00"
-                  priceAccent
+                  media={<PhotoSlot label={'Install photo\nCharging system'} />}
+                  title="The electrical, read honestly"
+                  desc="We tell you what your car's charging system already provides and what this system actually draws, then size the electrical to the gap, or tell you there isn't one. This build lives inside the factory alternator and battery, so it carries no electrical line. When a system needs more, the BIG3, alternator, or battery appears with the reason it is there."
                   last
                 />
               </View>
