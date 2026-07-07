@@ -412,3 +412,33 @@ export interface InstallTypes {
   gallery: unknown | null
 }
 
+// Added by hand 2026-07-07 (see scripts/create-articles-collection.js). The
+// gen-directus-types.py regen was transiently dropping real tables against the
+// Render instance, so this block was authored to match the created fields.
+// Re-run the generator to reconcile once the instance is healthy.
+export interface Articles {
+  id: string
+  status: string            // published | draft | archived
+  sort: number | null
+  date_created: string | null
+  date_updated: string | null
+  title: string
+  slug: string
+  category: string | null   // methodology | guide | review | build-log | news
+  author: string | null     // byline (Person); defaults to "Brett Combs"
+  publish_date: string | null
+  reading_time: string | null
+  kicker: string | null
+  excerpt: string | null
+  cta_label: string | null
+  hero_image: string | null
+  body: string | null       // Markdown
+  figures: unknown | null   // [{ type: frontier|blind_amp|dsp|image, data, caption }]
+  gallery: unknown | null
+  tags: unknown | null
+  featured: boolean | null
+  seo_title: string | null
+  seo_description: string | null
+  canonical_url: string | null
+}
+
