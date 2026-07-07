@@ -46,6 +46,8 @@ const NAV_LINKS: NavLinkItem[] = [
 ]
 const PHONE = '(216) 555-0114'
 const IS_WEB = Platform.OS === 'web'
+// The article reading measure — dek + body share it. One place to tune.
+const READ_MEASURE = '75%'
 
 function useVal(anchor: number, floor: number) {
   return useFluidPx(fluid(anchor, floor))
@@ -191,7 +193,7 @@ export default function ArticleScreen() {
             <View style={{ paddingTop: heroTop } as any}>
               <FullWidthCopyContext.Provider value={true}>
                 <Heading level="h2">{ARTICLE.title}</Heading>
-                <View style={{ marginTop: space.blockGap } as any}>
+                <View style={{ marginTop: space.blockGap, width: '100%', maxWidth: READ_MEASURE } as any}>
                   <Lead>{ARTICLE.excerpt}</Lead>
                 </View>
               </FullWidthCopyContext.Provider>
@@ -219,7 +221,7 @@ export default function ArticleScreen() {
           {/* Body — paragraph text at 75% */}
           <Container>
             <View style={{ marginTop: useVal(28, 22) as any } as any}>
-              <Prose blocks={BODY} measure="75%" />
+              <Prose blocks={BODY} measure={READ_MEASURE} />
             </View>
           </Container>
 
