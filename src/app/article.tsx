@@ -11,10 +11,9 @@ import {
   Lead,
   Link,
   FullWidthCopyContext,
-  Metaline,
   Shelf,
   colors,
-  containerMax,
+  copyMaxWidth,
   fluid,
   fluidLineHeight,
   fonts,
@@ -286,10 +285,10 @@ function BarsFigure({ rows, unit }: { rows: [string, number, boolean][]; unit?: 
   )
 }
 
-function ArticleFigure({ figure, maxWidth }: { figure: FigureSpec; maxWidth: number }) {
+function ArticleFigure({ figure }: { figure: FigureSpec }) {
   const capSize = useFluidPx(type.small)
   return (
-    <View style={{ width: '100%', maxWidth, marginVertical: useVal(20, 16) as any } as any}>
+    <View style={{ width: '100%', maxWidth: copyMaxWidth, marginVertical: useVal(20, 16) as any } as any}>
       {figure.type === 'frontier' ? <FrontierFigure /> : <BarsFigure rows={figure.rows} unit={figure.unit} />}
       {figure.caption ? (
         <Text style={{ fontFamily: fonts.body, fontSize: capSize, color: colors.gray, lineHeight: 20, marginTop: 12, maxWidth: 640 } as any}>
@@ -301,7 +300,7 @@ function ArticleFigure({ figure, maxWidth }: { figure: FigureSpec; maxWidth: num
 }
 
 // ── Prose block renderer ────────────────────────────────────────────────────
-function Prose({ blocks, measure, figureMax }: { blocks: Block[]; measure: number; figureMax: number }) {
+function Prose({ blocks }: { blocks: Block[] }) {
   const pSize = useFluidPx(type.lead)
   const pLine = fluidLineHeight(pSize, 1.62)
   const quoteSize = useFluidPx(type.h3)
@@ -312,16 +311,17 @@ function Prose({ blocks, measure, figureMax }: { blocks: Block[]; measure: numbe
   return (
     <View>
       {blocks.map((b, i) => {
-        if (b.k === 'figure') return <ArticleFigure key={i} figure={b.figure} maxWidth={figureMax} />
+        if (b.k === 'figure') return <ArticleFigure key={i} figure={b.figure} />
         if (b.k === 'h')
           return (
-            <View key={i} style={{ maxWidth: measure, marginTop: useVal(44, 32) as any, marginBottom: 6 } as any}>
+            // Heading self-constrains to copyMaxWidth (60%) — no wrapper clamp.
+            <View key={i} style={{ marginTop: useVal(44, 32) as any, marginBottom: 6 } as any}>
               <Heading level="h3">{b.text}</Heading>
             </View>
           )
         if (b.k === 'quote')
           return (
-            <View key={i} style={{ maxWidth: measure, marginVertical: useVal(34, 26) as any, borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: 22 } as any}>
+            <View key={i} style={{ maxWidth: copyMaxWidth, marginVertical: useVal(34, 26) as any, borderLeftWidth: 3, borderLeftColor: colors.accent, paddingLeft: 22 } as any}>
               <Text style={{ fontFamily: fonts.display, fontSize: quoteSize, lineHeight: quoteLine, letterSpacing: -0.5, color: colors.ink } as any}>
                 {b.text}
               </Text>
@@ -329,7 +329,7 @@ function Prose({ blocks, measure, figureMax }: { blocks: Block[]; measure: numbe
           )
         if (b.k === 'list')
           return (
-            <View key={i} style={{ maxWidth: measure, marginTop: gap, gap: 10 } as any}>
+            <View key={i} style={{ maxWidth: copyMaxWidth, marginTop: gap, gap: 10 } as any}>
               {b.items.map((it, j) => (
                 <View key={j} style={{ flexDirection: 'row', gap: 12 } as any}>
                   <Text style={{ fontFamily: fonts.mono, fontSize: liSize, color: colors.accent, lineHeight: pLine as any } as any}>—</Text>
@@ -339,7 +339,7 @@ function Prose({ blocks, measure, figureMax }: { blocks: Block[]; measure: numbe
             </View>
           )
         return (
-          <Text key={i} style={{ fontFamily: fonts.body, fontSize: pSize, lineHeight: pLine as any, color: colors.body, maxWidth: measure, marginTop: gap } as any}>
+          <Text key={i} style={{ fontFamily: fonts.body, fontSize: pSize, lineHeight: pLine as any, color: colors.body, maxWidth: copyMaxWidth, marginTop: gap } as any}>
             {b.text}
           </Text>
         )
@@ -435,15 +435,9 @@ const LD = {
 }
 
 export default function ArticleScreen() {
-  const { width } = useWindowDimensions()
-  const narrow = width <= 900
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-
-  // Reading measure: a controlled prose column; figures break a little wider.
-  const inner = Math.min(containerMax, width) - (narrow ? 44 : 80)
-  const measure = Math.min(760, inner)
-  const figureMax = Math.min(960, inner)
-  const titleTop = useVal(40, 30)
+  // Match the PDP hero spacing exactly.
+  const heroTop = useVal(44, 34)
 
   return (
     <>
@@ -466,20 +460,17 @@ export default function ArticleScreen() {
             </View>
           </Container>
 
-          {/* Header */}
+          {/* Header — same construction + spacing as the PDP hero lockup:
+              breadcrumb, an Eyebrow, then a full-width h2 title. */}
           <Container>
-            <View style={{ paddingTop: titleTop } as any}>
-              <Metaline items={[ARTICLE.category, ARTICLE.reading_time]} />
+            <View style={{ paddingTop: heroTop } as any}>
+              <Eyebrow>{`${ARTICLE.category} · ${ARTICLE.reading_time}`}</Eyebrow>
               <View style={{ height: 18 }} />
               <FullWidthCopyContext.Provider value={true}>
-                <View style={{ maxWidth: 1100 } as any}>
-                  <Heading level="h2">{ARTICLE.title}</Heading>
-                </View>
-                <View style={{ height: 20 }} />
-                <View style={{ maxWidth: 820 } as any}>
-                  <Lead>{ARTICLE.excerpt}</Lead>
-                </View>
+                <Heading level="h2">{ARTICLE.title}</Heading>
               </FullWidthCopyContext.Provider>
+              <View style={{ height: 20 }} />
+              <Lead>{ARTICLE.excerpt}</Lead>
               <View style={{ marginTop: useVal(30, 24) as any, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line } as any}>
                 <Byline />
               </View>
@@ -489,22 +480,20 @@ export default function ArticleScreen() {
           {/* Hero figure */}
           <Container>
             <View style={{ marginTop: useVal(36, 28) as any } as any}>
-              <ArticleFigure figure={HERO_FIGURE} maxWidth={figureMax} />
+              <ArticleFigure figure={HERO_FIGURE} />
             </View>
           </Container>
 
-          {/* Body */}
+          {/* Body — copy constrained to the landing's copyMaxWidth (60%). */}
           <Container>
             <View style={{ marginTop: useVal(20, 16) as any } as any}>
-              <FullWidthCopyContext.Provider value={true}>
-                <Prose blocks={BODY} measure={measure} figureMax={figureMax} />
-              </FullWidthCopyContext.Provider>
+              <Prose blocks={BODY} />
             </View>
           </Container>
 
           {/* Author */}
           <Container>
-            <View style={{ marginTop: useVal(56, 40) as any, maxWidth: figureMax } as any}>
+            <View style={{ marginTop: useVal(56, 40) as any, maxWidth: copyMaxWidth } as any}>
               <AuthorCard />
             </View>
           </Container>
