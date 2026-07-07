@@ -445,9 +445,9 @@ export default function PdpScreen() {
               <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: useVal(28, 22) as any }} />
               <View>
                 <Lead>
-                  The hours on the ledger buy a sequence we run on every car. The vehicle goes on record before a tool comes out,
-                  the wiring is built to come apart, treatment goes where it earns its keep, hardware is mounted to be forgotten,
-                  and the electrical is settled by arithmetic.
+                  Components decide what a system can do; the installation decides what it actually does in your car. The standard
+                  below is the same for every package we sell, from the least expensive to the most, and it is what the labor on
+                  the ledger buys.
                 </Lead>
               </View>
 
@@ -479,7 +479,7 @@ export default function PdpScreen() {
                 <SysRow
                   media={<PhotoSlot label={'Install photo\nCharging system'} />}
                   title="The electrical, in two numbers"
-                  desc="What the charging system provides and what the system draws: intake measures the first, the package spec fixes the second, and the electrical is sized to the difference. On this build the difference is zero, so the line reads $0.00. When a system does outrun the car, the BIG3, alternator, or battery shows up with the arithmetic that put it there."
+                  desc="What the charging system provides and what the system draws: intake measures the first, the package spec fixes the second, and the electrical is sized to the difference. When the difference is zero, the ledger carries no electrical line and you buy nothing. When a system outruns the car, the BIG3, alternator, or battery appears with the arithmetic that put it there."
                   last
                 />
               </View>
