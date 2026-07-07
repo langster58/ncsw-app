@@ -23,7 +23,7 @@ import { colors, fonts, tracking } from './tokens'
 type Level = 'h2' | 'h2sm' | 'h3'
 
 type Props = {
-  index: string
+  index?: string
   label: string
   heading: React.ReactNode
   body?: React.ReactNode
@@ -75,7 +75,7 @@ export function SectionIntro({
             } as any
           }
         >
-          {index} / {label}
+          {index ? `${index} / ` : ''}{label}
         </Text>
         {actionLabel ? (
           <Link variant="door" href={actionHref} icon={<IconArrow size={15} />}>

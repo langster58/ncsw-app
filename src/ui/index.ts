@@ -49,6 +49,12 @@ export type { SchematicNode } from './Schematic'
 export { DataTable } from './DataTable'
 export type { DataColumn } from './DataTable'
 
+// Editorial / article
+export { Byline } from './Byline'
+export { Prose } from './Prose'
+export type { ProseBlock } from './Prose'
+export { CtaBar } from './CtaBar'
+
 // Site mechanics
 export { Reveal } from './Reveal'
 export { Preloader } from './Preloader'
