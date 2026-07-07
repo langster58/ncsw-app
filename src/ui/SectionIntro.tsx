@@ -34,7 +34,7 @@ type Props = {
 }
 
 const DEFAULT_BOTTOM = 28
-const EYEBROW_ROW_GAP = 72 // distance from eyebrow band to heading
+const EYEBROW_ROW_GAP = 96 // distance from eyebrow band to heading
 
 export function SectionIntro({
   index,

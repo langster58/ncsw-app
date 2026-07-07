@@ -96,12 +96,16 @@ function CardRoot({ children, layout = 'stack', href, onPress }: CardProps) {
   // Card root keeps its neutral chrome (white bg, line border) at every
   // interaction state. Hover treatment is scoped to Card.Footer — the
   // "button-equivalent" strip below the rule — via HoverContext.
+  // flexGrow lets a card fill its cell: in a stretched row/shelf the card grows
+  // to the tallest sibling's height, and Card.Body (flexGrow below) + the
+  // margin-top:auto footer distribute that height so every CTA aligns.
   const baseStyle: any = {
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.lg,
     backgroundColor: colors.white,
     overflow: 'hidden',
+    flexGrow: 1,
     ...(interactive && Platform.OS === 'web' ? { cursor: 'pointer' } : null),
   }
 
@@ -253,9 +257,11 @@ function CardBody({ children, gap = 16 }: { children: React.ReactNode; gap?: num
   const padStack = useFluidPx(fluid(22, 16))
   const pad = layout === 'split' ? padSplit : padStack
   const resolvedGap = useFluidPx(fluid(gap, Math.round(gap * 0.75)))
+  // flexGrow:1 makes the body absorb the card's spare height, so the flex space
+  // opens up between the copy and the (margin-top:auto) footer CTA below it.
   return (
     <FullWidthCopyContext.Provider value={true}>
-      <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap: resolvedGap } as any}>{children}</View>
+      <View style={{ paddingHorizontal: pad, paddingVertical: pad, gap: resolvedGap, flexGrow: 1 } as any}>{children}</View>
     </FullWidthCopyContext.Provider>
   )
 }

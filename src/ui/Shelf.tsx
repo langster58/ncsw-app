@@ -13,7 +13,7 @@ export function Shelf({ children, gap = 18 }: { children: ReactNode; gap?: numbe
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: g, paddingBottom: 16 } as any}
+      contentContainerStyle={{ gap: g, paddingBottom: 16, alignItems: 'stretch' } as any}
     >
       {children}
     </ScrollView>

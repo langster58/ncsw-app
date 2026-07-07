@@ -72,7 +72,7 @@ function PdpSection({ children }: { children: React.ReactNode }) {
 
 // Band — the numbered eyebrow row with the top ink rule and an optional door.
 function Band({ index, label, action, actionHref }: { index: string; label: string; action?: string; actionHref?: string }) {
-  const mb = useVal(56, 46)
+  const mb = useVal(96, 72)
   return (
     <View
       style={
@@ -130,6 +130,27 @@ function PhotoSlot({ label }: { label: string }) {
       >
         {label}
       </Text>
+    </View>
+  )
+}
+
+// Real product photo, framed like the slot (contain, since products are cutouts).
+function ProductMedia({ src, alt }: { src: string; alt: string }) {
+  return (
+    <View
+      style={{
+        aspectRatio: 4 / 3,
+        borderWidth: 1,
+        borderColor: colors.line,
+        borderRadius: radius.sm,
+        backgroundColor: colors.figBg,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 14,
+      }}
+    >
+      <WebImg src={src} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
     </View>
   )
 }
@@ -208,14 +229,16 @@ function SysRow({
   )
 }
 
+const SCHEMATIC_IMG = '/images/schematics/sedan-two-way.webp'
+
+// Legend keyed to the callouts on the schematic image (1–6).
 const SCHEMATIC_LEGEND = [
   { n: 1, name: 'Factory head unit — retained', loc: 'Dash · Harman Kardon source' },
-  { n: 2, name: 'Helix DSP MINI MK2', loc: 'Under passenger seat · reconstruction' },
-  { n: 3, name: 'SounDigital 800.5 EVO', loc: 'Under driver seat · front stage + sub' },
-  { n: 4, name: 'Audison Voce II front stage', loc: 'Factory door + pillar locations' },
-  { n: 5, name: 'Helix Ci5 front sub', loc: 'Passenger footwell · sealed baffle' },
-  { n: 6, name: 'CT Sounds CT-1000.1D', loc: 'Cargo sidewall · sub amplification' },
-  { n: 7, name: 'IDMAX12 V4 · sealed 1.2 ft³', loc: 'Cargo bay · fabricated enclosure' },
+  { n: 2, name: 'SounDigital 800.5 EVO', loc: 'Under driver seat · front amplification' },
+  { n: 3, name: 'Helix DSP MINI MK2', loc: 'Console · signal reconstruction' },
+  { n: 4, name: 'IDMAX12 V4 · sealed 1.2 ft³', loc: 'Cargo bay · fabricated enclosure' },
+  { n: 5, name: 'Audison Voce II tweeters', loc: 'Front pillars' },
+  { n: 6, name: 'Audison Voce II midbass', loc: 'Front doors' },
 ]
 
 const RELATED = [
@@ -230,7 +253,7 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
   const summarySize = useFluidPx(type.lead)
   const priceSize = useFluidPx(type.body)
   return (
-    <View style={{ width: 340 }}>
+    <View style={{ width: 340, alignSelf: 'stretch' } as any}>
       <Card href="#">
         <Card.Media aspectRatio={16 / 11}>
           <WebImg src={item.img} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -373,7 +396,7 @@ export default function PdpScreen() {
                 price="$469.00"
               />
               <SysRow
-                media={<PhotoSlot label={'Product photo\nHelix DSP MINI MK2'} />}
+                media={<ProductMedia src="/images/products/helix-dsp-mini-mk2.png" alt="Helix DSP MINI MK2" />}
                 title="Helix DSP MINI MK2"
                 meta={<Metaline items={['Signal', 'Reference tier', '64-bit / 96 kHz', '103 dB SNR']} />}
                 desc="The best signal quality in our lineup. Its ADEP.3 input stage de-equalizes and reconstructs the Harman Kardon's fragmented output, the reason it is specified for this trim. Calls, navigation, and chimes are retained."
@@ -381,7 +404,7 @@ export default function PdpScreen() {
                 price="$599.00"
               />
               <SysRow
-                media={<PhotoSlot label={'Product photo\nAudison Voce II AVK 6.2A'} />}
+                media={<ProductMedia src="/images/products/audison-voce-ii.webp" alt="Audison Voce II AVK 6.2A" />}
                 title="Audison Voce II AVK 6.2A"
                 meta={<Metaline items={['Front stage', 'Reference tier', 'Two-way', 'Impact 47.6']} />}
                 desc="Reference two-way set in the factory door and pillar locations: no custom pods, no cut dash. It carries the image height and center fill the factory system never had, and it is the component this budget protects."
@@ -389,21 +412,21 @@ export default function PdpScreen() {
                 price="$1,000.00"
               />
               <SysRow
-                media={<PhotoSlot label={'Product photo\nHelix Ci5 S200FM-D2'} />}
+                media={<ProductMedia src="/images/products/helix-ci5.webp" alt="Helix Ci5 front sub" />}
                 title="Helix Ci5 S200FM-D2 front sub"
                 meta={<Metaline items={['Front sub', 'Under-seat sealed baffle included']} />}
                 desc="Midbass arrives from in front of you, where the factory system never puts it. The under-seat sealed baffle is fabricated as part of this package, closing the gap between the door midwoofers and the sub stage."
                 price="$250.00"
               />
               <SysRow
-                media={<PhotoSlot label={'Product photo\nCT Sounds CT-1000.1D'} />}
+                media={<ProductMedia src="/images/products/ct-1000-1d.webp" alt="CT Sounds CT-1000.1D" />}
                 title="CT Sounds CT-1000.1D"
                 meta={<Metaline items={['Sub amplification', '1,000 W @ 1Ω', 'Class D', '93 dB SNR']} />}
                 desc="Sized by rule, not by upsell: 1,000 W is 2.0× the IDMAX's continuous rating, inside our R1 pairing window. Enough headroom that the amp never runs compressed; not so much that the electrical system pays for watts the driver cannot use."
                 price="$159.99"
               />
               <SysRow
-                media={<PhotoSlot label={'Product photo\nSounDigital 800.5 EVO'} />}
+                media={<ProductMedia src="/images/products/soundigital-800-5.png" alt="SounDigital 800.5 EVO" />}
                 title="SounDigital 800.5 EVO 6.0"
                 meta={<Metaline items={['Front amplification', '5-channel', '800 W', '103.9 dB SNR']} />}
                 desc="One chassis drives the entire front stage and the front sub: four channels to the Voce II set, the fifth to the Ci5. Fewer amplifiers means fewer power runs, fewer failure points, and one less hour of install labor."
@@ -498,13 +521,7 @@ export default function PdpScreen() {
               </Lead>
             </View>
             <Schematic
-              diagram={
-                <View style={{ height: 220, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.inkFaint } as any}>
-                    [ system diagram — generated per topology ]
-                  </Text>
-                </View>
-              }
+              diagram={<WebImg src={SCHEMATIC_IMG} alt="Top-down schematic of the system in the vehicle" style={{ width: '100%', height: 'auto' }} />}
               legend={SCHEMATIC_LEGEND}
             />
           </PdpSection>
