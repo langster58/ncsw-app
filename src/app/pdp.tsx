@@ -381,7 +381,7 @@ export default function PdpScreen() {
           <PdpSection>
             <Band index="02" label="System" />
             <Heading level="h2sm">System components</Heading>
-            <View style={{ marginTop: 16, maxWidth: '60%' as any }}>
+            <View style={{ marginTop: 16 }}>
               <Lead>
                 Seven components, each the one our evaluation selected for this cabin and this signal path. The prices are the
                 ledger: what the part costs is what the line reads, and the install that follows is itemized the same way.
@@ -441,7 +441,7 @@ export default function PdpScreen() {
             <View style={{ marginTop: bigGap } as any}>
               <Heading level="h2sm">Installation</Heading>
               <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: useVal(28, 22) as any }} />
-              <View style={{ maxWidth: '60%' as any }}>
+              <View>
                 <Lead>
                   An install is billed by the hour, so the plan is where your money is saved. Every system we sell is
                   bench-configured before the car arrives: crossover points, alignment targets, and gain structure are set from this
@@ -516,7 +516,7 @@ export default function PdpScreen() {
           <PdpSection>
             <Band index="03" label="Schematic" />
             <Heading level="h2sm">System layout</Heading>
-            <View style={{ marginTop: 16, maxWidth: '60%' as any, marginBottom: useVal(26, 22) as any }}>
+            <View style={{ marginTop: 16, marginBottom: useVal(26, 22) as any }}>
               <Lead>
                 The same line items, placed. Power runs solid, signal dashed, speaker leads gray; the numbers key to the list beside
                 the drawing. Most NCSW systems share one of a small set of layouts, and this is the single-sub hatch topology.
@@ -565,7 +565,7 @@ export default function PdpScreen() {
           <PdpSection>
             <Band index="05" label="Upgrades" />
             <Heading level="h2sm">What more buys</Heading>
-            <View style={{ marginTop: 16, maxWidth: '60%' as any, marginBottom: useVal(24, 20) as any }}>
+            <View style={{ marginTop: 16, marginBottom: useVal(24, 20) as any }}>
               <Lead>
                 A system this resolved will reveal the cabin it plays in. The upgrades below are the ones whose measured return
                 justifies their line item; each is quoted for this vehicle, and none is required for the system above to perform as
