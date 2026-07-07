@@ -9,6 +9,19 @@ Codex is the working agent. Fable is the advisor of last responsible resort.
 
 Use this skill when the project needs high-quality judgment, not labor. Good uses include product strategy, architecture risk, methodology critique, launch readiness, payments/accounts/community scope, and deciding between two plausible plans after Codex has gathered evidence.
 
+## Invocation Contract
+
+This skill is user-callable with `$fable-advisor`.
+
+Codex may also propose this skill when the escalation test below is met. Proposal does not mean execution. Unless the user explicitly invokes `$fable-advisor` and asks to run the call now, Codex must:
+
+1. Prepare or update the advisor packet.
+2. State the estimated cap and why the decision is worth escalation.
+3. Ask for explicit approval before running any metered Fable command.
+4. Stop.
+
+Approval must be specific to the Fable call, for example: "Approve one Fable advisor call with a $3 cap using this packet." General permission to work in the repo is not enough.
+
 ## Do Not Use Fable For
 
 - finding files or data
@@ -76,11 +89,14 @@ Ask for a decision, reasoning, rejected alternatives, and the next bounded Codex
 
 If the packet cannot be filled in, do not call Fable yet.
 
+When Codex proposes Fable, the default deliverable is the packet plus the approval question, not the Fable answer.
+
 ## Cost Guardrails
 
 - Default call cap: `$3`.
 - Hard normal cap: `$10`.
 - Ask the user before any Fable call expected to exceed `$10`.
+- Ask the user before every Fable call, even under `$3`.
 - Never call Fable without a `--max-budget-usd` cap.
 - Never give Fable tools, filesystem access, browser access, or permission to run commands.
 - Never ask Fable to continue autonomously.

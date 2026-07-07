@@ -12,6 +12,8 @@ Codex is the default working agent for this repo. Use Codex for repo search, imp
 
 Fable 5 is an advisor only. Do not use Fable for unbounded exploration, file discovery, long log reads, data archaeology, implementation loops, subagents, or workflows. Use the repo skill `.agents/skills/fable-advisor/SKILL.md` only when a decision is expensive enough that better judgment is worth metered API cost.
 
+The Fable advisor skill is callable by the user with `$fable-advisor`. Codex may propose a Fable escalation and may prepare the advisor packet, but Codex must stop before the metered Fable call and ask for explicit approval. Do not execute a Fable call merely because the skill seems relevant.
+
 Before any Fable call, prepare a bounded advisor packet with:
 
 - the exact decision needed

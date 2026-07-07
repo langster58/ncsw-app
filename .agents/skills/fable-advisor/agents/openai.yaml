@@ -1,0 +1,7 @@
+interface:
+  display_name: "Fable Advisor"
+  short_description: "Prepare a bounded Fable 5 advisor packet and ask before any metered call."
+  default_prompt: "Prepare a Fable advisor packet for this decision, then stop and ask for approval before any metered call."
+
+policy:
+  allow_implicit_invocation: false
