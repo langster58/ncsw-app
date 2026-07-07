@@ -131,10 +131,11 @@ function extractFromTitle(title) {
   const t = title || '';
 
   // Amp rating: a 2-3 digit number immediately before A / AMP / AMPS (optional
-  // space or hyphen). Bounded to a plausible alternator range so part numbers,
-  // "12V", "3.2L" etc. can't be mistaken for amps. HO listings sometimes cite
-  // both a base and a max ("240/320A") — take the highest.
-  const ampHits = [...t.matchAll(/(\d{2,3})\s*-?\s*(?:a|amp|amps)\b/gi)]
+  // space or hyphen). The (?<!\d) lookbehind stops it grabbing the tail of a
+  // longer number — e.g. part number "4727329A" must NOT read as 329A. Bounded
+  // to a plausible alternator range so "12V", "3.2L" etc. can't be mistaken for
+  // amps. Some listings cite both a base and a max ("240/320A") — take the highest.
+  const ampHits = [...t.matchAll(/(?<!\d)(\d{2,3})\s*-?\s*(?:a|amp|amps)\b/gi)]
     .map(m => parseInt(m[1], 10))
     .filter(n => n >= 50 && n <= 500);
   const amps = ampHits.length ? Math.max(...ampHits) : null;

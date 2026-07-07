@@ -1,20 +1,11 @@
 #!/usr/bin/env node
 // Run: node --env-file=.env scripts/estimate-alt-prices.js
 //
-// Turns the sampled eBay data (ebay-target-results.csv) into an estimated
-// high-output-alternator part cost for EVERY row in the Directus vehicles
-// collection. No Directus writes — output is a CSV.
-//
-// Estimation rules, per vehicle row — every row gets a price:
-//   model sampled -> nearest sampled year of the same (make, model):
-//                      priced point  -> off_shelf, that price
-//                      gap point     -> custom, custom-build estimate
-//   otherwise     -> make median of priced points, else global median
-//   (EV/hybrid rows fall through to custom: no off-the-shelf part exists)
-//
-// "Priced" means a quality listing (>= QUALITY_AMPS amps) was found for that
-// sampled year; 200-249A bargain units are recorded in the raw CSV but are
-// not install-grade, so they don't count as an off-the-shelf option here.
+// Gives every ICE vehicle in the collection an estimated high-output-alternator
+// price = the cheapest NEW high-output unit that fits it on eBay (the same thing
+// a customer sees if they search their own car). Used / remanufactured salvage
+// parts are excluded — those are stock replacements, not the upgrade we quote.
+// Non-ICE rows (no alternator) get no price. Output is a CSV; no Directus writes.
 
 import fs from 'fs';
 import path from 'path';
@@ -24,12 +15,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLES_FILE = path.join(__dirname, 'ebay-target-results.csv');
 const OUT_FILE = path.join(__dirname, 'ebay-alt-price-estimates.csv');
 
-const QUALITY_AMPS = 250;   // install-grade threshold for the estimate
-const BUILDER_AMPS = 340;   // premium/builder tier, used to derive the custom estimate
-const GLOBAL_FALLBACK = 280; // stable median across both manual samples
+const MIN_AMPS = 250;          // genuine high-output threshold
+const NEW_ONLY = 'New';        // condition must be exactly this
+const MAX_YEAR_REACH = 6;      // don't price a vehicle off a sample >6 model years away
+
+// Re-read the amp rating from the listing title with the corrected regex
+// (the (?<!\d) lookbehind stops part numbers like "4727329A" reading as 329A).
+function ampsFromTitle(title) {
+  const hits = [...(title || '').matchAll(/(?<!\d)(\d{2,3})\s*-?\s*(?:a|amp|amps)\b/gi)]
+    .map(m => parseInt(m[1], 10)).filter(n => n >= 50 && n <= 500);
+  return hits.length ? Math.max(...hits) : null;
+}
 
 const URL = process.env.DIRECTUS_URL, TOKEN = process.env.DIRECTUS_TOKEN;
 if (!URL || !TOKEN) { console.error('Missing DIRECTUS_URL/DIRECTUS_TOKEN'); process.exit(1); }
+
+const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
 
 // ---- load samples ----------------------------------------------------------
 const lines = fs.readFileSync(SAMPLES_FILE, 'utf8').trim().split('\n');
@@ -40,48 +41,25 @@ const parseLine = l => {
 };
 const sampleRows = lines.slice(1).map(parseLine);
 
-// Named HO builders (Mechman, Singer, Power Bastards tier): honestly-rated,
-// hand-built units — the install-grade market, ~2.5x the generic-import floor.
-const BUILDER_RE = /mechman|singer|dc power|powermaster|power bastard|js alternators|ohio gen|excessive amperage|nations|balmar/i;
-
-// (make|model) -> Map(year -> { price|null, builder|null })
-//   price   = cheapest quality (>=250A) listing — the marketplace floor
-//   builder = cheapest named-builder listing — install-grade
-const sampled = new Map();
-const allQualityPrices = [];
-const builderPrices = [];
+// (make|model) -> Map(year -> cheapest NEW high-output price)
+const priced = new Map();
+const allPrices = [];
 for (const r of sampleRows) {
-  const key = `${r.make}|${r.model}`;
-  const year = +r.year;
-  if (!sampled.has(key)) sampled.set(key, new Map());
-  const yearMap = sampled.get(key);
-  if (!yearMap.has(year)) yearMap.set(year, { price: null, builder: null });
-
-  const amps = +r.amps, price = parseFloat(r.price_value);
-  if (r.meets_amp_floor === 'true' && Number.isFinite(amps) && amps >= QUALITY_AMPS && Number.isFinite(price)) {
-    const pt = yearMap.get(year);
-    if (pt.price === null || price < pt.price) pt.price = price;
-    allQualityPrices.push(price);
-    if (BUILDER_RE.test(r.title)) {
-      if (pt.builder === null || price < pt.builder) pt.builder = price;
-      builderPrices.push(price);
-    }
-  }
+  const amps = ampsFromTitle(r.title), price = parseFloat(r.price_value);
+  const ok = r.condition === NEW_ONLY && Number.isFinite(amps) && amps >= MIN_AMPS && Number.isFinite(price);
+  if (!ok) continue;
+  const key = `${r.make}|${r.model}`, year = +r.year;
+  if (!priced.has(key)) priced.set(key, new Map());
+  const ym = priced.get(key);
+  if (!ym.has(year) || price < ym.get(year)) ym.set(year, price);
+  allPrices.push(price);
 }
 
-const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
-const BUILDER_MEDIAN = median(builderPrices) ?? 550; // install-grade fallback
-const CUSTOM_EST = BUILDER_MEDIAN;                    // custom builds price at builder tier
-const globalMedian = median(allQualityPrices) ?? GLOBAL_FALLBACK;
-
-// make -> median priced point (for unsampled-model fallback)
-const makePrices = {};
-for (const [key, yearMap] of sampled) {
-  const make = key.split('|')[0];
-  for (const pt of yearMap.values()) if (pt.price !== null) (makePrices[make] ??= []).push(pt.price);
-}
-const makeMedian = {};
-for (const [mk, arr] of Object.entries(makePrices)) makeMedian[mk] = median(arr);
+// make -> median of its priced points (fallback for a model we never priced)
+const makeArr = {};
+for (const [key, ym] of priced) { const mk = key.split('|')[0]; for (const p of ym.values()) (makeArr[mk] ??= []).push(p); }
+const makeMedian = {}; for (const [mk, a] of Object.entries(makeArr)) makeMedian[mk] = median(a);
+const globalMedian = median(allPrices);
 
 // ---- load all vehicles -----------------------------------------------------
 const vehicles = [];
@@ -97,60 +75,44 @@ while (true) {
 }
 
 // ---- estimate --------------------------------------------------------------
-// est_part_cost      = marketplace floor (cheapest quality listing on eBay)
-// est_install_grade  = named-builder tier (Mechman/Singer/Power Bastards class);
-//                      vehicle-matched builder listing when the sweep caught one,
-//                      otherwise the builder-tier median
-const out = ['vehicle_id,year,make,model,powertrain,availability,est_part_cost,est_install_grade,basis,nearest_sample_year,sample_distance'];
+const out = ['vehicle_id,year,make,model,powertrain,est_alt_price,basis,source_year,source_distance'];
 const tally = {};
 for (const v of vehicles) {
-  let availability, est = '', grade = '', basis, nearestYear = '', dist = '';
+  let price = '', basis, srcYear = '', dist = '';
 
   if (v.powertrain !== 'ICE') {
-    // EVs/hybrids have no alternator — no price, labeled plainly
-    availability = 'no_alternator'; basis = 'no_alternator';
+    basis = 'no_alternator';                       // EV/hybrid: no price
   } else {
-    const yearMap = sampled.get(`${v.make}|${v.model}`);
-    if (yearMap && yearMap.size && Number.isFinite(+v.year)) {
-      // nearest sampled year; ties go to the newer year
-      let best = null;
-      for (const y of yearMap.keys()) {
+    const ym = priced.get(`${v.make}|${v.model}`);
+    let best = null;
+    if (ym && ym.size && Number.isFinite(+v.year)) {
+      for (const [y, p] of ym) {
         const d2 = Math.abs(y - v.year);
-        if (!best || d2 < best.d || (d2 === best.d && y > best.y)) best = { y, d: d2 };
+        if (!best || d2 < best.d || (d2 === best.d && y > best.y)) best = { y, d: d2, p };
       }
-      nearestYear = best.y; dist = best.d;
-      const pt = yearMap.get(best.y);
-      if (pt.price !== null) {
-        availability = 'off_shelf'; est = pt.price;
-        grade = pt.builder ?? BUILDER_MEDIAN;
-        basis = best.d === 0 ? 'sampled_exact' : 'nearest_year';
-      } else {
-        availability = 'custom'; est = CUSTOM_EST; grade = BUILDER_MEDIAN; basis = 'nearest_gap';
-      }
+    }
+    if (best && best.d <= MAX_YEAR_REACH) {
+      // a real new-HO listing within reach of this vehicle's year
+      price = best.p; srcYear = best.y; dist = best.d;
+      basis = best.d === 0 ? 'exact' : 'nearest_year';
     } else if (makeMedian[v.make] != null) {
-      availability = 'estimated'; est = makeMedian[v.make]; grade = BUILDER_MEDIAN; basis = 'make_median';
+      price = makeMedian[v.make]; basis = 'make_median';   // model never priced -> make typical
     } else {
-      availability = 'estimated'; est = globalMedian; grade = BUILDER_MEDIAN; basis = 'global_median';
+      price = globalMedian; basis = 'global_median';       // make never priced -> overall typical
     }
   }
 
-  tally[availability] = (tally[availability] || 0) + 1;
-  out.push([v.vehicle_id, v.year, csv(v.make), csv(v.model), v.powertrain, availability, est, grade, basis, nearestYear, dist].join(','));
+  tally[basis] = (tally[basis] || 0) + 1;
+  out.push([v.vehicle_id, v.year, csv(v.make), csv(v.model), v.powertrain, price, basis, srcYear, dist].join(','));
 }
-
 function csv(s) { s = String(s ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
-
 fs.writeFileSync(OUT_FILE, out.join('\n') + '\n');
 
 // ---- summary ---------------------------------------------------------------
-console.log(`Estimated ${vehicles.length} vehicle rows -> ${OUT_FILE}\n`);
-console.log('Availability tally:');
+console.log(`Estimated ${vehicles.length} rows -> ${OUT_FILE}\n`);
+console.log(`Priced from ${allPrices.length} NEW high-output listings (>=${MIN_AMPS}A). Global median $${globalMedian}\n`);
+console.log('How each vehicle got its number:');
 for (const [k, n] of Object.entries(tally).sort((a, b) => b[1] - a[1]))
-  console.log(`  ${k.padEnd(15)} ${n}  (${(100 * n / vehicles.length).toFixed(1)}%)`);
-const offShelf = out.slice(1).map(l => l.split(',')).filter(p => p[5] === 'off_shelf').map(p => +p[6]);
-if (offShelf.length) {
-  const avg = offShelf.reduce((s, x) => s + x, 0) / offShelf.length;
-  console.log(`\noff_shelf est: avg $${avg.toFixed(0)}, median $${median(offShelf)}, n=${offShelf.length}`);
-}
-console.log(`install-grade / custom estimate: $${BUILDER_MEDIAN} (median of ${builderPrices.length} named-builder listings)`);
-console.log(`global median (fallback): $${globalMedian}`);
+  console.log(`  ${k.padEnd(14)} ${n}  (${(100 * n / vehicles.length).toFixed(1)}%)`);
+const withPrice = out.slice(1).map(l => l.split(',')).filter(p => p[5] !== '').map(p => +p[5]);
+console.log(`\nPriced rows: ${withPrice.length}. Price spread: min $${Math.min(...withPrice)}, median $${median(withPrice)}, max $${Math.max(...withPrice)}`);
