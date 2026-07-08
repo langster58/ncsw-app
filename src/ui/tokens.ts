@@ -191,6 +191,13 @@ export const colors = {
   chartGridStrong: '#d8d8dc', // emphasized axis line
   chartChipBorderHover: '#cfd3d9',
   accentTint: '#eef5fb', // ~8% accent on white (chip active bg)
+
+  // chart series palette (from the value-frontier chart, where the four hues
+  // encode driver size: 10" blue, 12" teal, 15" gold, 18" orange)
+  chartBlue: '#3b7dd8',
+  chartTeal: '#4aadab',
+  chartGold: '#d4a647',
+  chartOrange: '#c96b30',
 }
 
 // ── Fonts ───────────────────────────────────────────────────────────────────
