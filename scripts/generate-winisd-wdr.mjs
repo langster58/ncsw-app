@@ -42,7 +42,10 @@ function formatNumber(value) {
     return '0';
   }
 
-  return Number(value).toPrecision(12).replace(/\.?0+$/, '');
+  return Number(value)
+    .toPrecision(12)
+    .replace(/\.?0+$/, '')
+    .replace('.', ',');
 }
 
 function safeFileName(value) {
@@ -91,6 +94,7 @@ function driverToWdr(row) {
   const diaM = coneDiameterM(sdM2);
   const n0 = efficiency(fsHz, vasM3, qes);
   const ebp = fsHz / qes;
+  const rms = (2 * Math.PI * fsHz * mmsKg) / Number(row.qms);
   const date = todayStamp();
 
   const values = {
@@ -115,7 +119,7 @@ function driverToWdr(row) {
     Cms: cmsMPerN,
     Qms: row.qms,
     Qes: qes,
-    Rms: 0,
+    Rms: rms,
     Mms: mmsKg,
     Sd: sdM2,
     Vas: vasM3,
