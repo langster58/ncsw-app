@@ -147,19 +147,8 @@ function driverToWdr(row) {
     Rme: 0,
     Mpow: 0,
     Mcost: 0,
-    Gloss: 0,
-    VCCon: 1,
     c: 343.684120962152,
     roo: 1.20095217714682,
-    Thick: 0,
-    Depth: 0,
-    MagDepth: 0,
-    Magnet: 0,
-    Basket: 0,
-    Outer: 0,
-    Vcd: 0,
-    DVol: 0,
-    ParState: 'NNNNNNNNNNNNNNNNNNNNNNNENNNNNNNNNNNNNNNNNNNNNNNCC',
   };
 
   return `[Driver]\r\n${Object.entries(values)
