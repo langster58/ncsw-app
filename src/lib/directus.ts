@@ -8,11 +8,22 @@
 // The URL is public by nature (the browser calls it); the env var just lets a
 // staging instance override it at build time.
 
-const BASE = (
+import { Platform } from 'react-native'
+
+const REMOTE = (
   process.env.EXPO_PUBLIC_DIRECTUS_URL ??
   process.env.DIRECTUS_URL ??
   'https://directus-latest-g9tm.onrender.com'
 ).replace(/\/$/, '')
+
+// The Directus instance does not (yet) send CORS headers, so a browser JSON
+// fetch straight at the Render URL fails. On the deployed site, reads go
+// through the same-origin `/directus/*` rewrite in vercel.json — an edge
+// proxy straight to the same anonymous public-role endpoints, no credential
+// involved. Native and dev fetch the remote directly (native has no CORS;
+// dev works once CORS_ENABLED/CORS_ORIGIN are set on the Render service,
+// which also makes this indirection removable).
+const BASE = Platform.OS === 'web' && process.env.NODE_ENV === 'production' ? '/directus' : REMOTE
 
 export type ItemsQuery = {
   fields?: string[]
