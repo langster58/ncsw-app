@@ -165,7 +165,7 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
 
 export default function ArticleScreen() {
   const outer: any = IS_WEB ? { height: '100dvh', flexDirection: 'column' } : { flex: 1, flexDirection: 'column' }
-  const heroTop = useVal(80, 52) // breadcrumb → headline breathing room (matches PDP)
+  const heroTop = useVal(160, 104) // space between the eyebrow (breadcrumb) and the headline
 
   return (
     <>
@@ -179,7 +179,7 @@ export default function ArticleScreen() {
         <ScrollView style={{ flex: 1, backgroundColor: colors.white }} contentContainerStyle={{ flexGrow: 1 }}>
           {/* Breadcrumb */}
           <Container>
-            <View style={{ paddingTop: 100, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <View style={{ paddingTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
               <Eyebrow>Home</Eyebrow>
               <Eyebrow>/</Eyebrow>
               <Eyebrow>Editorial</Eyebrow>
