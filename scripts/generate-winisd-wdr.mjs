@@ -73,6 +73,10 @@ function efficiency(fsHz, vasM3, qes) {
   return (4 * Math.PI ** 2 * fsHz ** 3 * vasM3) / (c ** 3 * qes);
 }
 
+function sensitivityFromEfficiency(n0) {
+  return 112.15 + 10 * Math.log10(n0);
+}
+
 function todayStamp() {
   return new Date().toISOString().slice(0, 10).replaceAll('-', '');
 }
@@ -80,21 +84,23 @@ function todayStamp() {
 function driverToWdr(row) {
   const fsHz = Number(row.fs_hz);
   const qes = Number(row.qes);
-  const vasM3 = Number(row.vas_l) / 1000;
+  const qms = Number(row.qms);
   const sdM2 = Number(row.sd_cm2) / 10000;
   const xmaxM = Number(row.xmax_mm) / 1000;
   const mmsKg = Number(row.mms_g) / 1000;
   const cmsMPerN = Number(row.cms_mm_per_n) / 1000;
+  const reOhm = Number(row.re_ohm);
+  const qts = (qes * qms) / (qes + qms);
+  const blTm = Math.sqrt((2 * Math.PI * fsHz * mmsKg * reOhm) / qes);
+  const vasM3 = 1.20095217714682 * 343.684120962152 ** 2 * sdM2 ** 2 * cmsMPerN;
   const leH = row.le_mh === null || row.le_mh === undefined ? 0 : Number(row.le_mh) / 1000;
   const peW = row.rms_watts === null || row.rms_watts === undefined ? 0 : Number(row.rms_watts);
-  const spl = row.sensitivity_db_1w_1m === null || row.sensitivity_db_1w_1m === undefined
-    ? 0
-    : Number(row.sensitivity_db_1w_1m);
   const vdM3 = sdM2 * xmaxM;
   const diaM = coneDiameterM(sdM2);
   const n0 = efficiency(fsHz, vasM3, qes);
+  const spl = sensitivityFromEfficiency(n0);
   const ebp = fsHz / qes;
-  const rms = (2 * Math.PI * fsHz * mmsKg) / Number(row.qms);
+  const rms = (2 * Math.PI * fsHz * mmsKg) / qms;
   const date = todayStamp();
 
   const values = {
@@ -105,19 +111,19 @@ function driverToWdr(row) {
     Comment: `Generated from Directus slug ${row.slug || ''}`.trim(),
     DateAdded: date,
     DateModified: date,
-    Qts: row.qts,
-    Znom: nominalImpedance(Number(row.re_ohm)),
+    Qts: qts,
+    Znom: nominalImpedance(reOhm),
     Fs: fsHz,
     Pe: peW,
     SPL: spl,
-    Re: row.re_ohm,
+    Re: reOhm,
     Le: leH,
     fLe: 0,
     KLe: 0,
-    BL: row.bl_tm,
+    BL: blTm,
     Xmax: xmaxM,
     Cms: cmsMPerN,
-    Qms: row.qms,
+    Qms: qms,
     Qes: qes,
     Rms: rms,
     Mms: mmsKg,
