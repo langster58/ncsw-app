@@ -6,7 +6,9 @@ import { Packages } from '@/components/Packages'
 import { PackageTable } from '@/components/PackageTable'
 import { HowItWorks } from '@/components/HowItWorks'
 import { Collections } from '@/components/Collections'
+import { Featured } from '@/components/Featured'
 import { Editorial } from '@/components/Editorial'
+import { Brands } from '@/components/Brands'
 import { Location } from '@/components/Location'
 import { Footer } from '@/components/Footer'
 
@@ -42,7 +44,13 @@ export default function HomeScreen() {
             <Collections />
           </Reveal>
           <Reveal>
+            <Featured />
+          </Reveal>
+          <Reveal>
             <Editorial />
+          </Reveal>
+          <Reveal>
+            <Brands />
           </Reveal>
           <Reveal>
             <Location />

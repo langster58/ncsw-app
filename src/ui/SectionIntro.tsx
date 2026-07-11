@@ -25,7 +25,10 @@ type Level = 'h2' | 'h2sm' | 'h3'
 type Props = {
   index?: string
   label: string
-  heading: React.ReactNode
+  // Optional: a section can open with just the eyebrow band (index / label +
+  // action) and carry its own headline in its body — e.g. the build-log
+  // feature, whose headline lives inside the info panel next to the photo.
+  heading?: React.ReactNode
   body?: React.ReactNode
   actionLabel?: string
   actionHref?: string
@@ -58,7 +61,7 @@ export function SectionIntro({
             borderTopWidth: 1,
             borderTopColor: colors.ink,
             paddingTop: 14,
-            marginBottom: EYEBROW_ROW_GAP,
+            marginBottom: heading ? EYEBROW_ROW_GAP : 0,
             gap: 18,
           } as any
         }
@@ -84,11 +87,13 @@ export function SectionIntro({
         ) : null}
       </View>
 
-      {/* heading + body */}
-      <View style={{ gap: 16 }}>
-        <Heading level={level}>{heading}</Heading>
-        {body ? <Lead>{body}</Lead> : null}
-      </View>
+      {/* heading + body — omitted when the section carries its own headline */}
+      {heading ? (
+        <View style={{ gap: 16 }}>
+          <Heading level={level}>{heading}</Heading>
+          {body ? <Lead>{body}</Lead> : null}
+        </View>
+      ) : null}
     </View>
   )
 }
