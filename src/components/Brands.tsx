@@ -1,22 +1,15 @@
-import React, { useState } from 'react';
-import { View, Platform } from 'react-native';
-import {
-  Container,
-  Section,
-  SectionIntro,
-  Image,
-  colors,
-} from '@/ui';
+import React from 'react';
+import { View, useWindowDimensions, Platform } from 'react-native';
+import { Container, Section, SectionIntro, Image } from '@/ui';
 
 /* ============================================================
    Brands — the equipment logo wall.
-   Built in the site's hairline-cell-grid language (the same system
-   as .featured-specs and the packages table): white cells divided by
-   1px --ncsw-line seams, wrapped in a rounded hairline frame. The
-   grid is `auto-fit, minmax(...)` so it scales down and wraps to two
-   columns on phones with no breakpoints. Logos sit muted + grayscale
-   by default and resolve to full weight on hover, so 29 different
-   wordmarks read as one calm system instead of a ransom note.
+   A frameless, evenly-spaced logo strip. Equal-width columns wrap to
+   fewer-per-row on tablet and phone; the first logo in every row sits
+   flush to the container's left edge and the last flush to its right,
+   with the inner logos centered, so the whole band reads edge to edge.
+   Logos are shown in their native artwork color (no grayscale, no
+   fade) and sized to the room each cell gives them.
 
    NOTE: heading/body copy here is placeholder pending the Directus
    copy migration (CLAUDE.md §5, engineering step 4). The brand roster
@@ -28,7 +21,7 @@ const IS_WEB = Platform.OS === 'web';
 
 type Brand = { slug: string; name: string };
 
-// Alphabetized by display name for a deliberate, scannable order.
+// Alphabetized by display name; Polk pinned last per request.
 const BRANDS: Brand[] = [
   { slug: 'acoustic-elegance', name: 'Acoustic Elegance' },
   { slug: 'arc-audio', name: 'Arc Audio' },
@@ -62,58 +55,15 @@ const BRANDS: Brand[] = [
   { slug: 'polk-audio', name: 'Polk Audio' },
 ];
 
-function BrandCell({ brand }: { brand: Brand }) {
-  const [hovered, setHovered] = useState(false);
-  const hoverProps: any = IS_WEB
-    ? { onMouseEnter: () => setHovered(true), onMouseLeave: () => setHovered(false) }
-    : {};
-
-  return (
-    <View
-      {...hoverProps}
-      style={
-        {
-          backgroundColor: hovered ? '#fbfbfb' : colors.white,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingVertical: 26,
-          paddingHorizontal: 20,
-          minHeight: 108,
-          ...(IS_WEB
-            ? { transition: 'background-color .3s ease' }
-            : {
-                // native seam: draw the hairline as a right/bottom border
-                width: '50%',
-                borderColor: colors.line,
-                borderRightWidth: 1,
-                borderBottomWidth: 1,
-              }),
-        } as any
-      }
-    >
-      <Image
-        src={`/images/brands/${brand.slug}.svg`}
-        alt={brand.name}
-        objectFit="contain"
-        style={
-          IS_WEB
-            ? {
-                maxHeight: 30,
-                maxWidth: '72%',
-                width: 'auto',
-                height: 'auto',
-                opacity: hovered ? 1 : 0.55,
-                filter: hovered ? 'grayscale(0)' : 'grayscale(1)',
-                transition: 'opacity .3s ease, filter .3s ease',
-              }
-            : { width: 108, height: 30, opacity: 0.7 }
-        }
-      />
-    </View>
-  );
-}
-
 export function Brands() {
+  const { width } = useWindowDimensions();
+  // Column count divides the roster evenly so every row stays full and the
+  // flush-edge alignment lands cleanly.
+  const cols = width >= 1100 ? 10 : width >= 680 ? 6 : 3;
+  const cellPct = `${100 / cols}%`;
+  const logoMaxHeight = width >= 1100 ? 40 : width >= 680 ? 44 : 46;
+  const rowGap = width >= 680 ? 46 : 38;
+
   return (
     <Section>
       <Container>
@@ -122,31 +72,54 @@ export function Brands() {
           label="Brands"
           heading="The gear we build with"
           body="Subwoofers, amplifiers, front-stage drivers, and processors from the brands we stock and install — the parts every package is solved around."
-          paddingBottom={40}
+          paddingBottom={44}
         />
 
-        {/* .brand-grid — hairline cell wall, auto-fit so it wraps on phones */}
+        {/* Frameless logo strip — equal columns, outer logos flush to edges */}
         <View
           style={
             {
-              borderWidth: 1,
-              borderColor: colors.line,
-              borderRadius: 16, // --radius-lg
-              overflow: 'hidden',
-              backgroundColor: colors.line,
-              ...(IS_WEB
-                ? {
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(158px, 1fr))',
-                    gap: 1,
-                  }
-                : { flexDirection: 'row', flexWrap: 'wrap' }),
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              ...(IS_WEB ? { rowGap } : {}),
             } as any
           }
         >
-          {BRANDS.map((b) => (
-            <BrandCell key={b.slug} brand={b} />
-          ))}
+          {BRANDS.map((b, i) => {
+            const col = i % cols;
+            const align =
+              col === 0 ? 'flex-start' : col === cols - 1 ? 'flex-end' : 'center';
+            return (
+              <View
+                key={b.slug}
+                style={
+                  {
+                    width: cellPct,
+                    minHeight: logoMaxHeight + 16,
+                    justifyContent: 'center',
+                    alignItems: align,
+                    ...(IS_WEB ? {} : { marginBottom: rowGap }),
+                  } as any
+                }
+              >
+                <Image
+                  src={`/images/brands/${b.slug}.svg`}
+                  alt={b.name}
+                  objectFit="contain"
+                  style={
+                    IS_WEB
+                      ? {
+                          maxHeight: logoMaxHeight,
+                          maxWidth: '100%',
+                          width: 'auto',
+                          height: 'auto',
+                        }
+                      : { width: '100%', height: logoMaxHeight }
+                  }
+                />
+              </View>
+            );
+          })}
         </View>
       </Container>
     </Section>
