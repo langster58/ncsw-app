@@ -59,6 +59,7 @@ const BRANDS: Brand[] = [
   { slug: 'stereo-integrity', name: 'Stereo Integrity' },
   { slug: 'aundown', name: 'Sundown Audio' },
   { slug: 'zapco', name: 'Zapco' },
+  { slug: 'polk-audio', name: 'Polk Audio' },
 ];
 
 function BrandCell({ brand }: { brand: Brand }) {
