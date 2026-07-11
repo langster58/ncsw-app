@@ -61,8 +61,11 @@ export function Brands() {
   // flush-edge alignment lands cleanly.
   const cols = width >= 1100 ? 10 : width >= 680 ? 6 : 3;
   const cellPct = `${100 / cols}%`;
-  const logoMaxHeight = width >= 1100 ? 40 : width >= 680 ? 44 : 46;
-  const rowGap = width >= 680 ? 46 : 38;
+  // Restrained sizing so each logo keeps air around it and wide wordmarks
+  // never touch their neighbors. Only the outermost logos go flush to the
+  // container edges; everything inside stays centered in an equal-width cell.
+  const logoMaxHeight = 30;
+  const rowPitch = 108; // per-row height carries the vertical rhythm
 
   return (
     <Section>
@@ -76,15 +79,7 @@ export function Brands() {
         />
 
         {/* Frameless logo strip — equal columns, outer logos flush to edges */}
-        <View
-          style={
-            {
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              ...(IS_WEB ? { rowGap } : {}),
-            } as any
-          }
-        >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' } as any}>
           {BRANDS.map((b, i) => {
             const col = i % cols;
             const align =
@@ -95,10 +90,9 @@ export function Brands() {
                 style={
                   {
                     width: cellPct,
-                    minHeight: logoMaxHeight + 16,
+                    minHeight: rowPitch,
                     justifyContent: 'center',
                     alignItems: align,
-                    ...(IS_WEB ? {} : { marginBottom: rowGap }),
                   } as any
                 }
               >
@@ -110,11 +104,11 @@ export function Brands() {
                     IS_WEB
                       ? {
                           maxHeight: logoMaxHeight,
-                          maxWidth: '100%',
+                          maxWidth: '74%',
                           width: 'auto',
                           height: 'auto',
                         }
-                      : { width: '100%', height: logoMaxHeight }
+                      : { maxWidth: '74%', height: logoMaxHeight }
                   }
                 />
               </View>
