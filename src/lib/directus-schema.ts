@@ -20,7 +20,6 @@ export interface Vehicles {
   image: string | null
   head_unit_replacement_supported: boolean | null
   behind_seat_install_supported: boolean | null
-  behind_seat_depth_category: string | null
   behind_seat_depth_in: number | null
   powertrain: string | null
   branded_system_name: string | null
@@ -33,21 +32,7 @@ export interface Vehicles {
   install_notes: string | null
   alt_price_estimate: number | null
   alt_price_basis: string | null
-  factory_generation: string | null
-  factory_front_door: string | null
-  factory_front_door_3way: string | null
-  factory_apillar_tweeter: string | null
-  factory_sail_tweeter: string | null
-  factory_dash_corners: string | null
-  factory_dash_center: string | null
-  factory_rear_deck: string | null
-  factory_rear_door: string | null
-  factory_underseat: string | null
-  factory_sub: string | null
-  factory_system_base: string | null
-  factory_system_premium: string | null
-  factory_audio_source: string | null
-  factory_verified: string | null
+  generation: string | null
 }
 
 export interface Packages {
