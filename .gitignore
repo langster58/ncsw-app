@@ -11,6 +11,9 @@ build/
 # firecrawl scrape cache (research artifacts, not app code)
 .firecrawl/
 
+# Reusable web-archive cache for the factory-audio collector
+.cache/
+
 # eBay alternator price-research output (generated data, not app code)
 scripts/ebay-ho-alt-results.csv
 scripts/ebay-target-results.csv

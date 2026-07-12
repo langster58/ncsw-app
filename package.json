@@ -33,6 +33,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "collect:factory-audio": "node --env-file=.env ./scripts/collect-factory-audio-layouts.mjs",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
