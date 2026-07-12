@@ -24,7 +24,7 @@ export interface Vehicles {
   behind_seat_depth_in: number | null
   powertrain: string | null
   audio_system: string | null
-  has_fullrange_output: boolean | null
+  has_fullrange_output: 'true' | 'false' | 'option' | null
   audio_option_base: string | null
   audio_option_premium: string | null
   audio_option_premium_fullrange: boolean | null
@@ -441,4 +441,3 @@ export interface Articles {
   seo_description: string | null
   canonical_url: string | null
 }
-

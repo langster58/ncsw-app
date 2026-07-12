@@ -32,6 +32,10 @@ TS = {
     "json": "unknown", "csv": "string[]",
 }
 
+FIELD_TYPES = {
+    ("vehicles", "has_fullrange_output"): "'true' | 'false' | 'option'",
+}
+
 SKIP_FIELDS = {"user_created", "user_updated", "sort"}
 
 
@@ -67,7 +71,7 @@ for c in COLLECTIONS:
     for f in fields:
         if f["field"].startswith("date_") or f["field"] in SKIP_FIELDS:
             continue
-        ts = TS.get(f["type"], "unknown")
+        ts = FIELD_TYPES.get((c, f["field"]), TS.get(f["type"], "unknown"))
         nullable = (f.get("schema") or {}).get("is_nullable", True)
         out.append(f"  {f['field']}: {ts}{' | null' if nullable else ''}")
     out.append("}")
