@@ -45,8 +45,11 @@ export function Button({
   const [pressed, setPressed] = useState(false)
   const [focused, setFocused] = useState(false)
   // Focus-visible: a mouse press focuses the element and used to leave the
-  // ring stuck on after the click. Only keyboard-driven focus draws it.
+  // ring stuck on after the click. Only keyboard-driven focus draws it, and
+  // a pointer press blurs the node after activating so no focus styling —
+  // ours or the browser's — can outlive the click.
   const pointerFocus = useRef(false)
+  const nodeRef = useRef<any>(null)
 
   const hoverProps: any =
     Platform.OS === 'web'
@@ -74,7 +77,18 @@ export function Button({
 
   return (
     <Pressable
-      onPress={disabled ? undefined : onPress}
+      ref={nodeRef}
+      onPress={
+        disabled
+          ? undefined
+          : () => {
+              onPress?.()
+              if (pointerFocus.current && Platform.OS === 'web') {
+                setFocused(false)
+                nodeRef.current?.blur?.()
+              }
+            }
+      }
       onPressIn={() => {
         pointerFocus.current = true
         setPressed(true)
