@@ -105,9 +105,6 @@ const FETCH_FIELDS = [
 
 const DEFAULT_SLUG = 'fi-car-audio-hc-12'
 
-// Sentinel dropdown value for the not-in-our-library path.
-const CUSTOM_VALUE = '__custom__'
-
 type CatalogRow = Pick<
   Subwoofers,
   | 'slug'
@@ -299,13 +296,6 @@ function WebModeler() {
     if (next) setInputs(defaultInputsFor(next))
   }
 
-  // The not-in-our-library path: keep the current inputs as the starting
-  // point (a real driver's numbers beat a blank form) and open the editor.
-  function startCustomDriver() {
-    setCustom(true)
-    setModalOpen(true)
-  }
-
   const patch = (p: Partial<ModelInputs>) => setInputs((prev) => (prev ? { ...prev, ...p } : prev))
 
   const model = useMemo(() => {
@@ -439,7 +429,8 @@ function WebModeler() {
   }, [inputs, mode])
 
   const labelSize = useFluidPx(type.meta)
-  const controlsGap = useFluidPx(fluid(18, 14))
+  const controlsGap = useFluidPx(fluid(16, 12)) // within a group of controls that hang together
+  const groupGap = useFluidPx(fluid(40, 26)) // between control groups
   const blockGap = useFluidPx(fluid(28, 20))
   const sliderWidth = useFluidValue(190, 140)
   const loadingSize = useFluidPx(type.small)
@@ -465,8 +456,7 @@ function WebModeler() {
 
   const { ts, sealed707Box, sealedNums } = model
   const inp = inputs!
-  const catalogTs = custom ? null : toDriverTS(row)
-  const tsEdited = !custom && catalogTs ? !tsEquals(ts, catalogTs) : false
+  const catalogTs = toDriverTS(row)
   const driverLabel = custom ? customName.trim() || 'Custom driver' : `${row.brand} ${row.model}`
   const ebpValue = ebp(ts)
   const ebpRead = ebpValue < 50 ? 'sealed-leaning' : ebpValue > 100 ? 'ported-leaning' : 'either alignment'
@@ -595,117 +585,128 @@ function WebModeler() {
 
   return (
     <View style={{ width: '100%' } as any}>
-      {/* Controls */}
-      <View
-        style={
-          {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            alignItems: 'flex-end',
-            gap: controlsGap,
-            marginBottom: blockGap,
-          } as any
-        }
-      >
-        <View style={{ minWidth: 120 } as any}>
-          <Dropdown
-            label="Size"
-            value={sizeFilter}
-            options={[{ label: 'All sizes', value: 'all' }, ...sizes.map((s) => ({ label: `${s}″`, value: s }))]}
-            onChange={(v) => {
-              setSizeFilter(v)
-              const pool = rows.filter((r) => v === 'all' || r.driver_size === v)
-              if (!custom && pool.length && !pool.some((r) => r.slug === slug)) selectDriver(pool[0].slug, pool)
-            }}
-          />
-        </View>
-        <View style={{ minWidth: 320, flexShrink: 1 } as any}>
-          <Dropdown
-            label="Driver"
-            value={custom ? CUSTOM_VALUE : row.slug}
-            options={[
-              {
-                label: custom ? `Custom — ${driverLabel}` : 'Custom driver — enter parameters…',
-                value: CUSTOM_VALUE,
-              },
-              ...filtered.map((r) => ({ label: `${r.brand} ${r.model}`, value: r.slug })),
-            ]}
-            onChange={(v) => (v === CUSTOM_VALUE ? startCustomDriver() : selectDriver(v, filtered))}
-          />
-        </View>
-        <FilterChipGroup
-          label="Alignment"
-          value={mode}
-          options={['ported', 'sealed', 'ib']}
-          onChange={(v) => setMode(v as Mode)}
-          renderOption={(o) => MODE_LABEL[o as Mode]}
-        />
-        {mode === 'ported' ? (
-          <>
-            <SliderGroup
-              label="Ported box"
-              valueLabel={`${inp.vbFt3.toFixed(2)} ft³`}
-              min={0.15}
-              max={12}
-              step={0.05}
-              value={inp.vbFt3}
-              onChange={(v) => patch({ vbFt3: v })}
-              width={sliderWidth}
-              ariaLabel="Ported box net volume, cubic feet"
-            />
-            <SliderGroup
-              label="Tuning"
-              valueLabel={`${inp.fbHz.toFixed(1)} Hz`}
-              min={18}
-              max={50}
-              step={0.5}
-              value={inp.fbHz}
-              onChange={(v) => patch({ fbHz: v })}
-              width={sliderWidth}
-              ariaLabel="Ported box tuning frequency, hertz"
-            />
-          </>
-        ) : null}
-        {mode === 'sealed' ? (
-          <SliderGroup
-            label="Sealed box"
-            valueLabel={`${inp.sealedVbFt3.toFixed(2)} ft³`}
-            min={0.1}
-            max={8}
-            step={0.05}
-            value={inp.sealedVbFt3}
-            onChange={(v) => patch({ sealedVbFt3: v })}
-            width={sliderWidth}
-            ariaLabel="Sealed box net volume, cubic feet"
-          />
-        ) : null}
-        <View style={{ paddingBottom: 2, flexDirection: 'row', gap: 8 } as any}>
-          <Button onPress={() => setModalOpen(true)}>Enter exact values</Button>
-          <Button onPress={handleDownloadPdf} disabled={pdfBusy}>
-            {pdfBusy ? 'Preparing PDF…' : 'Download PDF report'}
-          </Button>
-        </View>
-      </View>
+      {/* Controls — [driver + specs] · gap · [size · alignment · box] · spacer · [download] */}
+      <View style={{ marginBottom: blockGap } as any}>
+        <View
+          style={
+            {
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'flex-end',
+              columnGap: groupGap,
+              rowGap: controlsGap,
+            } as any
+          }
+        >
+          {/* Driver group: library picker + the not-in-our-library path */}
+          <View
+            style={
+              { flexDirection: 'row', alignItems: 'flex-end', gap: controlsGap, flexShrink: 1, minWidth: 0 } as any
+            }
+          >
+            <View style={{ minWidth: 300, flexShrink: 1 } as any}>
+              <Dropdown
+                label="Driver"
+                value={custom ? '' : row.slug}
+                options={filtered.map((r) => ({ label: `${r.brand} ${r.model}`, value: r.slug }))}
+                onChange={(v) => selectDriver(v, filtered)}
+              />
+            </View>
+            <View style={{ paddingBottom: 1 } as any}>
+              <Button onPress={() => setModalOpen(true)}>Enter driver specs</Button>
+            </View>
+          </View>
 
-      {custom || tsEdited || pdfError ? (
-        <View style={{ marginTop: -8, marginBottom: blockGap, gap: 6 } as any}>
-          {custom ? (
-            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
-              Modeling a custom driver — not in the NCSW catalog. Set its parameters with “Enter exact
-              values”; pick any catalog driver to leave custom mode.
-            </Text>
-          ) : tsEdited ? (
-            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
-              Custom T/S in effect — parameters differ from the catalog record. Reselect the driver to reset.
-            </Text>
-          ) : null}
-          {pdfError ? (
-            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
-              PDF export failed — {pdfError}
-            </Text>
-          ) : null}
+          {/* Model group: filter + alignment + box controls */}
+          <View
+            style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: controlsGap } as any}
+          >
+            <View style={{ minWidth: 120 } as any}>
+              <Dropdown
+                label="Size"
+                value={sizeFilter}
+                options={[{ label: 'All sizes', value: 'all' }, ...sizes.map((s) => ({ label: `${s}″`, value: s }))]}
+                onChange={(v) => {
+                  setSizeFilter(v)
+                  const pool = rows.filter((r) => v === 'all' || r.driver_size === v)
+                  if (!custom && pool.length && !pool.some((r) => r.slug === slug)) selectDriver(pool[0].slug, pool)
+                }}
+              />
+            </View>
+            <FilterChipGroup
+              dense
+              label="Alignment"
+              value={mode}
+              options={['ported', 'sealed', 'ib']}
+              onChange={(v) => setMode(v as Mode)}
+              renderOption={(o) => MODE_LABEL[o as Mode]}
+            />
+            {mode === 'ported' ? (
+              <>
+                <SliderGroup
+                  label="Ported box"
+                  unit="ft³"
+                  min={0.15}
+                  max={12}
+                  step={0.05}
+                  value={inp.vbFt3}
+                  onChange={(v) => patch({ vbFt3: v })}
+                  width={sliderWidth}
+                  ariaLabel="Ported box net volume, cubic feet"
+                />
+                <SliderGroup
+                  label="Tuning"
+                  unit="Hz"
+                  min={18}
+                  max={50}
+                  step={0.5}
+                  value={inp.fbHz}
+                  onChange={(v) => patch({ fbHz: v })}
+                  width={sliderWidth}
+                  ariaLabel="Ported box tuning frequency, hertz"
+                  decimals={1}
+                />
+              </>
+            ) : null}
+            {mode === 'sealed' ? (
+              <SliderGroup
+                label="Sealed box"
+                unit="ft³"
+                min={0.1}
+                max={8}
+                step={0.05}
+                value={inp.sealedVbFt3}
+                onChange={(v) => patch({ sealedVbFt3: v })}
+                width={sliderWidth}
+                ariaLabel="Sealed box net volume, cubic feet"
+              />
+            ) : null}
+          </View>
+
+          {/* Flush right */}
+          <View style={{ marginLeft: 'auto', paddingBottom: 1 } as any}>
+            <Button onPress={handleDownloadPdf} disabled={pdfBusy}>
+              {pdfBusy ? 'Preparing PDF…' : 'Download PDF report'}
+            </Button>
+          </View>
         </View>
-      ) : null}
+
+        {custom || pdfError ? (
+          <View style={{ marginTop: controlsGap, gap: 6 } as any}>
+            {custom ? (
+              <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
+                Modeling “{driverLabel}” — a custom driver, not in the NCSW catalog. Adjust it with “Enter
+                driver specs”; pick a library driver to return.
+              </Text>
+            ) : null}
+            {pdfError ? (
+              <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
+                PDF export failed — {pdfError}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
 
       {/* Headline numbers */}
       <View style={{ marginBottom: blockGap } as any}>
@@ -812,12 +813,12 @@ function WebModeler() {
         <ExactValuesModal
           initial={inp}
           catalogTs={catalogTs}
-          driverName={driverLabel}
-          custom={custom}
-          initialName={customName}
+          initialName={custom ? customName : `${row.brand} ${row.model}`}
           onApply={(next, name) => {
             setInputs(next)
-            if (custom) setCustomName(name.trim() || 'Custom driver')
+            const isCustom = catalogTs ? !tsEquals(tsOf(next), catalogTs) : true
+            setCustom(isCustom)
+            if (isCustom) setCustomName(name.trim() || 'Custom driver')
             setModalOpen(false)
           }}
           onClose={() => setModalOpen(false)}
@@ -836,16 +837,12 @@ function WebModeler() {
 function ExactValuesModal({
   initial,
   catalogTs,
-  driverName,
-  custom,
   initialName,
   onApply,
   onClose,
 }: {
   initial: ModelInputs
   catalogTs: DriverTS | null
-  driverName: string
-  custom: boolean
   initialName: string
   onApply: (next: ModelInputs, name: string) => void
   onClose: () => void
@@ -884,16 +881,14 @@ function ExactValuesModal({
   const rowStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: fieldGap } as any
 
   return (
-    <Modal open onClose={onClose} title={`Exact values — ${driverName}`}>
+    <Modal open onClose={onClose} title={`Driver specs — ${initialName}`}>
       <Modal.Body>
         <View style={{ gap: sectionGap, maxWidth: 760 } as any}>
           <View>
             <Text style={sectionStyle}>Driver — Thiele/Small</Text>
-            {custom ? (
-              <View style={{ marginBottom: fieldGap } as any}>
-                <TextField label="Driver name" value={name} onChange={setName} placeholder="Brand + model" />
-              </View>
-            ) : null}
+            <View style={{ marginBottom: fieldGap } as any}>
+              <TextField label="Driver name" value={name} onChange={setName} placeholder="Brand + model" />
+            </View>
             <View style={rowStyle}>
               <NumberField label="Fs" unit="Hz" value={draft.fsHz} onChange={set('fsHz')} min={10} max={120} />
               <NumberField label="Qts" value={draft.qts} onChange={set('qts')} min={0.2} max={1.5} decimals={3} />
@@ -905,11 +900,9 @@ function ExactValuesModal({
               <NumberField label="Rated" unit="W" value={draft.rmsWatts} onChange={set('rmsWatts')} min={50} max={10000} decimals={0} />
             </View>
             <Text style={derivedStyle}>
-              {custom
-                ? 'Custom driver — not in the NCSW catalog.'
-                : draftEdited
-                  ? 'Edited — models as a custom driver until the driver is reselected.'
-                  : 'Matches the catalog record.'}{' '}
+              {draftEdited
+                ? 'Differs from the catalog record — will model as a custom driver.'
+                : 'Matches the catalog record.'}{' '}
               Only parameters the model consumes are shown; Le is not modeled.
             </Text>
           </View>
@@ -985,11 +978,12 @@ function StatusBox({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Label + native range input — the same web escape hatch the frontier chart
-// uses (input[type=range] has no RN-web equivalent).
+// Label over a range input paired with a typeable value field — drag and the
+// field tracks live; type and the model follows on commit. The range input is
+// the same web escape hatch the frontier chart uses (no RN-web equivalent).
 function SliderGroup({
   label,
-  valueLabel,
+  unit,
   min,
   max,
   step,
@@ -997,9 +991,10 @@ function SliderGroup({
   onChange,
   width,
   ariaLabel,
+  decimals = 2,
 }: {
   label: string
-  valueLabel: string
+  unit: string
   min: number
   max: number
   step: number
@@ -1007,6 +1002,7 @@ function SliderGroup({
   onChange: (n: number) => void
   width: number
   ariaLabel: string
+  decimals?: number
 }) {
   const fontSize = useFluidPx(type.meta)
   const groupGap = useFluidPx(fluid(7, 6))
@@ -1024,18 +1020,30 @@ function SliderGroup({
           } as any
         }
       >
-        {label} <Text style={{ color: INK, textTransform: 'none' } as any}>{valueLabel}</Text>
+        {label} <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}>{unit}</Text>
       </Text>
-      {React.createElement('input', {
-        type: 'range',
-        min,
-        max,
-        step,
-        value,
-        onChange: (e: any) => onChange(Number(e.target.value)),
-        'aria-label': ariaLabel,
-        style: { width, accentColor: colors.accent },
-      })}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
+        {React.createElement('input', {
+          type: 'range',
+          min,
+          max,
+          step,
+          value,
+          onChange: (e: any) => onChange(Number(e.target.value)),
+          'aria-label': ariaLabel,
+          style: { width, accentColor: colors.accent },
+        })}
+        <NumberField
+          compact
+          label={ariaLabel}
+          value={value}
+          onChange={onChange}
+          min={min}
+          max={max}
+          decimals={decimals}
+          width={64}
+        />
+      </View>
     </View>
   )
 }

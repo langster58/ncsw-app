@@ -21,13 +21,14 @@ type Props = {
   max?: number
   width?: number
   decimals?: number // display precision when not editing (default 2, trailing zeros trimmed)
+  compact?: boolean // input only, no label row (label still voices via accessibility)
 }
 
 function format(n: number, decimals: number): string {
   return String(Number(n.toFixed(decimals)))
 }
 
-export function NumberField({ label, value, onChange, unit, min, max, width = 96, decimals = 2 }: Props) {
+export function NumberField({ label, value, onChange, unit, min, max, width = 96, decimals = 2, compact = false }: Props) {
   const [text, setText] = useState(format(value, decimals))
   const [editing, setEditing] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -58,22 +59,24 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
 
   return (
     <View style={{ flexDirection: 'column', gap: 6, width } as any}>
-      <Text
-        style={
-          {
-            fontFamily: fonts.mono,
-            fontWeight: '600',
-            fontSize: labelSize,
-            color: colors.gray,
-            textTransform: 'uppercase',
-            letterSpacing: tracking.label,
-          } as any
-        }
-        numberOfLines={1}
-      >
-        {label}
-        {unit ? <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}> {unit}</Text> : null}
-      </Text>
+      {compact ? null : (
+        <Text
+          style={
+            {
+              fontFamily: fonts.mono,
+              fontWeight: '600',
+              fontSize: labelSize,
+              color: colors.gray,
+              textTransform: 'uppercase',
+              letterSpacing: tracking.label,
+            } as any
+          }
+          numberOfLines={1}
+        >
+          {label}
+          {unit ? <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}> {unit}</Text> : null}
+        </Text>
+      )}
       <TextInput
         value={text}
         onChangeText={(t) => {
@@ -94,8 +97,8 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
             borderWidth: 1,
             borderColor: focused ? colors.accent : colors.line,
             borderRadius: radius.sm,
-            paddingVertical: 8,
-            paddingHorizontal: 10,
+            paddingVertical: compact ? 6 : 8,
+            paddingHorizontal: compact ? 8 : 10,
             ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : null),
           } as any
         }

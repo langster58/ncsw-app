@@ -22,6 +22,7 @@ type Props = {
   pick?: string
   onChange: (v: string) => void
   renderOption?: (o: string) => React.ReactNode
+  dense?: boolean // no outer vertical padding — for control rows that baseline-align
 }
 
 export function FilterChipGroup({
@@ -31,9 +32,10 @@ export function FilterChipGroup({
   pick,
   onChange,
   renderOption = (o) => o,
+  dense = false,
 }: Props) {
   return (
-    <View style={{ paddingVertical: 10, gap: 10 } as any}>
+    <View style={{ paddingVertical: dense ? 0 : 10, gap: dense ? 7 : 10 } as any}>
       <Text
         style={
           {
