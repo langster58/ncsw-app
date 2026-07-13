@@ -64,6 +64,7 @@ export type SolvePoint = {
   spl: number // dB SPL, half-space 1 m, for the given RMS drive voltage
   excursion: number // m RMS phasor magnitude (× √2 for peak)
   portFlow: number // m³/s RMS volume velocity through the port (0 if none)
+  phase: number // rad, phase of the radiated volume velocity (for group delay)
 }
 
 // One frequency point of the equivalent circuit. egVolts is RMS drive.
@@ -124,6 +125,7 @@ export function solveAt(d: DerivedDriver, align: Alignment, fHz: number, egVolts
     spl: 20 * Math.log10(pressure / P_REF),
     excursion: Math.hypot(ur, ui) / (w * d.sd),
     portFlow,
+    phase: Math.atan2(uti, utr),
   }
 }
 
@@ -182,10 +184,15 @@ export function sealedBoxForQtc(d: DriverTS, qtc = Math.SQRT1_2): { vbL: number;
   return { vbL: d.vasL / alpha, fcHz: d.fsHz * Math.sqrt(1 + alpha) }
 }
 
-// Highest frequency below tuning where peak excursion crosses Xmax at rated
-// power — the subsonic-filter recommendation. NaN when it never crosses.
-export function subsonicCrossover(d: DerivedDriver, align: Alignment & { kind: 'ported' }): number {
-  const eg = voltsForRated(d.ts)
+// Highest frequency below tuning where peak excursion crosses Xmax at the
+// given power (default rated) — the subsonic-filter recommendation. NaN when
+// it never crosses.
+export function subsonicCrossover(
+  d: DerivedDriver,
+  align: Alignment & { kind: 'ported' },
+  watts?: number,
+): number {
+  const eg = Math.sqrt((watts ?? d.ts.rmsWatts) * d.ts.reOhm)
   for (let f = align.fbHz; f >= 10; f -= 0.25) {
     if (solveAt(d, align, f, eg).excursion * Math.SQRT2 > d.xmax) return f
   }
@@ -198,8 +205,9 @@ export function portAreaForVelocity(
   d: DerivedDriver,
   align: Alignment & { kind: 'ported' },
   maxVelocity = 17,
+  watts?: number,
 ): number {
-  const eg = voltsForRated(d.ts)
+  const eg = Math.sqrt((watts ?? d.ts.rmsWatts) * d.ts.reOhm)
   let peak = 0
   for (const f of logSweep(Math.max(15, align.fbHz - 15), align.fbHz + 25, 60)) {
     const flow = solveAt(d, align, f, eg).portFlow * Math.SQRT2
@@ -208,14 +216,75 @@ export function portAreaForVelocity(
   return peak / maxVelocity
 }
 
-// Max SPL at a frequency: the lesser of power-limited (rated watts) and
-// displacement-limited (drive scaled so peak excursion hits Xmax).
-export function maxSplAt(d: DerivedDriver, align: Alignment, fHz: number) {
-  const r = solveAt(d, align, fHz, voltsForRated(d.ts))
+// Max SPL at a frequency: the lesser of power-limited (given watts, default
+// rated) and displacement-limited (drive scaled so peak excursion hits Xmax).
+export function maxSplAt(d: DerivedDriver, align: Alignment, fHz: number, watts?: number) {
+  const eg = Math.sqrt((watts ?? d.ts.rmsWatts) * d.ts.reOhm)
+  const r = solveAt(d, align, fHz, eg)
   const excursionRatio = d.xmax / (r.excursion * Math.SQRT2)
   const displacementLimited = excursionRatio < 1
   return {
     spl: r.spl + (displacementLimited ? 20 * Math.log10(excursionRatio) : 0),
     displacementLimited,
   }
+}
+
+// Sealed-box alignment numbers for an arbitrary volume: Qtc, Fc, and the
+// classic closed-box compliance ratio α = Vas/Vb.
+export function sealedAlignment(ts: DriverTS, vbL: number) {
+  const alpha = ts.vasL / vbL
+  const k = Math.sqrt(1 + alpha)
+  return { alpha, qtc: ts.qts * k, fcHz: ts.fsHz * k }
+}
+
+// Group delay in ms across a frequency grid: −dφ/dω of the radiated output,
+// phase unwrapped, central differences. The e^{−jkr} propagation term is
+// excluded (WinISD's convention).
+export function groupDelaySeries(
+  d: DerivedDriver,
+  align: Alignment,
+  freqs: number[],
+  egVolts: number,
+): { f: number; y: number }[] {
+  const ph = freqs.map((f) => solveAt(d, align, f, egVolts).phase)
+  for (let i = 1; i < ph.length; i++) {
+    while (ph[i] - ph[i - 1] > Math.PI) ph[i] -= 2 * Math.PI
+    while (ph[i] - ph[i - 1] < -Math.PI) ph[i] += 2 * Math.PI
+  }
+  return freqs.map((f, i) => {
+    const i0 = Math.max(0, i - 1)
+    const i1 = Math.min(freqs.length - 1, i + 1)
+    const dw = 2 * Math.PI * (freqs[i1] - freqs[i0])
+    return { f, y: (-(ph[i1] - ph[i0]) / dw) * 1000 }
+  })
+}
+
+// Physical port length (m) that lands the tuning, from the Helmholtz
+// resonance of N identical round ports of total area areaM2, with the
+// standard one-flanged/one-free end correction (0.732 diameters ≈ 1.463 r).
+// Negative result = the port won't fit (area too large for the tuning).
+export function portLengthM(vbL: number, fbHz: number, areaM2: number, count: number): number {
+  const wb = 2 * Math.PI * fbHz
+  const r = Math.sqrt(areaM2 / count / Math.PI)
+  return (C * C * areaM2) / (wb * wb * vbL * 1e-3) - 1.463 * r
+}
+
+// Peak port air velocity (m/s) across a frequency grid for a given total
+// port area and drive voltage. 17 m/s is the community chuffing threshold.
+export function portVelocitySeries(
+  d: DerivedDriver,
+  align: Alignment & { kind: 'ported' },
+  areaM2: number,
+  freqs: number[],
+  egVolts: number,
+): { f: number; y: number }[] {
+  return freqs.map((f) => ({
+    f,
+    y: (solveAt(d, align, f, egVolts).portFlow * Math.SQRT2) / areaM2,
+  }))
+}
+
+// RMS drive voltage for an arbitrary input power into Re.
+export function voltsForWatts(d: DriverTS, watts: number): number {
+  return Math.sqrt(watts * d.reOhm)
 }

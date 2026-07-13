@@ -1,10 +1,13 @@
 // BoxModeler — interactive enclosure modeler for the full subwoofer catalog.
 //
-// Pick any driver, set a ported box volume and tuning, and read the modeled
-// SPL response, cone excursion against Xmax, and the headline alignment
-// numbers (EBP, sealed Qtc 0.707 box, F3/F10, subsonic filter point, port
-// area, max SPL). The physics lives in src/lib/driver-model.ts; this file is
-// controls + canvas rendering, built on the same fluid-canvas pattern as
+// Pick any driver — or type in custom Thiele/Small parameters — choose an
+// alignment (ported, sealed, infinite baffle), set the box, and read the
+// modeled curves: SPL response, max SPL, cone excursion against Xmax, group
+// delay, and port air velocity, plus the headline alignment numbers (EBP,
+// Qtc/Fc, F3/F10, subsonic filter point, port length and area, max SPL).
+// Every value is also typeable exactly through the full-page input modal.
+// The physics lives in src/lib/driver-model.ts; this file is controls +
+// canvas rendering, built on the same fluid-canvas pattern as
 // SubwooferFrontierChart (the two interactive web elements with no RN
 // equivalent — <canvas> and <input type=range> — are web escape hatches, and
 // native gets an honest placeholder until the native phase).
@@ -16,8 +19,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Text, View } from 'react-native'
 import {
+  Button,
   DataList,
   Dropdown,
+  FilterChipGroup,
+  Modal,
+  NumberField,
   colors,
   fluid,
   fluidNumber,
@@ -31,21 +38,24 @@ import { getItems } from '@/lib/directus'
 import type { Subwoofers } from '@/lib/directus-schema'
 import {
   Alignment,
-  DerivedDriver,
   DriverTS,
   LITERS_PER_FT3,
   cornerFrequencies,
   deriveDriver,
   ebp,
+  groupDelaySeries,
   logSweep,
   maxSplAt,
   portAreaForVelocity,
+  portLengthM,
+  portVelocitySeries,
+  sealedAlignment,
   sealedBoxForQtc,
   sensitivity283,
   solveAt,
   subsonicCrossover,
   voltsFor1W,
-  voltsForRated,
+  voltsForWatts,
 } from '@/lib/driver-model'
 
 const INK = colors.ink
@@ -153,15 +163,80 @@ type CurvePoint = { f: number; y: number }
 type Series = { label: string; color: string; dash: number[] | null; points: CurvePoint[] }
 
 const SPL_FREQS = logSweep(15, 250, 90)
-const EX_FREQS = logSweep(15, 100, 70)
+const LOW_FREQS = logSweep(15, 100, 70)
+
+const INCH_M = 0.0254
+
+type Mode = 'ported' | 'sealed' | 'ib'
+const MODE_LABEL: Record<Mode, string> = { ported: 'Ported', sealed: 'Sealed', ib: 'Infinite baffle' }
+
+// Everything the exact-values modal can set: driver T/S, both boxes, port
+// geometry, and drive power. Sliders write into the same object, so typed
+// and dragged values never fight.
+type ModelInputs = DriverTS & {
+  vbFt3: number
+  fbHz: number
+  sealedVbFt3: number
+  portDiaIn: number
+  portCount: number
+  driveW: number
+}
+
+function tsOf(i: ModelInputs): DriverTS {
+  const { fsHz, qts, qes, vasL, sdCm2, xmaxMm, reOhm, rmsWatts } = i
+  return { fsHz, qts, qes, vasL, sdCm2, xmaxMm, reOhm, rmsWatts }
+}
+
+function tsEquals(a: DriverTS, b: DriverTS): boolean {
+  return (
+    a.fsHz === b.fsHz &&
+    a.qts === b.qts &&
+    a.qes === b.qes &&
+    a.vasL === b.vasL &&
+    a.sdCm2 === b.sdCm2 &&
+    a.xmaxMm === b.xmaxMm &&
+    a.reOhm === b.reOhm &&
+    a.rmsWatts === b.rmsWatts
+  )
+}
+
+function portAreaM2(i: Pick<ModelInputs, 'portDiaIn' | 'portCount'>): number {
+  const r = (i.portDiaIn * INCH_M) / 2
+  return i.portCount * Math.PI * r * r
+}
+
+// Community-typical port diameter per driver size.
+function defaultPortDiaIn(size: string | null | undefined): number {
+  const n = Number(size)
+  if (!n || n <= 10) return 3
+  if (n <= 13.5) return 4
+  return 6
+}
+
+function defaultInputsFor(row: CatalogRow): ModelInputs {
+  const ts = toDriverTS(row)!
+  const def = BOX_DEFAULTS[row.driver_size ?? ''] ?? [2.0, 32]
+  const s707 = sealedBoxForQtc(ts)
+  const sealedVbFt3 = Math.min(8, Math.max(0.1, (s707?.vbL ?? def[0] * 0.5 * LITERS_PER_FT3) / LITERS_PER_FT3))
+  return {
+    ...ts,
+    vbFt3: def[0],
+    fbHz: def[1],
+    sealedVbFt3: Number(sealedVbFt3.toFixed(2)),
+    portDiaIn: defaultPortDiaIn(row.driver_size),
+    portCount: 1,
+    driveW: ts.rmsWatts,
+  }
+}
 
 function WebModeler() {
   const [rows, setRows] = useState<CatalogRow[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [sizeFilter, setSizeFilter] = useState('all')
   const [slug, setSlug] = useState(DEFAULT_SLUG)
-  const [vbFt3, setVbFt3] = useState(1.75)
-  const [fbHz, setFbHz] = useState(32)
+  const [mode, setMode] = useState<Mode>('ported')
+  const [inputs, setInputs] = useState<ModelInputs | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -197,59 +272,148 @@ function WebModeler() {
     [filtered, slug],
   )
 
+  // Seed the input set once the catalog resolves the first driver.
+  useEffect(() => {
+    if (row && !inputs) setInputs(defaultInputsFor(row))
+  }, [row, inputs])
+
   function selectDriver(nextSlug: string, pool: CatalogRow[]) {
     const next = pool.find((r) => r.slug === nextSlug)
     setSlug(nextSlug)
-    const def = BOX_DEFAULTS[next?.driver_size ?? ''] ?? [2.0, 32]
-    setVbFt3(def[0])
-    setFbHz(def[1])
+    if (next) setInputs(defaultInputsFor(next))
   }
 
+  const patch = (p: Partial<ModelInputs>) => setInputs((prev) => (prev ? { ...prev, ...p } : prev))
+
   const model = useMemo(() => {
-    const ts = row ? toDriverTS(row) : null
-    if (!row || !ts) return null
+    if (!inputs) return null
+    const ts = tsOf(inputs)
     const d = deriveDriver(ts)
-    const vbL = vbFt3 * LITERS_PER_FT3
-    const ported: Alignment & { kind: 'ported' } = { kind: 'ported', vbL, fbHz }
+    const vbL = inputs.vbFt3 * LITERS_PER_FT3
+    const sealedVbL = inputs.sealedVbFt3 * LITERS_PER_FT3
+    const ported: Alignment & { kind: 'ported' } = { kind: 'ported', vbL, fbHz: inputs.fbHz }
     const sealedSame: Alignment = { kind: 'sealed', vbL }
+    const sealedUser: Alignment = { kind: 'sealed', vbL: sealedVbL }
     const ib: Alignment = { kind: 'ib' }
     const sealed707Box = sealedBoxForQtc(ts)
     const sealed707: Alignment | null = sealed707Box ? { kind: 'sealed', vbL: sealed707Box.vbL } : null
+    const active: Alignment = mode === 'ported' ? ported : mode === 'sealed' ? sealedUser : ib
+    const sealedNums = sealedAlignment(ts, sealedVbL)
 
     const eg1 = voltsFor1W(ts)
-    const egR = voltsForRated(ts)
-    const splSeries = (align: Alignment) => SPL_FREQS.map((f) => ({ f, y: solveAt(d, align, f, eg1).spl }))
-    const exSeries = (align: Alignment) =>
-      EX_FREQS.map((f) => ({ f, y: solveAt(d, align, f, egR).excursion * Math.SQRT2 * 1000 }))
+    const egD = voltsForWatts(ts, inputs.driveW)
+    const splPoints = (align: Alignment) => SPL_FREQS.map((f) => ({ f, y: solveAt(d, align, f, eg1).spl }))
+    const exPoints = (align: Alignment) =>
+      LOW_FREQS.map((f) => ({ f, y: solveAt(d, align, f, egD).excursion * Math.SQRT2 * 1000 }))
 
-    const corners = cornerFrequencies(d, ported)
+    // One lineup drives both the SPL and group-delay charts, so their
+    // legends and colors always agree.
+    const lineup: { label: string; color: string; dash: number[] | null; align: Alignment }[] =
+      mode === 'ported'
+        ? [
+            {
+              label: `Ported ${inputs.vbFt3.toFixed(2)} ft³ @ ${inputs.fbHz.toFixed(1)} Hz`,
+              color: SERIES.ported,
+              dash: null,
+              align: ported,
+            },
+            { label: 'Sealed, same volume', color: SERIES.sealedSame, dash: [6, 4], align: sealedSame },
+            ...(sealed707
+              ? [{ label: 'Sealed Qtc 0.707', color: SERIES.sealed707, dash: [2, 3] as number[], align: sealed707 }]
+              : []),
+            { label: 'Infinite baffle', color: SERIES.ib, dash: [10, 4], align: ib },
+          ]
+        : mode === 'sealed'
+          ? [
+              {
+                label: `Sealed ${inputs.sealedVbFt3.toFixed(2)} ft³ · Qtc ${sealedNums.qtc.toFixed(2)}`,
+                color: SERIES.sealedSame,
+                dash: null,
+                align: sealedUser,
+              },
+              ...(sealed707
+                ? [{ label: 'Sealed Qtc 0.707', color: SERIES.sealed707, dash: [2, 3] as number[], align: sealed707 }]
+                : []),
+              { label: 'Infinite baffle', color: SERIES.ib, dash: [10, 4], align: ib },
+            ]
+          : [
+              { label: 'Infinite baffle', color: SERIES.ib, dash: null, align: ib },
+              ...(sealed707
+                ? [{ label: 'Sealed Qtc 0.707', color: SERIES.sealed707, dash: [2, 3] as number[], align: sealed707 }]
+                : []),
+            ]
+
+    const spl: Series[] = lineup.map((e) => ({ label: e.label, color: e.color, dash: e.dash, points: splPoints(e.align) }))
+    const groupDelay: Series[] = lineup.map((e) => ({
+      label: e.label,
+      color: e.color,
+      dash: e.dash,
+      points: groupDelaySeries(d, e.align, SPL_FREQS, eg1),
+    }))
+
+    const modeColor = mode === 'ported' ? SERIES.ported : mode === 'sealed' ? SERIES.sealedSame : SERIES.ib
+    const excursion: Series[] =
+      mode === 'ported'
+        ? [
+            { label: 'Ported', color: SERIES.ported, dash: null, points: exPoints(ported) },
+            { label: 'Sealed, same volume', color: SERIES.sealedSame, dash: [6, 4], points: exPoints(sealedSame) },
+          ]
+        : mode === 'sealed'
+          ? [
+              { label: 'Sealed', color: SERIES.sealedSame, dash: null, points: exPoints(sealedUser) },
+              { label: 'Infinite baffle', color: SERIES.ib, dash: [10, 4], points: exPoints(ib) },
+            ]
+          : [{ label: 'Infinite baffle', color: SERIES.ib, dash: null, points: exPoints(ib) }]
+
+    const maxSpl: Series[] = [
+      {
+        label: `${MODE_LABEL[mode]} — ${Math.round(inputs.driveW).toLocaleString('en-US')} W, Xmax-limited`,
+        color: modeColor,
+        dash: null,
+        points: LOW_FREQS.map((f) => ({ f, y: maxSplAt(d, active, f, inputs.driveW).spl })),
+      },
+    ]
+
+    // Ported-only port physics.
+    const area = portAreaM2(inputs)
+    const portLenIn = mode === 'ported' ? portLengthM(vbL, inputs.fbHz, area, inputs.portCount) / INCH_M : NaN
+    const portVelocity: Series[] =
+      mode === 'ported'
+        ? [
+            {
+              label: `${inputs.portCount} × ${inputs.portDiaIn}″ port @ ${Math.round(inputs.driveW).toLocaleString('en-US')} W`,
+              color: SERIES.ported,
+              dash: null,
+              points: portVelocitySeries(d, ported, area, LOW_FREQS, egD),
+            },
+          ]
+        : []
+    const portVelPeak = portVelocity.length ? Math.max(...portVelocity[0].points.map((p) => p.y)) : NaN
+
+    const corners = cornerFrequencies(d, active)
     const ibCorners = cornerFrequencies(d, ib)
-    const sub = subsonicCrossover(d, ported)
-    const portIn2 = portAreaForVelocity(d, ported) * 1550
-    const max315 = maxSplAt(d, ported, 31.5)
 
     return {
       d,
       ts,
       sealed707Box,
-      spl: {
-        ported: splSeries(ported),
-        sealedSame: splSeries(sealedSame),
-        sealed707: sealed707 ? splSeries(sealed707) : null,
-        ib: splSeries(ib),
-      },
-      excursion: {
-        ported: exSeries(ported),
-        sealedSame: exSeries(sealedSame),
-      },
+      sealedNums,
+      spl,
+      groupDelay,
+      excursion,
+      maxSpl,
+      portVelocity,
+      portVelPeak,
+      portAreaIn2: area * 1550,
+      portLenIn,
       refSpl1W: ibCorners.refSpl1W,
-      portedF3: corners.f3,
-      portedF10: corners.f10,
-      sub,
-      portIn2,
-      max315,
+      f3: corners.f3,
+      f10: corners.f10,
+      sub: mode === 'ported' ? subsonicCrossover(d, ported, inputs.driveW) : NaN,
+      portIn2Rec: mode === 'ported' ? portAreaForVelocity(d, ported, 17, inputs.driveW) * 1550 : NaN,
+      max315: maxSplAt(d, active, 31.5, inputs.driveW),
     }
-  }, [row, vbFt3, fbHz])
+  }, [inputs, mode])
 
   const labelSize = useFluidPx(type.meta)
   const controlsGap = useFluidPx(fluid(18, 14))
@@ -276,23 +440,62 @@ function WebModeler() {
     )
   }
 
-  const { ts, sealed707Box } = model
+  const { ts, sealed707Box, sealedNums } = model
+  const inp = inputs!
+  const catalogTs = toDriverTS(row)
+  const tsEdited = catalogTs ? !tsEquals(ts, catalogTs) : true
   const ebpValue = ebp(ts)
   const ebpRead = ebpValue < 50 ? 'sealed-leaning' : ebpValue > 100 ? 'ported-leaning' : 'either alignment'
   const sens1W = model.refSpl1W
   const sens283 = sensitivity283(sens1W, ts.reOhm)
+  const wattsLabel = `${Math.round(inp.driveW).toLocaleString('en-US')} W`
+  const f3f10 = `${Number.isNaN(model.f3) ? '—' : model.f3.toFixed(1)} Hz / ${Number.isNaN(model.f10) ? '—' : model.f10.toFixed(1)} Hz`
 
-  const splSeries: Series[] = [
-    { label: `Ported ${vbFt3.toFixed(2)} ft³ @ ${fbHz.toFixed(1)} Hz`, color: SERIES.ported, dash: null, points: model.spl.ported },
-    { label: 'Sealed, same volume', color: SERIES.sealedSame, dash: [6, 4], points: model.spl.sealedSame },
-    ...(model.spl.sealed707
-      ? [{ label: 'Sealed Qtc 0.707', color: SERIES.sealed707, dash: [2, 3], points: model.spl.sealed707 }]
+  const s707Row = {
+    label: 'Sealed for Qtc 0.707',
+    value: sealed707Box
+      ? `${(sealed707Box.vbL / LITERS_PER_FT3).toFixed(2)} ft³ · F3 ${Math.round(sealed707Box.fcHz)} Hz`
+      : `n/a — Qts ${ts.qts.toFixed(2)} is already above 0.71`,
+  }
+  const headlineRows = [
+    { label: 'Sensitivity', value: `${sens1W.toFixed(1)} dB 1W/1m · ${sens283.toFixed(1)} dB 2.83V` },
+    { label: 'EBP (Fs/Qes)', value: `${Math.round(ebpValue)} — ${ebpRead}` },
+    ...(mode === 'sealed'
+      ? [
+          {
+            label: 'This sealed box',
+            value: `Qtc ${sealedNums.qtc.toFixed(2)} · Fc ${Math.round(sealedNums.fcHz)} Hz · α ${sealedNums.alpha.toFixed(2)}`,
+          },
+        ]
       : []),
-    { label: 'Infinite baffle', color: SERIES.ib, dash: [10, 4], points: model.spl.ib },
-  ]
-  const exSeries: Series[] = [
-    { label: 'Ported', color: SERIES.ported, dash: null, points: model.excursion.ported },
-    { label: 'Sealed, same volume', color: SERIES.sealedSame, dash: [6, 4], points: model.excursion.sealedSame },
+    ...(mode !== 'ib' ? [s707Row] : []),
+    { label: `${MODE_LABEL[mode]} F3 / F10`, value: f3f10 },
+    ...(mode === 'ported'
+      ? [
+          {
+            label: 'Subsonic filter',
+            value: Number.isNaN(model.sub)
+              ? `Not needed — stays inside Xmax to 10 Hz at ${wattsLabel}`
+              : `~${Math.ceil(model.sub)} Hz — exceeds Xmax below this at ${wattsLabel}`,
+          },
+          {
+            label: 'Port',
+            value:
+              !Number.isFinite(model.portLenIn) || model.portLenIn <= 0
+                ? `${inp.portCount} × ${inp.portDiaIn}″ — n/a, area too large for this tuning`
+                : `${inp.portCount} × ${inp.portDiaIn}″ (${Math.round(model.portAreaIn2)} in²) → ${model.portLenIn.toFixed(1)}″ long · peak ${model.portVelPeak.toFixed(1)} m/s${model.portVelPeak > 17 ? ' — chuffing risk' : ''}`,
+          },
+          {
+            label: 'Port area for <17 m/s',
+            value: `${Math.round(model.portIn2Rec)} in² at ${wattsLabel}`,
+          },
+        ]
+      : []),
+    {
+      label: 'Max SPL @ 31.5 Hz',
+      value: `${model.max315.spl.toFixed(1)} dB (${model.max315.displacementLimited ? 'excursion' : 'power'}-limited) at ${wattsLabel}`,
+      accent: true,
+    },
   ]
 
   return (
@@ -329,65 +532,81 @@ function WebModeler() {
             onChange={(v) => selectDriver(v, filtered)}
           />
         </View>
-        <SliderGroup
-          label="Ported box"
-          valueLabel={`${vbFt3.toFixed(2)} ft³`}
-          min={0.15}
-          max={12}
-          step={0.05}
-          value={vbFt3}
-          onChange={setVbFt3}
-          width={sliderWidth}
-          ariaLabel="Ported box net volume, cubic feet"
+        <FilterChipGroup
+          label="Alignment"
+          value={mode}
+          options={['ported', 'sealed', 'ib']}
+          onChange={(v) => setMode(v as Mode)}
+          renderOption={(o) => MODE_LABEL[o as Mode]}
         />
-        <SliderGroup
-          label="Tuning"
-          valueLabel={`${fbHz.toFixed(1)} Hz`}
-          min={18}
-          max={50}
-          step={0.5}
-          value={fbHz}
-          onChange={setFbHz}
-          width={sliderWidth}
-          ariaLabel="Ported box tuning frequency, hertz"
-        />
+        {mode === 'ported' ? (
+          <>
+            <SliderGroup
+              label="Ported box"
+              valueLabel={`${inp.vbFt3.toFixed(2)} ft³`}
+              min={0.15}
+              max={12}
+              step={0.05}
+              value={inp.vbFt3}
+              onChange={(v) => patch({ vbFt3: v })}
+              width={sliderWidth}
+              ariaLabel="Ported box net volume, cubic feet"
+            />
+            <SliderGroup
+              label="Tuning"
+              valueLabel={`${inp.fbHz.toFixed(1)} Hz`}
+              min={18}
+              max={50}
+              step={0.5}
+              value={inp.fbHz}
+              onChange={(v) => patch({ fbHz: v })}
+              width={sliderWidth}
+              ariaLabel="Ported box tuning frequency, hertz"
+            />
+          </>
+        ) : null}
+        {mode === 'sealed' ? (
+          <SliderGroup
+            label="Sealed box"
+            valueLabel={`${inp.sealedVbFt3.toFixed(2)} ft³`}
+            min={0.1}
+            max={8}
+            step={0.05}
+            value={inp.sealedVbFt3}
+            onChange={(v) => patch({ sealedVbFt3: v })}
+            width={sliderWidth}
+            ariaLabel="Sealed box net volume, cubic feet"
+          />
+        ) : null}
+        <View style={{ paddingBottom: 2 } as any}>
+          <Button onPress={() => setModalOpen(true)}>Enter exact values</Button>
+        </View>
       </View>
+
+      {tsEdited ? (
+        <Text
+          style={
+            {
+              fontFamily: fonts.mono,
+              fontSize: labelSize,
+              color: colors.accent,
+              marginTop: -8,
+              marginBottom: blockGap,
+            } as any
+          }
+        >
+          Custom T/S in effect — parameters differ from the catalog record. Reselect the driver to reset.
+        </Text>
+      ) : null}
 
       {/* Headline numbers */}
       <View style={{ marginBottom: blockGap } as any}>
-        <DataList
-          rows={[
-            { label: 'Sensitivity', value: `${sens1W.toFixed(1)} dB 1W/1m · ${sens283.toFixed(1)} dB 2.83V` },
-            { label: 'EBP (Fs/Qes)', value: `${Math.round(ebpValue)} — ${ebpRead}` },
-            {
-              label: 'Sealed for Qtc 0.707',
-              value: sealed707Box
-                ? `${(sealed707Box.vbL / LITERS_PER_FT3).toFixed(2)} ft³ · F3 ${Math.round(sealed707Box.fcHz)} Hz`
-                : `n/a — Qts ${ts.qts.toFixed(2)} is already above 0.71`,
-            },
-            {
-              label: 'Ported F3 / F10',
-              value: `${Number.isNaN(model.portedF3) ? '—' : model.portedF3.toFixed(1)} Hz / ${Number.isNaN(model.portedF10) ? '—' : model.portedF10.toFixed(1)} Hz`,
-            },
-            {
-              label: 'Subsonic filter',
-              value: Number.isNaN(model.sub)
-                ? 'Not needed — stays inside Xmax to 10 Hz at rated power'
-                : `~${Math.ceil(model.sub)} Hz — exceeds Xmax below this at rated power`,
-            },
-            { label: 'Port area for <17 m/s', value: `${Math.round(model.portIn2)} in² at ${ts.rmsWatts.toLocaleString('en-US')} W` },
-            {
-              label: 'Max SPL @ 31.5 Hz',
-              value: `${model.max315.spl.toFixed(1)} dB (${model.max315.displacementLimited ? 'excursion' : 'power'}-limited)`,
-              accent: true,
-            },
-          ]}
-        />
+        <DataList rows={headlineRows} />
       </View>
 
       {/* SPL response */}
       <ChartBlock
-        series={splSeries}
+        series={model.spl}
         xMax={250}
         yTickStep={10}
         yPad={[4, 4]}
@@ -398,9 +617,22 @@ function WebModeler() {
 
       <View style={{ height: blockGap } as any} />
 
+      {/* Max SPL */}
+      <ChartBlock
+        series={model.maxSpl}
+        xMax={100}
+        yTickStep={10}
+        yPad={[4, 4]}
+        yUnit="dB"
+        yAxisLabel="MAX SPL — DB @ 1M"
+        caption={`Maximum SPL at ${wattsLabel}: power-limited, capped where peak excursion hits Xmax ${ts.xmaxMm} mm`}
+      />
+
+      <View style={{ height: blockGap } as any} />
+
       {/* Excursion */}
       <ChartBlock
-        series={exSeries}
+        series={model.excursion}
         xMax={100}
         yTickStep={10}
         yPad={[0, 4]}
@@ -409,8 +641,39 @@ function WebModeler() {
         yFloor={0}
         yCeil={ts.xmaxMm * 2.2}
         refLine={{ y: ts.xmaxMm, color: SERIES.xmax, label: `Xmax ${ts.xmaxMm} mm` }}
-        caption={`Peak cone excursion at rated ${ts.rmsWatts.toLocaleString('en-US')} W sine input`}
+        caption={`Peak cone excursion at ${wattsLabel} sine input`}
       />
+
+      <View style={{ height: blockGap } as any} />
+
+      {/* Group delay */}
+      <ChartBlock
+        series={model.groupDelay}
+        xMax={250}
+        yTickStep={5}
+        yPad={[0, 2]}
+        yUnit="ms"
+        yAxisLabel="GROUP DELAY — MS"
+        yFloor={0}
+        caption="Group delay — time smear of the alignment; ported peaks near tuning, sealed and IB stay low"
+      />
+
+      {mode === 'ported' && model.portVelocity.length ? (
+        <>
+          <View style={{ height: blockGap } as any} />
+          <ChartBlock
+            series={model.portVelocity}
+            xMax={100}
+            yTickStep={5}
+            yPad={[0, 3]}
+            yUnit="m/s"
+            yAxisLabel="PORT AIR VELOCITY — M/S"
+            yFloor={0}
+            refLine={{ y: 17, color: SERIES.xmax, label: '17 m/s chuffing threshold' }}
+            caption={`Peak port air velocity at ${wattsLabel} through ${inp.portCount} × ${inp.portDiaIn}″ round port${inp.portCount > 1 ? 's' : ''}`}
+          />
+        </>
+      ) : null}
 
       <Text
         style={
@@ -422,10 +685,150 @@ function WebModeler() {
           } as any
         }
       >
-        Lumped-element Thiele/Small model computed live from catalog parameters. Box leakage QL = 7; port and
-        voice-coil inductance losses not modeled.
+        Lumped-element Thiele/Small model computed live from catalog parameters. Box leakage QL = 7; port
+        compression and voice-coil inductance losses not modeled. Port length assumes round flared-free ends
+        (0.732 D end correction).
       </Text>
+
+      {modalOpen ? (
+        <ExactValuesModal
+          initial={inp}
+          catalogTs={catalogTs}
+          driverName={`${row.brand} ${row.model}`}
+          onApply={(next) => {
+            setInputs(next)
+            setModalOpen(false)
+          }}
+          onClose={() => setModalOpen(false)}
+        />
+      ) : null}
     </View>
+  )
+}
+
+// ── Exact-values modal ──────────────────────────────────────────────────────
+// Full-page modal with typed fields for everything the model consumes:
+// driver T/S (editable — a WinISD-style custom-driver editor), both
+// enclosures, port geometry, and drive power. Edits buffer in a draft and
+// commit on Apply.
+
+function ExactValuesModal({
+  initial,
+  catalogTs,
+  driverName,
+  onApply,
+  onClose,
+}: {
+  initial: ModelInputs
+  catalogTs: DriverTS | null
+  driverName: string
+  onApply: (next: ModelInputs) => void
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState<ModelInputs>(initial)
+  const set = (k: keyof ModelInputs) => (v: number) => setDraft((prev) => ({ ...prev, [k]: v }))
+
+  const sectionSize = useFluidPx(type.meta)
+  const derivedSize = useFluidPx(type.meta)
+  const fieldGap = useFluidPx(fluid(14, 10))
+  const sectionGap = useFluidPx(fluid(26, 18))
+
+  // Live-derived readouts so typed values can be sanity-checked before Apply.
+  const draftTs = tsOf(draft)
+  const sealedDraft = sealedAlignment(draftTs, draft.sealedVbFt3 * LITERS_PER_FT3)
+  const areaDraft = portAreaM2(draft)
+  const portLenDraftIn = portLengthM(draft.vbFt3 * LITERS_PER_FT3, draft.fbHz, areaDraft, draft.portCount) / INCH_M
+  const draftEdited = catalogTs ? !tsEquals(draftTs, catalogTs) : false
+
+  const sectionStyle = {
+    fontFamily: fonts.mono,
+    fontWeight: '600',
+    fontSize: sectionSize,
+    color: FG_2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.88,
+    marginBottom: 10,
+  } as any
+  const derivedStyle = {
+    fontFamily: fonts.mono,
+    fontSize: derivedSize,
+    color: colors.inkFaint,
+    marginTop: 10,
+  } as any
+  const rowStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: fieldGap } as any
+
+  return (
+    <Modal open onClose={onClose} title={`Exact values — ${driverName}`}>
+      <Modal.Body>
+        <View style={{ gap: sectionGap, maxWidth: 760 } as any}>
+          <View>
+            <Text style={sectionStyle}>Driver — Thiele/Small</Text>
+            <View style={rowStyle}>
+              <NumberField label="Fs" unit="Hz" value={draft.fsHz} onChange={set('fsHz')} min={10} max={120} />
+              <NumberField label="Qts" value={draft.qts} onChange={set('qts')} min={0.2} max={1.5} decimals={3} />
+              <NumberField label="Qes" value={draft.qes} onChange={set('qes')} min={0.2} max={2} decimals={3} />
+              <NumberField label="Vas" unit="L" value={draft.vasL} onChange={set('vasL')} min={1} max={1000} />
+              <NumberField label="Sd" unit="cm²" value={draft.sdCm2} onChange={set('sdCm2')} min={50} max={4000} />
+              <NumberField label="Xmax" unit="mm" value={draft.xmaxMm} onChange={set('xmaxMm')} min={2} max={50} />
+              <NumberField label="Re" unit="Ω" value={draft.reOhm} onChange={set('reOhm')} min={0.5} max={16} />
+              <NumberField label="Rated" unit="W" value={draft.rmsWatts} onChange={set('rmsWatts')} min={50} max={10000} decimals={0} />
+            </View>
+            <Text style={derivedStyle}>
+              {draftEdited
+                ? 'Edited — models as a custom driver until the driver is reselected.'
+                : 'Matches the catalog record.'}{' '}
+              Only parameters the model consumes are shown; Le is not modeled.
+            </Text>
+          </View>
+
+          <View>
+            <Text style={sectionStyle}>Enclosure</Text>
+            <View style={rowStyle}>
+              <NumberField label="Ported vol" unit="ft³" value={draft.vbFt3} onChange={set('vbFt3')} min={0.05} max={30} />
+              <NumberField label="Tuning" unit="Hz" value={draft.fbHz} onChange={set('fbHz')} min={15} max={60} decimals={1} />
+              <NumberField label="Sealed vol" unit="ft³" value={draft.sealedVbFt3} onChange={set('sealedVbFt3')} min={0.05} max={30} />
+            </View>
+            <Text style={derivedStyle}>
+              Ported {`${(draft.vbFt3 * LITERS_PER_FT3).toFixed(0)} L`} · Sealed{' '}
+              {`${(draft.sealedVbFt3 * LITERS_PER_FT3).toFixed(0)} L → Qtc ${sealedDraft.qtc.toFixed(2)}, Fc ${Math.round(sealedDraft.fcHz)} Hz`}
+            </Text>
+          </View>
+
+          <View>
+            <Text style={sectionStyle}>Port</Text>
+            <View style={rowStyle}>
+              <NumberField label="Diameter" unit="in" value={draft.portDiaIn} onChange={set('portDiaIn')} min={1} max={10} />
+              <NumberField label="Ports" value={draft.portCount} onChange={set('portCount')} min={1} max={8} decimals={0} />
+            </View>
+            <Text style={derivedStyle}>
+              {`${Math.round(areaDraft * 1550)} in² total → `}
+              {Number.isFinite(portLenDraftIn) && portLenDraftIn > 0
+                ? `${portLenDraftIn.toFixed(1)}″ long for ${draft.fbHz.toFixed(1)} Hz in the ported box`
+                : 'no physical length lands this tuning — reduce area or raise tuning'}
+            </Text>
+          </View>
+
+          <View>
+            <Text style={sectionStyle}>Signal</Text>
+            <View style={rowStyle}>
+              <NumberField label="Input power" unit="W" value={draft.driveW} onChange={set('driveW')} min={1} max={20000} decimals={0} width={120} />
+            </View>
+            <Text style={derivedStyle}>
+              {`${Math.sqrt(draft.driveW * draft.reOhm).toFixed(1)} V RMS into Re — drives the excursion, port-velocity, and max-SPL curves`}
+            </Text>
+          </View>
+        </View>
+      </Modal.Body>
+      <Modal.Footer>
+        {catalogTs && draftEdited ? (
+          <Button onPress={() => setDraft((prev) => ({ ...prev, ...catalogTs }))}>Reset driver to catalog</Button>
+        ) : null}
+        <Button onPress={onClose}>Cancel</Button>
+        <Button variant="primary" onPress={() => onApply(draft)}>
+          Apply
+        </Button>
+      </Modal.Footer>
+    </Modal>
   )
 }
 
