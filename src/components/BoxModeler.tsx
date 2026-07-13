@@ -629,7 +629,7 @@ function WebModeler() {
                 onChange={(v) => selectDriver(v, filtered)}
               />
             </ControlColumn>
-            <View style={{ marginTop: labelBand, minHeight: CONTROL_BAND, justifyContent: 'center' } as any}>
+            <View style={{ marginTop: labelBand, height: CONTROL_BAND, justifyContent: 'center' } as any}>
               <Button size="control" onPress={() => setModalOpen(true)}>
                 Enter driver specs
               </Button>
@@ -706,7 +706,7 @@ function WebModeler() {
           {/* Flush right */}
           <View
             style={
-              { marginLeft: 'auto', marginTop: labelBand, minHeight: CONTROL_BAND, justifyContent: 'center' } as any
+              { marginLeft: 'auto', marginTop: labelBand, height: CONTROL_BAND, justifyContent: 'center' } as any
             }
           >
             <Button size="control" onPress={handleDownloadPdf} disabled={pdfBusy}>
@@ -1045,7 +1045,7 @@ function SliderGroup({
       >
         {label} <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}>{unit}</Text>
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: CONTROL_BAND } as any}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: CONTROL_BAND } as any}>
         <ValueSlider min={min} max={max} step={step} value={value} onChange={onChange} width={width} ariaLabel={ariaLabel} />
         <NumberField
           compact

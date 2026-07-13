@@ -38,7 +38,7 @@ export function ControlColumn({ label, width, children }: Props) {
       >
         {label}
       </Text>
-      <View style={{ minHeight: CONTROL_BAND, justifyContent: 'center' } as any}>{children}</View>
+      <View style={{ height: CONTROL_BAND, justifyContent: 'center' } as any}>{children}</View>
     </View>
   )
 }

@@ -57,10 +57,11 @@ export function FilterChipGroup({
         style={
           {
             flexDirection: 'row',
-            flexWrap: 'wrap',
             gap: 5,
-            alignItems: 'center',
-            ...(dense ? { minHeight: 38 } : null), // the shared control band
+            alignItems: 'center', // pills are shorter than the band — center them in it
+            // Dense: a fixed-height container matching the 38px control band
+            // (Dropdown/Button height) so the group sits on the row's line.
+            ...(dense ? { height: 38, flexWrap: 'nowrap' } : { flexWrap: 'wrap' }),
           } as any
         }
       >
