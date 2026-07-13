@@ -100,10 +100,11 @@ def resolve(l):
     center, door, useat = l["center_speaker"], l["front_door_speaker"], l["underseat_speaker"]
     kick = l["kick_panel_speaker"]
 
-    dash_sz = size_in(dash) if populated(dash) else None
-    dash_large = populated(dash) and dash_sz is not None and dash_sz >= 3.5
-    dash_small = populated(dash) and dash_sz is not None and 2.5 <= dash_sz < 3.5
-    dash_unsized = populated(dash) and dash_sz is None
+    dash_tw_only = populated(dash) and "tweeter only" in dash.lower()
+    dash_sz = size_in(dash) if populated(dash) and not dash_tw_only else None
+    dash_large = dash_sz is not None and dash_sz >= 3.5
+    dash_small = dash_sz is not None and 2.5 <= dash_sz < 3.5
+    dash_unsized = populated(dash) and dash_sz is None and not dash_tw_only
     dash_any = populated(dash)
 
     door_mb = door_is_midbass(door)
