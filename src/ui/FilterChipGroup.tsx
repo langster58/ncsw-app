@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native'
 import { Chip } from './Chip'
-import { colors, fonts, tracking } from './tokens'
+import { colors, fonts, tracking, type as typeScale, useFluidPx } from './tokens'
 
 // FilterChipGroup — mono label + horizontal row of toggleable chips.
 // Used in the chart filter band AND the package-table sort/filter modal —
@@ -34,23 +34,36 @@ export function FilterChipGroup({
   renderOption = (o) => o,
   dense = false,
 }: Props) {
+  // Dense mode is the control-row variant: label matches the row's other
+  // control labels and the chips center inside the shared 40px content band.
+  const denseLabelSize = useFluidPx(typeScale.meta)
   return (
     <View style={{ paddingVertical: dense ? 0 : 10, gap: dense ? 7 : 10 } as any}>
       <Text
         style={
           {
             fontFamily: fonts.mono,
-            fontSize: 10.5,
-            fontWeight: '500',
-            letterSpacing: 0.735, // .07em * 10.5
+            fontSize: dense ? denseLabelSize : 10.5,
+            fontWeight: dense ? '600' : '500',
+            letterSpacing: dense ? 0.88 : 0.735, // .07em * 10.5 in the regular variant
             textTransform: 'uppercase',
-            color: colors.inkFaint,
+            color: dense ? colors.gray : colors.inkFaint,
           } as any
         }
       >
         {label}
       </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, alignItems: 'center' } as any}>
+      <View
+        style={
+          {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 5,
+            alignItems: 'center',
+            ...(dense ? { minHeight: 40 } : null),
+          } as any
+        }
+      >
         {options.map((o) => {
           const isPick = !!pick && o === pick
           return (

@@ -432,8 +432,23 @@ function WebModeler() {
   const controlsGap = useFluidPx(fluid(16, 12)) // within a group of controls that hang together
   const groupGap = useFluidPx(fluid(40, 26)) // between control groups
   const blockGap = useFluidPx(fluid(28, 20))
-  const sliderWidth = useFluidValue(190, 140)
+  const sliderWidth = useFluidValue(150, 116)
   const loadingSize = useFluidPx(type.small)
+  // Label line height + gap — offsets the unlabeled buttons to the shared
+  // content band so they center with the controls. Numeric (useFluidPx can
+  // return a CSS string on web); tracks the type.meta range.
+  const labelBand = Math.round(useFluidValue(13, 11) * 1.2) + 7
+
+  // Dropdowns size to their longest entry (11px mono ≈ 6.6px/char, plus
+  // trigger padding and chevron).
+  const driverWidth = useMemo(() => {
+    const chars = filtered.reduce((m, r) => Math.max(m, `${r.brand} ${r.model}`.length), 12)
+    return Math.min(280, Math.round(chars * 6.6) + 54)
+  }, [filtered])
+  const sizeWidth = useMemo(() => {
+    const chars = sizes.reduce((m, s) => Math.max(m, String(s).length), 3)
+    return Math.round(chars * 6.6) + 62
+  }, [sizes])
 
   if (loadError) {
     return (
@@ -585,54 +600,54 @@ function WebModeler() {
 
   return (
     <View style={{ width: '100%' } as any}>
-      {/* Controls — [driver + specs] · gap · [size · alignment · box] · spacer · [download] */}
+      {/* Controls — one row: labels share the top line, content centers in
+          the band below. [driver + specs] · gap · [size · alignment · box] ·
+          spacer · [download] */}
       <View style={{ marginBottom: blockGap } as any}>
         <View
           style={
             {
               flexDirection: 'row',
               flexWrap: 'wrap',
-              alignItems: 'flex-end',
+              alignItems: 'flex-start',
               columnGap: groupGap,
               rowGap: controlsGap,
             } as any
           }
         >
           {/* Driver group: library picker + the not-in-our-library path */}
-          <View
-            style={
-              { flexDirection: 'row', alignItems: 'flex-end', gap: controlsGap, flexShrink: 1, minWidth: 0 } as any
-            }
-          >
-            <View style={{ minWidth: 300, flexShrink: 1 } as any}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: controlsGap } as any}>
+            <ControlColumn label="Driver" width={driverWidth}>
               <Dropdown
+                hideLabel
                 label="Driver"
                 value={custom ? '' : row.slug}
                 options={filtered.map((r) => ({ label: `${r.brand} ${r.model}`, value: r.slug }))}
                 onChange={(v) => selectDriver(v, filtered)}
               />
-            </View>
-            <View style={{ paddingBottom: 1 } as any}>
+            </ControlColumn>
+            <View style={{ marginTop: labelBand, minHeight: 40, justifyContent: 'center' } as any}>
               <Button onPress={() => setModalOpen(true)}>Enter driver specs</Button>
             </View>
           </View>
 
           {/* Model group: filter + alignment + box controls */}
           <View
-            style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap: controlsGap } as any}
+            style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: controlsGap } as any}
           >
-            <View style={{ minWidth: 120 } as any}>
+            <ControlColumn label="Size" width={sizeWidth}>
               <Dropdown
+                hideLabel
                 label="Size"
                 value={sizeFilter}
-                options={[{ label: 'All sizes', value: 'all' }, ...sizes.map((s) => ({ label: `${s}″`, value: s }))]}
+                options={[{ label: 'All', value: 'all' }, ...sizes.map((s) => ({ label: s, value: s }))]}
                 onChange={(v) => {
                   setSizeFilter(v)
                   const pool = rows.filter((r) => v === 'all' || r.driver_size === v)
                   if (!custom && pool.length && !pool.some((r) => r.slug === slug)) selectDriver(pool[0].slug, pool)
                 }}
               />
-            </View>
+            </ControlColumn>
             <FilterChipGroup
               dense
               label="Alignment"
@@ -644,7 +659,7 @@ function WebModeler() {
             {mode === 'ported' ? (
               <>
                 <SliderGroup
-                  label="Ported box"
+                  label="Enclosure"
                   unit="ft³"
                   min={0.15}
                   max={12}
@@ -652,7 +667,7 @@ function WebModeler() {
                   value={inp.vbFt3}
                   onChange={(v) => patch({ vbFt3: v })}
                   width={sliderWidth}
-                  ariaLabel="Ported box net volume, cubic feet"
+                  ariaLabel="Ported enclosure net volume, cubic feet"
                 />
                 <SliderGroup
                   label="Tuning"
@@ -670,7 +685,7 @@ function WebModeler() {
             ) : null}
             {mode === 'sealed' ? (
               <SliderGroup
-                label="Sealed box"
+                label="Enclosure"
                 unit="ft³"
                 min={0.1}
                 max={8}
@@ -678,15 +693,19 @@ function WebModeler() {
                 value={inp.sealedVbFt3}
                 onChange={(v) => patch({ sealedVbFt3: v })}
                 width={sliderWidth}
-                ariaLabel="Sealed box net volume, cubic feet"
+                ariaLabel="Sealed enclosure net volume, cubic feet"
               />
             ) : null}
           </View>
 
           {/* Flush right */}
-          <View style={{ marginLeft: 'auto', paddingBottom: 1 } as any}>
+          <View
+            style={
+              { marginLeft: 'auto', marginTop: labelBand, minHeight: 40, justifyContent: 'center' } as any
+            }
+          >
             <Button onPress={handleDownloadPdf} disabled={pdfBusy}>
-              {pdfBusy ? 'Preparing PDF…' : 'Download PDF report'}
+              {pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
             </Button>
           </View>
         </View>
@@ -978,6 +997,40 @@ function StatusBox({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Mono label over a control, content centered in the row's shared 40px
+// band — the column skeleton every control in the row conforms to.
+function ControlColumn({
+  label,
+  width,
+  children,
+}: {
+  label: string
+  width?: number
+  children: React.ReactNode
+}) {
+  const fontSize = useFluidPx(type.meta)
+  return (
+    <View style={{ flexDirection: 'column', gap: 7, width } as any}>
+      <Text
+        style={
+          {
+            fontFamily: fonts.mono,
+            fontWeight: '600',
+            fontSize,
+            color: FG_2,
+            textTransform: 'uppercase',
+            letterSpacing: 0.88,
+          } as any
+        }
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <View style={{ minHeight: 40, justifyContent: 'center' } as any}>{children}</View>
+    </View>
+  )
+}
+
 // Label over a range input paired with a typeable value field — drag and the
 // field tracks live; type and the model follows on commit. The range input is
 // the same web escape hatch the frontier chart uses (no RN-web equivalent).
@@ -1022,7 +1075,7 @@ function SliderGroup({
       >
         {label} <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}>{unit}</Text>
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 } as any}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40 } as any}>
         {React.createElement('input', {
           type: 'range',
           min,
@@ -1041,7 +1094,7 @@ function SliderGroup({
           min={min}
           max={max}
           decimals={decimals}
-          width={64}
+          width={60}
         />
       </View>
     </View>

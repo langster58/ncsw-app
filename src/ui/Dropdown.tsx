@@ -42,6 +42,7 @@ type DropdownProps = {
   onChange: (v: string) => void
   placeholder?: string
   disabled?: boolean
+  hideLabel?: boolean // trigger shows only the value; label still voices via accessibility (for external labels)
 }
 
 function normalize(o: Option): { label: string; value: string } {
@@ -55,6 +56,7 @@ export function Dropdown({
   onChange,
   placeholder,
   disabled = false,
+  hideLabel = false,
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
   const [open, setOpen] = useState(false)
@@ -187,21 +189,23 @@ export function Dropdown({
             { flexDirection: 'row', alignItems: 'center', gap: ROW_GAP, minWidth: 0, flexShrink: 1 } as any
           }
         >
-          <Text
-            style={
-              {
-                fontFamily: fonts.mono,
-                fontSize: 10.5,
-                fontWeight: '500',
-                letterSpacing: 0.735, // .07em * 10.5
-                textTransform: 'uppercase',
-                color: colors.inkFaint,
-                flexShrink: 0,
-              } as any
-            }
-          >
-            {label}
-          </Text>
+          {hideLabel ? null : (
+            <Text
+              style={
+                {
+                  fontFamily: fonts.mono,
+                  fontSize: 10.5,
+                  fontWeight: '500',
+                  letterSpacing: 0.735, // .07em * 10.5
+                  textTransform: 'uppercase',
+                  color: colors.inkFaint,
+                  flexShrink: 0,
+                } as any
+              }
+            >
+              {label}
+            </Text>
+          )}
           {current ? (
             <Text
               numberOfLines={1}
