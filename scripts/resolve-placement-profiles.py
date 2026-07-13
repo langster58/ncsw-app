@@ -64,9 +64,14 @@ def door_is_midbass(v):
     s = v.lower()
     if "no 6.5" in s or "midbass is underseat" in s:
         return False
+    if "bass" in s or "woofer" in s:
+        return True  # door explicitly contains a bass/woofer position (e.g. Logic7 combos)
     sz = size_in(v)
     if sz is not None:
-        return sz >= 5  # 5.25/6.5/6x9 class
+        if sz >= 5:
+            return True  # 5.25/6.5/6x9 class
+        # 4x6-class door (cross size only — a round 4in door is a midrange, not midbass)
+        return bool(re.search(r"\dx\d|\d\s*x\s*\d", s)) and sz >= 4
     # unsized but populated ("front doors", "doors") — era-typical full-size door driver
     return not door_is_midonly(v)
 
@@ -128,9 +133,17 @@ def resolve(l):
         p.add("W-E")
     if not door_mb and not door_mid and (dash_any or center_p):
         p.add("W-F")
+    if door_mid and not door_mb and not us and not dash_any and not center_p:
+        # W-F door variant (pending ruling): door-mid is the ONLY front location
+        # (C4 Corvette 4in sealed door class) — wideband there + front sub add-on
+        p.add("W-F?")
     # Two-way component
     if pillar_u and door_mb:
         p.add("T-A")
+    elif door_mb and not sail_u and not dash_any and not door_has_tweeter(door):
+        # Brett ruling 2026-07-12: door-only cars go two-way — a surface-mount
+        # tweeter is added to the A-pillar (standard add, not fabrication).
+        p.add("T-A+")
     if (sail_u or door_tw) and door_mb:
         p.add("T-B")
     if dash_any and door_mb:
@@ -173,8 +186,8 @@ def main():
             no_profile.append(l)
 
     print("\nProfile eligibility counts (layouts eligible per profile):")
-    for code in ["W-A", "W-A?", "W-B", "W-C", "W-D", "W-E", "W-F",
-                 "T-A", "T-B", "T-C", "T-D", "T-E", "3-A", "3-B", "3-C"]:
+    for code in ["W-A", "W-A?", "W-B", "W-C", "W-D", "W-E", "W-F", "W-F?",
+                 "T-A", "T-A+", "T-B", "T-C", "T-D", "T-E", "3-A", "3-B", "3-C"]:
         print(f"  {code}: {profile_counts[code]}")
     print(f"\nLayouts with NO eligible profile: {len(no_profile)}")
 
