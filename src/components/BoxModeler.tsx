@@ -20,12 +20,15 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Text, View } from 'react-native'
 import {
   Button,
+  CONTROL_BAND,
+  ControlColumn,
   DataList,
   Dropdown,
   FilterChipGroup,
   Modal,
   NumberField,
   TextField,
+  ValueSlider,
   colors,
   fluid,
   fluidNumber,
@@ -626,8 +629,10 @@ function WebModeler() {
                 onChange={(v) => selectDriver(v, filtered)}
               />
             </ControlColumn>
-            <View style={{ marginTop: labelBand, minHeight: 40, justifyContent: 'center' } as any}>
-              <Button onPress={() => setModalOpen(true)}>Enter driver specs</Button>
+            <View style={{ marginTop: labelBand, minHeight: CONTROL_BAND, justifyContent: 'center' } as any}>
+              <Button size="control" onPress={() => setModalOpen(true)}>
+                Enter driver specs
+              </Button>
             </View>
           </View>
 
@@ -701,10 +706,10 @@ function WebModeler() {
           {/* Flush right */}
           <View
             style={
-              { marginLeft: 'auto', marginTop: labelBand, minHeight: 40, justifyContent: 'center' } as any
+              { marginLeft: 'auto', marginTop: labelBand, minHeight: CONTROL_BAND, justifyContent: 'center' } as any
             }
           >
-            <Button onPress={handleDownloadPdf} disabled={pdfBusy}>
+            <Button size="control" onPress={handleDownloadPdf} disabled={pdfBusy}>
               {pdfBusy ? 'Preparing PDF…' : 'Download PDF'}
             </Button>
           </View>
@@ -997,43 +1002,8 @@ function StatusBox({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Mono label over a control, content centered in the row's shared 40px
-// band — the column skeleton every control in the row conforms to.
-function ControlColumn({
-  label,
-  width,
-  children,
-}: {
-  label: string
-  width?: number
-  children: React.ReactNode
-}) {
-  const fontSize = useFluidPx(type.meta)
-  return (
-    <View style={{ flexDirection: 'column', gap: 7, width } as any}>
-      <Text
-        style={
-          {
-            fontFamily: fonts.mono,
-            fontWeight: '600',
-            fontSize,
-            color: FG_2,
-            textTransform: 'uppercase',
-            letterSpacing: 0.88,
-          } as any
-        }
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-      <View style={{ minHeight: 40, justifyContent: 'center' } as any}>{children}</View>
-    </View>
-  )
-}
-
-// Label over a range input paired with a typeable value field — drag and the
-// field tracks live; type and the model follows on commit. The range input is
-// the same web escape hatch the frontier chart uses (no RN-web equivalent).
+// Label over a ValueSlider paired with a typeable value field — drag and the
+// field tracks live; type and the model follows on commit.
 function SliderGroup({
   label,
   unit,
@@ -1075,17 +1045,8 @@ function SliderGroup({
       >
         {label} <Text style={{ color: colors.inkFaint, textTransform: 'none' } as any}>{unit}</Text>
       </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40 } as any}>
-        {React.createElement('input', {
-          type: 'range',
-          min,
-          max,
-          step,
-          value,
-          onChange: (e: any) => onChange(Number(e.target.value)),
-          'aria-label': ariaLabel,
-          style: { width, accentColor: colors.accent },
-        })}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: CONTROL_BAND } as any}>
+        <ValueSlider min={min} max={max} step={step} value={value} onChange={onChange} width={width} ariaLabel={ariaLabel} />
         <NumberField
           compact
           label={ariaLabel}

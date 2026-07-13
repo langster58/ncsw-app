@@ -60,7 +60,7 @@ export function FilterChipGroup({
             flexWrap: 'wrap',
             gap: 5,
             alignItems: 'center',
-            ...(dense ? { minHeight: 40 } : null),
+            ...(dense ? { minHeight: 38 } : null), // the shared control band
           } as any
         }
       >

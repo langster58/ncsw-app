@@ -97,6 +97,7 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
             borderWidth: 1,
             borderColor: focused ? colors.accent : colors.line,
             borderRadius: radius.sm,
+            minHeight: 38, // the shared control band (Dropdown, FilterTriggerButton)
             paddingVertical: compact ? 6 : 8,
             paddingHorizontal: compact ? 8 : 10,
             ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : null),

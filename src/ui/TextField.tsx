@@ -52,6 +52,7 @@ export function TextField({ label, value, onChange, placeholder, width = 220 }: 
             borderWidth: 1,
             borderColor: focused ? colors.accent : colors.line,
             borderRadius: radius.sm,
+            minHeight: 38, // the shared control band (Dropdown, FilterTriggerButton)
             paddingVertical: 8,
             paddingHorizontal: 10,
             ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : null),

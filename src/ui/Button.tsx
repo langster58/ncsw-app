@@ -22,11 +22,16 @@ import { colors, fonts, radius, tracking } from './tokens'
 
 type Variant = 'primary' | 'secondary'
 
+type Size = 'default' | 'control'
+
 type ButtonProps = {
   children: React.ReactNode
   variant?: Variant
   disabled?: boolean
   onPress?: () => void
+  // 'control' matches the 38px control band (Dropdown, FilterTriggerButton)
+  // for buttons that sit in a control row; 'default' keeps the source 36px.
+  size?: Size
 }
 
 export function Button({
@@ -34,6 +39,7 @@ export function Button({
   variant = 'secondary',
   disabled = false,
   onPress,
+  size = 'default',
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false)
   const [pressed, setPressed] = useState(false)
@@ -79,7 +85,7 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 9,
-          minHeight: 36,
+          minHeight: size === 'control' ? 38 : 36,
           paddingVertical: 7,
           paddingHorizontal: 14,
           borderWidth: 1,
