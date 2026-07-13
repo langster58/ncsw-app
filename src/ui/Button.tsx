@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Platform, Pressable, Text } from 'react-native'
 import { colors, fonts, radius, tracking } from './tokens'
 
@@ -44,6 +44,9 @@ export function Button({
   const [hovered, setHovered] = useState(false)
   const [pressed, setPressed] = useState(false)
   const [focused, setFocused] = useState(false)
+  // Focus-visible: a mouse press focuses the element and used to leave the
+  // ring stuck on after the click. Only keyboard-driven focus draws it.
+  const pointerFocus = useRef(false)
 
   const hoverProps: any =
     Platform.OS === 'web'
@@ -51,7 +54,15 @@ export function Button({
       : {}
   const focusProps: any =
     Platform.OS === 'web'
-      ? { onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
+      ? {
+          onFocus: () => {
+            if (!pointerFocus.current) setFocused(true)
+          },
+          onBlur: () => {
+            pointerFocus.current = false
+            setFocused(false)
+          },
+        }
       : {}
 
   const { bg, fg, border } = resolveColors(variant, {
@@ -64,7 +75,10 @@ export function Button({
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
-      onPressIn={() => setPressed(true)}
+      onPressIn={() => {
+        pointerFocus.current = true
+        setPressed(true)
+      }}
       onPressOut={() => setPressed(false)}
       {...hoverProps}
       {...focusProps}
