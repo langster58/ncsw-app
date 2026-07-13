@@ -580,6 +580,16 @@ function WebModeler() {
     },
   ]
 
+  // Shared ruled-section label (Alignment numbers, Port designer).
+  const sectionLabelStyle = {
+    fontFamily: fonts.mono,
+    fontWeight: '600',
+    fontSize: labelSize,
+    color: FG_2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.88,
+  } as any
+
   // Port designer results — every row here is calculated, not entered.
   const tier = velocityTier(model.portVelPeak)
   const lenOk = Number.isFinite(model.portLenIn) && model.portLenIn > 0
@@ -835,6 +845,15 @@ function WebModeler() {
         ) : null}
       </View>
 
+      {/* Alignment numbers — the driver-in-this-box figures, above the port
+          hardware. */}
+      <View style={{ marginBottom: blockGap } as any}>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12, marginBottom: 10 } as any}>
+          <Text style={sectionLabelStyle}>Alignment numbers</Text>
+        </View>
+        <DataList rows={headlineRows} />
+      </View>
+
       {/* Port designer — ported alignment only. Inputs are fields; length,
           resonance, displacement, and velocity are always calculated. */}
       {mode === 'ported' ? (
@@ -853,20 +872,7 @@ function WebModeler() {
               } as any
             }
           >
-            <Text
-              style={
-                {
-                  fontFamily: fonts.mono,
-                  fontWeight: '600',
-                  fontSize: labelSize,
-                  color: FG_2,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.88,
-                } as any
-              }
-            >
-              Port designer
-            </Text>
+            <Text style={sectionLabelStyle}>Port designer</Text>
             {Number.isFinite(model.portVelPeak) ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>
                 <View style={{ width: 10, height: 10, borderRadius: radius.pill, backgroundColor: tier.color } as any} />
@@ -1023,11 +1029,6 @@ function WebModeler() {
           <DataList rows={portRows} />
         </View>
       ) : null}
-
-      {/* Headline numbers */}
-      <View style={{ marginBottom: blockGap } as any}>
-        <DataList rows={headlineRows} />
-      </View>
 
       {/* SPL response */}
       <ChartBlock
