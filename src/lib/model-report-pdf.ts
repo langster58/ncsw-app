@@ -45,6 +45,26 @@ const GRAY = '#5f6b76'
 const FAINT = '#9aa4ad'
 const LINE = '#e2e5e8'
 
+// jsPDF's built-in Helvetica/Courier only cover CP1252. Characters outside
+// it (″ → α …) both render as garbage AND corrupt width measurement, which
+// is what makes right-aligned/wrapped text overflow the page. Transliterate
+// the app's typography to safe equivalents, then strip anything else that
+// isn't Latin-1 or a CP1252 punctuation extra.
+const PDF_CHAR_MAP: [RegExp, string][] = [
+  [/″/g, '"'],
+  [/′/g, "'"],
+  [/→/g, '->'],
+  [/α/g, 'alpha'],
+  [/Ω/g, ' ohm'],
+  [/≤/g, '<='],
+  [/≥/g, '>='],
+]
+function pdfSafe(s: string): string {
+  let out = s
+  for (const [re, repl] of PDF_CHAR_MAP) out = out.replace(re, repl)
+  return out.replace(/[^\x20-\xFF–—‘’“”•…]/g, '')
+}
+
 // Downsample a chart canvas before embedding — the live canvases render at
 // devicePixelRatio and would otherwise bloat the PDF past 20 MB.
 function chartPng(canvas: HTMLCanvasElement, maxW = 1500): string {
@@ -56,7 +76,23 @@ function chartPng(canvas: HTMLCanvasElement, maxW = 1500): string {
   return off.toDataURL('image/png')
 }
 
-export async function downloadModelReport(data: ReportData): Promise<void> {
+export async function downloadModelReport(raw: ReportData): Promise<void> {
+  // Sanitize every string up front so all layout math downstream measures
+  // what actually gets drawn.
+  const data: ReportData = {
+    ...raw,
+    driverLabel: pdfSafe(raw.driverLabel),
+    modeSummary: pdfSafe(raw.modeSummary),
+    rows: raw.rows.map((r) => ({ label: pdfSafe(r.label), value: pdfSafe(r.value) })),
+    charts: raw.charts.map((c) => ({
+      ...c,
+      title: pdfSafe(c.title),
+      caption: pdfSafe(c.caption),
+      legend: c.legend.map((l) => ({ ...l, label: pdfSafe(l.label) })),
+    })),
+    footnote: pdfSafe(raw.footnote),
+  }
+
   // jspdf's "node" export condition serves an AMD build Metro can't parse
   // (it breaks the static-render pass), so target the browser ES build
   // directly via the ./dist/* subpath export.
