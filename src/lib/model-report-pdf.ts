@@ -3,10 +3,12 @@
 // canvases); jsPDF is imported dynamically so it never weighs on the
 // initial bundle.
 //
-// Layout: one 11×17 (tabloid) landscape sheet — masthead band across the
-// top, the headline alignment numbers and disclaimer down the left column,
-// and every chart in a two-column grid on the right. Overflow (never in
-// practice) continues the grid on a second sheet.
+// Layout: 8.5×11 (letter) landscape. Page one opens with the masthead and
+// the alignment numbers flowed full-width across the top (three columns of
+// label/value cells), then every chart stacks full-width, one per row, each
+// under its own ruled heading. Blocks are measured before drawing and
+// page-break as whole units, so nothing ever crops at a page edge. Chart
+// bitmaps are downsampled before embedding to keep the file shareable.
 
 export type ReportLegendEntry = { label: string; color: string }
 
@@ -26,31 +28,51 @@ export type ReportData = {
   footnote: string
 }
 
-// 11×17 landscape in points.
-const PAGE_W = 1224
-const PAGE_H = 792
-const MARGIN = 48
-const LEFT_W = 300 // alignment-numbers column
-const GUTTER = 28
-const GRID_X = MARGIN + LEFT_W + GUTTER
-const GRID_W = PAGE_W - MARGIN - GRID_X
-const COL_GAP = 22
-const COL_W = (GRID_W - COL_GAP) / 2
+// 8.5×11 landscape in points.
+const PAGE_W = 792
+const PAGE_H = 612
+const MARGIN = 44
+const CONTENT_W = PAGE_W - 2 * MARGIN
+const FOOTER_Y = PAGE_H - 22
+const BOTTOM = FOOTER_Y - 14 // last usable y
+
+const DATA_COLS = 3
+const CELL_GAP = 24
+const CELL_W = (CONTENT_W - (DATA_COLS - 1) * CELL_GAP) / DATA_COLS
 
 const INK = '#101820'
 const GRAY = '#5f6b76'
 const FAINT = '#9aa4ad'
 const LINE = '#e2e5e8'
 
+// Downsample a chart canvas before embedding — the live canvases render at
+// devicePixelRatio and would otherwise bloat the PDF past 20 MB.
+function chartPng(canvas: HTMLCanvasElement, maxW = 1500): string {
+  if (canvas.width <= maxW) return canvas.toDataURL('image/png')
+  const off = document.createElement('canvas')
+  off.width = maxW
+  off.height = Math.round(canvas.height * (maxW / canvas.width))
+  off.getContext('2d')!.drawImage(canvas, 0, 0, off.width, off.height)
+  return off.toDataURL('image/png')
+}
+
 export async function downloadModelReport(data: ReportData): Promise<void> {
   // jspdf's "node" export condition serves an AMD build Metro can't parse
   // (it breaks the static-render pass), so target the browser ES build
   // directly via the ./dist/* subpath export.
   const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js')
-  const doc = new jsPDF({ unit: 'pt', format: 'tabloid', orientation: 'landscape' })
-
-  // ── Header band ──
+  const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'landscape' })
   let y = MARGIN
+
+  const pageBreak = () => {
+    doc.addPage()
+    y = MARGIN
+  }
+  const ensure = (need: number) => {
+    if (y + need > BOTTOM) pageBreak()
+  }
+
+  // ── Masthead ──
   doc.setFont('courier', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(GRAY)
@@ -64,101 +86,112 @@ export async function downloadModelReport(data: ReportData): Promise<void> {
     y,
     { align: 'right' },
   )
-  y += 24
+  y += 22
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(22)
+  doc.setFontSize(19)
   doc.setTextColor(INK)
   doc.text(data.driverLabel + (data.custom ? '  (custom driver)' : ''), MARGIN, y)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(11)
+  doc.setFontSize(10.5)
   doc.setTextColor(GRAY)
   doc.text(data.modeSummary, PAGE_W - MARGIN, y, { align: 'right' })
-  y += 12
+  y += 10
   doc.setDrawColor(INK)
   doc.setLineWidth(1.2)
   doc.line(MARGIN, y, PAGE_W - MARGIN, y)
-  const bodyTop = y + 22
+  y += 18
 
-  // ── Left column: alignment numbers + disclaimer ──
-  y = bodyTop
+  // ── Alignment numbers, full width across the top ──
   doc.setFont('courier', 'bold')
   doc.setFontSize(8)
   doc.setTextColor(GRAY)
   doc.text('ALIGNMENT NUMBERS', MARGIN, y)
-  y += 14
-  for (const row of data.rows) {
-    doc.setFont('courier', 'normal')
+  y += 13
+  for (let i = 0; i < data.rows.length; i += DATA_COLS) {
+    const cells = data.rows.slice(i, i + DATA_COLS)
+    doc.setFontSize(9.5)
+    const wrapped = cells.map((c) => doc.splitTextToSize(c.value, CELL_W) as string[])
+    const rowH = 10 + Math.max(...wrapped.map((w) => w.length)) * 11 + 9
+    ensure(rowH)
+    cells.forEach((cell, j) => {
+      const x = MARGIN + j * (CELL_W + CELL_GAP)
+      doc.setFont('courier', 'normal')
+      doc.setFontSize(7.5)
+      doc.setTextColor(FAINT)
+      doc.text(cell.label.toUpperCase(), x, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9.5)
+      doc.setTextColor(INK)
+      doc.text(wrapped[j], x, y + 11)
+      doc.setDrawColor(LINE)
+      doc.setLineWidth(0.5)
+      doc.line(x, y + rowH - 6, x + CELL_W, y + rowH - 6)
+    })
+    y += rowH + 4
+  }
+  y += 12
+
+  // ── Charts: full width, one per row, each under a ruled heading ──
+  for (const chart of data.charts) {
+    // Fit: full content width unless the image would run past the page
+    // bottom even on a fresh page — then shrink to fit height.
+    const ratio = chart.canvas.height / chart.canvas.width
+    let imgW = CONTENT_W
+    let imgH = imgW * ratio
+    const maxImgH = BOTTOM - MARGIN - 64 // heading + legend + caption allowance
+    if (imgH > maxImgH) {
+      imgH = maxImgH
+      imgW = imgH / ratio
+    }
     doc.setFontSize(7.5)
-    doc.setTextColor(FAINT)
-    doc.text(row.label.toUpperCase(), MARGIN, y)
-    y += 11
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
+    const captionLines = doc.splitTextToSize(chart.caption, CONTENT_W) as string[]
+    const blockH = 24 + imgH + 15 + captionLines.length * 9
+    ensure(blockH)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12.5)
     doc.setTextColor(INK)
-    const lines = doc.splitTextToSize(row.value, LEFT_W) as string[]
-    doc.text(lines, MARGIN, y)
-    y += lines.length * 12 + 5
+    doc.text(chart.title, MARGIN, y + 4)
     doc.setDrawColor(LINE)
     doc.setLineWidth(0.5)
-    doc.line(MARGIN, y - 3, MARGIN + LEFT_W, y - 3)
-    y += 10
-  }
-  y += 8
-  doc.setFont('courier', 'normal')
-  doc.setFontSize(7.5)
-  doc.setTextColor(FAINT)
-  doc.text(doc.splitTextToSize(data.footnote, LEFT_W) as string[], MARGIN, y)
+    doc.line(MARGIN, y + 10, PAGE_W - MARGIN, y + 10)
+    y += 24
 
-  // ── Right area: charts in a two-column grid ──
-  // Measure each block first so grid rows sit on a shared baseline.
-  const measure = (chart: ReportChart) => {
-    doc.setFontSize(7.5)
-    const captionLines = (doc.splitTextToSize(chart.caption, COL_W) as string[]).length
-    const imgH = COL_W * (chart.canvas.height / chart.canvas.width)
-    return 14 + imgH + 16 + captionLines * 9 + 8
-  }
+    doc.addImage(chartPng(chart.canvas), 'PNG', MARGIN, y, imgW, imgH)
+    y += imgH + 10
 
-  const drawChart = (chart: ReportChart, x: number, top: number) => {
-    let cy = top
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(INK)
-    doc.text(chart.title, x, cy)
-    cy += 8
-    const imgH = COL_W * (chart.canvas.height / chart.canvas.width)
-    doc.addImage(chart.canvas.toDataURL('image/png'), 'PNG', x, cy, COL_W, imgH)
-    cy += imgH + 11
-    // Legend: swatch + label, flowing left to right within the column.
-    let lx = x
+    // Legend: swatch + label, flowing left to right.
+    let lx = MARGIN
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
+    doc.setFontSize(8)
     for (const entry of chart.legend) {
       const w = doc.getTextWidth(entry.label) + 22
-      if (lx + w > x + COL_W) break
+      if (lx + w > PAGE_W - MARGIN) break
       doc.setFillColor(entry.color)
-      doc.rect(lx, cy - 5, 11, 3, 'F')
+      doc.rect(lx, y - 5.5, 11, 3, 'F')
       doc.setTextColor(GRAY)
-      doc.text(entry.label, lx + 15, cy)
+      doc.text(entry.label, lx + 15, y)
       lx += w + 9
     }
-    cy += 10
+    y += 10
     doc.setFont('courier', 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(FAINT)
-    doc.text(doc.splitTextToSize(chart.caption, COL_W) as string[], x, cy)
+    doc.text(captionLines, MARGIN, y)
+    y += captionLines.length * 9 + 18
   }
 
-  let gy = bodyTop
-  for (let i = 0; i < data.charts.length; i += 2) {
-    const rowCharts = data.charts.slice(i, i + 2)
-    const rowH = Math.max(...rowCharts.map(measure))
-    if (gy + rowH > PAGE_H - MARGIN - 18) {
-      doc.addPage()
-      gy = MARGIN
-    }
-    rowCharts.forEach((chart, j) => drawChart(chart, GRID_X + j * (COL_W + COL_GAP), gy + 10))
-    gy += rowH + 14
-  }
+  // ── Disclaimer ──
+  doc.setFontSize(7.5)
+  const footLines = doc.splitTextToSize(data.footnote, CONTENT_W) as string[]
+  ensure(footLines.length * 9 + 14)
+  doc.setDrawColor(LINE)
+  doc.setLineWidth(0.5)
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y)
+  y += 11
+  doc.setFont('courier', 'normal')
+  doc.setTextColor(FAINT)
+  doc.text(footLines, MARGIN, y)
 
   // ── Running footer with page numbers ──
   const pages = doc.getNumberOfPages()
@@ -167,8 +200,8 @@ export async function downloadModelReport(data: ReportData): Promise<void> {
     doc.setFont('courier', 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(FAINT)
-    doc.text('NCSW enclosure model — anechoic half-space, cabin gain not included', MARGIN, PAGE_H - 22)
-    doc.text(`${p} / ${pages}`, PAGE_W - MARGIN, PAGE_H - 22, { align: 'right' })
+    doc.text('NCSW enclosure model — anechoic half-space, cabin gain not included', MARGIN, FOOTER_Y)
+    doc.text(`${p} / ${pages}`, PAGE_W - MARGIN, FOOTER_Y, { align: 'right' })
   }
 
   const slug = data.driverLabel
