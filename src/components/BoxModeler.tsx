@@ -16,7 +16,7 @@
 // nothing here is hardcoded; a T/S correction in Directus re-models on the
 // next page load.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Text, View } from 'react-native'
 import {
   Button,
@@ -25,6 +25,7 @@ import {
   FilterChipGroup,
   Modal,
   NumberField,
+  TextField,
   colors,
   fluid,
   fluidNumber,
@@ -57,6 +58,7 @@ import {
   voltsFor1W,
   voltsForWatts,
 } from '@/lib/driver-model'
+import { downloadModelReport, type ReportChart } from '@/lib/model-report-pdf'
 
 const INK = colors.ink
 const GRID = colors.line
@@ -102,6 +104,9 @@ const FETCH_FIELDS = [
 ]
 
 const DEFAULT_SLUG = 'fi-car-audio-hc-12'
+
+// Sentinel dropdown value for the not-in-our-library path.
+const CUSTOM_VALUE = '__custom__'
 
 type CatalogRow = Pick<
   Subwoofers,
@@ -237,6 +242,16 @@ function WebModeler() {
   const [mode, setMode] = useState<Mode>('ported')
   const [inputs, setInputs] = useState<ModelInputs | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [custom, setCustom] = useState(false)
+  const [customName, setCustomName] = useState('Custom driver')
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  // Live chart canvases, registered by ChartBlock, consumed by PDF export.
+  const chartCanvases = useRef<Record<string, HTMLCanvasElement | null>>({})
+  const registerCanvas = useCallback((id: string, c: HTMLCanvasElement | null) => {
+    chartCanvases.current[id] = c
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -280,7 +295,15 @@ function WebModeler() {
   function selectDriver(nextSlug: string, pool: CatalogRow[]) {
     const next = pool.find((r) => r.slug === nextSlug)
     setSlug(nextSlug)
+    setCustom(false)
     if (next) setInputs(defaultInputsFor(next))
+  }
+
+  // The not-in-our-library path: keep the current inputs as the starting
+  // point (a real driver's numbers beat a blank form) and open the editor.
+  function startCustomDriver() {
+    setCustom(true)
+    setModalOpen(true)
   }
 
   const patch = (p: Partial<ModelInputs>) => setInputs((prev) => (prev ? { ...prev, ...p } : prev))
@@ -442,8 +465,9 @@ function WebModeler() {
 
   const { ts, sealed707Box, sealedNums } = model
   const inp = inputs!
-  const catalogTs = toDriverTS(row)
-  const tsEdited = catalogTs ? !tsEquals(ts, catalogTs) : true
+  const catalogTs = custom ? null : toDriverTS(row)
+  const tsEdited = !custom && catalogTs ? !tsEquals(ts, catalogTs) : false
+  const driverLabel = custom ? customName.trim() || 'Custom driver' : `${row.brand} ${row.model}`
   const ebpValue = ebp(ts)
   const ebpRead = ebpValue < 50 ? 'sealed-leaning' : ebpValue > 100 ? 'ported-leaning' : 'either alignment'
   const sens1W = model.refSpl1W
@@ -498,6 +522,77 @@ function WebModeler() {
     },
   ]
 
+  async function handleDownloadPdf() {
+    if (pdfBusy || !model) return
+    setPdfError(null)
+    setPdfBusy(true)
+    try {
+      const legendOf = (s: Series[]) => s.map((x) => ({ label: x.label, color: x.color }))
+      const defs = [
+        {
+          id: 'spl',
+          title: 'SPL response',
+          caption: 'Anechoic half-space SPL, 1 W / 1 m — cabin gain not included',
+          legend: legendOf(model.spl),
+        },
+        {
+          id: 'maxspl',
+          title: 'Max SPL',
+          caption: `Maximum SPL at ${wattsLabel}: power-limited, capped where peak excursion hits Xmax ${ts.xmaxMm} mm`,
+          legend: legendOf(model.maxSpl),
+        },
+        {
+          id: 'excursion',
+          title: 'Cone excursion',
+          caption: `Peak cone excursion at ${wattsLabel} sine input`,
+          legend: [...legendOf(model.excursion), { label: `Xmax ${ts.xmaxMm} mm`, color: SERIES.xmax }],
+        },
+        {
+          id: 'gd',
+          title: 'Group delay',
+          caption: 'Group delay — time smear of the alignment; ported peaks near tuning',
+          legend: legendOf(model.groupDelay),
+        },
+        ...(mode === 'ported'
+          ? [
+              {
+                id: 'portvel',
+                title: 'Port air velocity',
+                caption: `Peak port air velocity at ${wattsLabel} through ${inp.portCount} × ${inp.portDiaIn}″ round port${inp.portCount > 1 ? 's' : ''}`,
+                legend: [
+                  ...legendOf(model.portVelocity),
+                  { label: '17 m/s chuffing threshold', color: SERIES.xmax },
+                ],
+              },
+            ]
+          : []),
+      ]
+      const charts: ReportChart[] = []
+      for (const def of defs) {
+        const canvas = chartCanvases.current[def.id]
+        if (canvas) charts.push({ title: def.title, caption: def.caption, canvas, legend: def.legend })
+      }
+      const modeSummary =
+        mode === 'ported'
+          ? `Ported — ${inp.vbFt3.toFixed(2)} ft³ net @ ${inp.fbHz.toFixed(1)} Hz · ${inp.portCount} × ${inp.portDiaIn}″ port${inp.portCount > 1 ? 's' : ''} · ${wattsLabel} input`
+          : mode === 'sealed'
+            ? `Sealed — ${inp.sealedVbFt3.toFixed(2)} ft³ · Qtc ${sealedNums.qtc.toFixed(2)} · ${wattsLabel} input`
+            : `Infinite baffle · ${wattsLabel} input`
+      await downloadModelReport({
+        driverLabel,
+        custom,
+        modeSummary,
+        rows: headlineRows.map((r) => ({ label: r.label, value: r.value })),
+        charts,
+        footnote: `Lumped-element Thiele/Small model computed live from ${custom ? 'user-entered' : 'catalog'} parameters. Box leakage QL = 7; port compression and voice-coil inductance losses not modeled. Port length assumes round flared-free ends (0.732 D end correction).`,
+      })
+    } catch (e) {
+      setPdfError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   return (
     <View style={{ width: '100%' } as any}>
       {/* Controls */}
@@ -520,16 +615,22 @@ function WebModeler() {
             onChange={(v) => {
               setSizeFilter(v)
               const pool = rows.filter((r) => v === 'all' || r.driver_size === v)
-              if (pool.length && !pool.some((r) => r.slug === slug)) selectDriver(pool[0].slug, pool)
+              if (!custom && pool.length && !pool.some((r) => r.slug === slug)) selectDriver(pool[0].slug, pool)
             }}
           />
         </View>
         <View style={{ minWidth: 320, flexShrink: 1 } as any}>
           <Dropdown
             label="Driver"
-            value={row.slug}
-            options={filtered.map((r) => ({ label: `${r.brand} ${r.model}`, value: r.slug }))}
-            onChange={(v) => selectDriver(v, filtered)}
+            value={custom ? CUSTOM_VALUE : row.slug}
+            options={[
+              {
+                label: custom ? `Custom — ${driverLabel}` : 'Custom driver — enter parameters…',
+                value: CUSTOM_VALUE,
+              },
+              ...filtered.map((r) => ({ label: `${r.brand} ${r.model}`, value: r.slug })),
+            ]}
+            onChange={(v) => (v === CUSTOM_VALUE ? startCustomDriver() : selectDriver(v, filtered))}
           />
         </View>
         <FilterChipGroup
@@ -578,25 +679,32 @@ function WebModeler() {
             ariaLabel="Sealed box net volume, cubic feet"
           />
         ) : null}
-        <View style={{ paddingBottom: 2 } as any}>
+        <View style={{ paddingBottom: 2, flexDirection: 'row', gap: 8 } as any}>
           <Button onPress={() => setModalOpen(true)}>Enter exact values</Button>
+          <Button onPress={handleDownloadPdf} disabled={pdfBusy}>
+            {pdfBusy ? 'Preparing PDF…' : 'Download PDF report'}
+          </Button>
         </View>
       </View>
 
-      {tsEdited ? (
-        <Text
-          style={
-            {
-              fontFamily: fonts.mono,
-              fontSize: labelSize,
-              color: colors.accent,
-              marginTop: -8,
-              marginBottom: blockGap,
-            } as any
-          }
-        >
-          Custom T/S in effect — parameters differ from the catalog record. Reselect the driver to reset.
-        </Text>
+      {custom || tsEdited || pdfError ? (
+        <View style={{ marginTop: -8, marginBottom: blockGap, gap: 6 } as any}>
+          {custom ? (
+            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
+              Modeling a custom driver — not in the NCSW catalog. Set its parameters with “Enter exact
+              values”; pick any catalog driver to leave custom mode.
+            </Text>
+          ) : tsEdited ? (
+            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
+              Custom T/S in effect — parameters differ from the catalog record. Reselect the driver to reset.
+            </Text>
+          ) : null}
+          {pdfError ? (
+            <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: colors.accent } as any}>
+              PDF export failed — {pdfError}
+            </Text>
+          ) : null}
+        </View>
       ) : null}
 
       {/* Headline numbers */}
@@ -606,6 +714,8 @@ function WebModeler() {
 
       {/* SPL response */}
       <ChartBlock
+        exportId="spl"
+        registerCanvas={registerCanvas}
         series={model.spl}
         xMax={250}
         yTickStep={10}
@@ -619,6 +729,8 @@ function WebModeler() {
 
       {/* Max SPL */}
       <ChartBlock
+        exportId="maxspl"
+        registerCanvas={registerCanvas}
         series={model.maxSpl}
         xMax={100}
         yTickStep={10}
@@ -632,6 +744,8 @@ function WebModeler() {
 
       {/* Excursion */}
       <ChartBlock
+        exportId="excursion"
+        registerCanvas={registerCanvas}
         series={model.excursion}
         xMax={100}
         yTickStep={10}
@@ -648,6 +762,8 @@ function WebModeler() {
 
       {/* Group delay */}
       <ChartBlock
+        exportId="gd"
+        registerCanvas={registerCanvas}
         series={model.groupDelay}
         xMax={250}
         yTickStep={5}
@@ -662,6 +778,8 @@ function WebModeler() {
         <>
           <View style={{ height: blockGap } as any} />
           <ChartBlock
+            exportId="portvel"
+            registerCanvas={registerCanvas}
             series={model.portVelocity}
             xMax={100}
             yTickStep={5}
@@ -694,9 +812,12 @@ function WebModeler() {
         <ExactValuesModal
           initial={inp}
           catalogTs={catalogTs}
-          driverName={`${row.brand} ${row.model}`}
-          onApply={(next) => {
+          driverName={driverLabel}
+          custom={custom}
+          initialName={customName}
+          onApply={(next, name) => {
             setInputs(next)
+            if (custom) setCustomName(name.trim() || 'Custom driver')
             setModalOpen(false)
           }}
           onClose={() => setModalOpen(false)}
@@ -716,16 +837,21 @@ function ExactValuesModal({
   initial,
   catalogTs,
   driverName,
+  custom,
+  initialName,
   onApply,
   onClose,
 }: {
   initial: ModelInputs
   catalogTs: DriverTS | null
   driverName: string
-  onApply: (next: ModelInputs) => void
+  custom: boolean
+  initialName: string
+  onApply: (next: ModelInputs, name: string) => void
   onClose: () => void
 }) {
   const [draft, setDraft] = useState<ModelInputs>(initial)
+  const [name, setName] = useState(initialName)
   const set = (k: keyof ModelInputs) => (v: number) => setDraft((prev) => ({ ...prev, [k]: v }))
 
   const sectionSize = useFluidPx(type.meta)
@@ -763,6 +889,11 @@ function ExactValuesModal({
         <View style={{ gap: sectionGap, maxWidth: 760 } as any}>
           <View>
             <Text style={sectionStyle}>Driver — Thiele/Small</Text>
+            {custom ? (
+              <View style={{ marginBottom: fieldGap } as any}>
+                <TextField label="Driver name" value={name} onChange={setName} placeholder="Brand + model" />
+              </View>
+            ) : null}
             <View style={rowStyle}>
               <NumberField label="Fs" unit="Hz" value={draft.fsHz} onChange={set('fsHz')} min={10} max={120} />
               <NumberField label="Qts" value={draft.qts} onChange={set('qts')} min={0.2} max={1.5} decimals={3} />
@@ -774,9 +905,11 @@ function ExactValuesModal({
               <NumberField label="Rated" unit="W" value={draft.rmsWatts} onChange={set('rmsWatts')} min={50} max={10000} decimals={0} />
             </View>
             <Text style={derivedStyle}>
-              {draftEdited
-                ? 'Edited — models as a custom driver until the driver is reselected.'
-                : 'Matches the catalog record.'}{' '}
+              {custom
+                ? 'Custom driver — not in the NCSW catalog.'
+                : draftEdited
+                  ? 'Edited — models as a custom driver until the driver is reselected.'
+                  : 'Matches the catalog record.'}{' '}
               Only parameters the model consumes are shown; Le is not modeled.
             </Text>
           </View>
@@ -824,7 +957,7 @@ function ExactValuesModal({
           <Button onPress={() => setDraft((prev) => ({ ...prev, ...catalogTs }))}>Reset driver to catalog</Button>
         ) : null}
         <Button onPress={onClose}>Cancel</Button>
-        <Button variant="primary" onPress={() => onApply(draft)}>
+        <Button variant="primary" onPress={() => onApply(draft, name)}>
           Apply
         </Button>
       </Modal.Footer>
@@ -927,6 +1060,8 @@ function ChartBlock({
   yCeil,
   refLine,
   caption,
+  exportId,
+  registerCanvas,
 }: {
   series: Series[]
   xMax: number
@@ -938,11 +1073,21 @@ function ChartBlock({
   yCeil?: number
   refLine?: RefLine
   caption: string
+  exportId?: string
+  registerCanvas?: (id: string, c: HTMLCanvasElement | null) => void
 }) {
   const plotRef = useRef<any>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hoverFreqRef = useRef<number | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  // Expose the live canvas for PDF export; the element is stable across
+  // redraws so registering on mount is enough.
+  useEffect(() => {
+    if (!exportId || !registerCanvas) return undefined
+    registerCanvas(exportId, canvasRef.current)
+    return () => registerCanvas(exportId, null)
+  }, [exportId, registerCanvas])
 
   const legendSize = useFluidPx(type.meta)
   const legendGap = useFluidPx(fluid(12, 9))
