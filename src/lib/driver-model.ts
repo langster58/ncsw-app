@@ -269,6 +269,13 @@ export function portLengthM(vbL: number, fbHz: number, areaM2: number, count: nu
   return (C * C * areaM2) / (wb * wb * vbL * 1e-3) - 1.463 * r
 }
 
+// First pipe resonance of the port — a half-wave standing wave in the
+// physical tunnel (c/2L). Keep it well above the passband or it colors the
+// response. NaN for non-physical lengths.
+export function portResonanceHz(lengthM: number): number {
+  return lengthM > 0 ? C / (2 * lengthM) : NaN
+}
+
 // Peak port air velocity (m/s) across a frequency grid for a given total
 // port area and drive voltage. 17 m/s is the community chuffing threshold.
 export function portVelocitySeries(

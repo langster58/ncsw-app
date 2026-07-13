@@ -52,6 +52,7 @@ import {
   maxSplAt,
   portAreaForVelocity,
   portLengthM,
+  portResonanceHz,
   portVelocitySeries,
   sealedAlignment,
   sealedBoxForQtc,
@@ -175,9 +176,9 @@ const INCH_M = 0.0254
 type Mode = 'ported' | 'sealed' | 'ib'
 const MODE_LABEL: Record<Mode, string> = { ported: 'Ported', sealed: 'Sealed', ib: 'Infinite baffle' }
 
-// Everything the exact-values modal can set: driver T/S, both boxes, port
-// geometry, and drive power. Sliders write into the same object, so typed
-// and dragged values never fight.
+// Everything the controls can set: driver T/S, both boxes, port design, and
+// drive power. Sliders, the port designer, and the specs modal all write
+// into the same object, so typed and dragged values never fight.
 type ModelInputs = DriverTS & {
   vbFt3: number
   fbHz: number
@@ -185,7 +186,24 @@ type ModelInputs = DriverTS & {
   portDiaIn: number
   portCount: number
   driveW: number
+  portShape: 'round' | 'slot'
+  portMode: 'geometry' | 'velocity'
+  slotHeightIn: number
+  slotWidthIn: number
+  targetVel: number // m/s cap for the velocity-driven port solve
 }
+
+// Velocity audibility tiers — 17 m/s (5% Mach) is silent anywhere; flared
+// onset and road-noise masking both give out around 30 m/s.
+function velocityTier(v: number) {
+  if (!Number.isFinite(v)) return { label: '—', color: colors.chartAxis }
+  if (v < 17) return { label: 'silent', color: colors.chartTeal }
+  if (v <= 30) return { label: 'masked while driving', color: colors.chartGold }
+  return { label: 'audible while driving', color: colors.chartOrange }
+}
+
+// Standard flared-port sizes for the velocity-solve suggestion.
+const FLARE_SIZES = [2, 3, 4, 6, 8]
 
 function tsOf(i: ModelInputs): DriverTS {
   const { fsHz, qts, qes, vasL, sdCm2, xmaxMm, reOhm, rmsWatts } = i
@@ -231,6 +249,11 @@ function defaultInputsFor(row: CatalogRow): ModelInputs {
     portDiaIn: defaultPortDiaIn(row.driver_size),
     portCount: 1,
     driveW: ts.rmsWatts,
+    portShape: 'round',
+    portMode: 'geometry',
+    slotHeightIn: 2,
+    slotWidthIn: 12,
+    targetVel: 25,
   }
 }
 
@@ -390,14 +413,48 @@ function WebModeler() {
       },
     ]
 
-    // Ported-only port physics.
-    const area = portAreaM2(inputs)
-    const portLenIn = mode === 'ported' ? portLengthM(vbL, inputs.fbHz, area, inputs.portCount) / INCH_M : NaN
+    // Port design — shape- and mode-aware. Tuning is always held by the main
+    // Tuning control, so length is always solved. In velocity mode the open
+    // dimension is solved from the area that caps peak velocity at the
+    // target (exact in the lumped model: port volume flow is independent of
+    // area, so velocity = flow / area inverts cleanly).
+    let solvedDiaIn = NaN
+    let solvedWidthIn = NaN
+    let effDiaIn = inputs.portDiaIn
+    let effWidthIn = inputs.slotWidthIn
+    let area = 0
+    if (mode === 'ported') {
+      if (inputs.portMode === 'velocity') {
+        area = portAreaForVelocity(d, ported, inputs.targetVel, inputs.driveW)
+        if (inputs.portShape === 'round') {
+          solvedDiaIn = (2 * Math.sqrt(area / (inputs.portCount * Math.PI))) / INCH_M
+          effDiaIn = solvedDiaIn
+        } else {
+          solvedWidthIn = area / (inputs.slotHeightIn * INCH_M) / INCH_M
+          effWidthIn = solvedWidthIn
+        }
+      } else {
+        area =
+          inputs.portShape === 'round'
+            ? portAreaM2(inputs)
+            : inputs.slotWidthIn * inputs.slotHeightIn * INCH_M * INCH_M
+      }
+    }
+    const portCountEff = inputs.portShape === 'round' ? inputs.portCount : 1
+    const portLabel =
+      inputs.portShape === 'round'
+        ? `${portCountEff} × ${Number(effDiaIn.toFixed(2))}″ round`
+        : `slot ${Number(effWidthIn.toFixed(1))}″ × ${Number(inputs.slotHeightIn.toFixed(1))}″`
+    const portLenIn =
+      mode === 'ported' && area > 0 ? portLengthM(vbL, inputs.fbHz, area, portCountEff) / INCH_M : NaN
+    const portResHz = portResonanceHz(portLenIn * INCH_M)
+    const portDisplacementFt3 =
+      Number.isFinite(portLenIn) && portLenIn > 0 ? (area * portLenIn * INCH_M * 1000) / LITERS_PER_FT3 : NaN
     const portVelocity: Series[] =
-      mode === 'ported'
+      mode === 'ported' && area > 0
         ? [
             {
-              label: `${inputs.portCount} × ${inputs.portDiaIn}″ port @ ${Math.round(inputs.driveW).toLocaleString('en-US')} W`,
+              label: `${portLabel} @ ${Math.round(inputs.driveW).toLocaleString('en-US')} W`,
               color: SERIES.ported,
               dash: null,
               points: portVelocitySeries(d, ported, area, LOW_FREQS, egD),
@@ -422,11 +479,15 @@ function WebModeler() {
       portVelPeak,
       portAreaIn2: area * 1550,
       portLenIn,
+      portResHz,
+      portDisplacementFt3,
+      portLabel,
+      solvedDiaIn,
+      solvedWidthIn,
       refSpl1W: ibCorners.refSpl1W,
       f3: corners.f3,
       f10: corners.f10,
       sub: mode === 'ported' ? subsonicCrossover(d, ported, inputs.driveW) : NaN,
-      portIn2Rec: mode === 'ported' ? portAreaForVelocity(d, ported, 17, inputs.driveW) * 1550 : NaN,
       max315: maxSplAt(d, active, 31.5, inputs.driveW),
     }
   }, [inputs, mode])
@@ -510,17 +571,6 @@ function WebModeler() {
               ? `Not needed — stays inside Xmax to 10 Hz at ${wattsLabel}`
               : `~${Math.ceil(model.sub)} Hz — exceeds Xmax below this at ${wattsLabel}`,
           },
-          {
-            label: 'Port',
-            value:
-              !Number.isFinite(model.portLenIn) || model.portLenIn <= 0
-                ? `${inp.portCount} × ${inp.portDiaIn}″ — n/a, area too large for this tuning`
-                : `${inp.portCount} × ${inp.portDiaIn}″ (${Math.round(model.portAreaIn2)} in²) → ${model.portLenIn.toFixed(1)}″ long · peak ${model.portVelPeak.toFixed(1)} m/s${model.portVelPeak > 17 ? ' — chuffing risk' : ''}`,
-          },
-          {
-            label: 'Port area for <17 m/s',
-            value: `${Math.round(model.portIn2Rec)} in² at ${wattsLabel}`,
-          },
         ]
       : []),
     {
@@ -529,6 +579,58 @@ function WebModeler() {
       accent: true,
     },
   ]
+
+  // Port designer results — every row here is calculated, not entered.
+  const tier = velocityTier(model.portVelPeak)
+  const lenOk = Number.isFinite(model.portLenIn) && model.portLenIn > 0
+  const flareUp = FLARE_SIZES.find((s) => s >= model.solvedDiaIn)
+  const portRows =
+    mode === 'ported'
+      ? [
+          ...(inp.portMode === 'velocity'
+            ? [
+                inp.portShape === 'round'
+                  ? {
+                      label: 'Solved diameter',
+                      value: Number.isFinite(model.solvedDiaIn)
+                        ? `${model.solvedDiaIn.toFixed(2)}″ each — calculated · ${flareUp ? `nearest flare size up: ${flareUp}″` : 'over 8″ — add a port'}`
+                        : '—',
+                    }
+                  : {
+                      label: 'Solved width',
+                      value: Number.isFinite(model.solvedWidthIn) ? `${model.solvedWidthIn.toFixed(1)}″ — calculated` : '—',
+                    },
+              ]
+            : []),
+          {
+            label: 'Port area',
+            value: `${Math.round(model.portAreaIn2)} in²${inp.portShape === 'round' && inp.portCount > 1 ? ` across ${inp.portCount} ports` : ''}`,
+          },
+          {
+            label: 'Port length',
+            value: lenOk
+              ? `${model.portLenIn.toFixed(1)}″ — calculated to hold ${inp.fbHz.toFixed(1)} Hz`
+              : 'n/a — area too large for this tuning; reduce area or raise tuning',
+          },
+          ...(lenOk
+            ? [
+                {
+                  label: 'Port resonance',
+                  value: `${Math.round(model.portResHz)} Hz${model.portResHz < 150 ? ' — low; will color the passband' : ''}`,
+                },
+                {
+                  label: 'Displacement',
+                  value: `${model.portDisplacementFt3.toFixed(2)} ft³ — add to gross box volume`,
+                },
+              ]
+            : []),
+          {
+            label: 'Peak velocity',
+            value: `${Number.isFinite(model.portVelPeak) ? model.portVelPeak.toFixed(1) : '—'} m/s at ${wattsLabel} — ${tier.label}`,
+            accent: Number.isFinite(model.portVelPeak) && model.portVelPeak > 30,
+          },
+        ]
+      : []
 
   async function handleDownloadPdf() {
     if (pdfBusy || !model) return
@@ -566,10 +668,11 @@ function WebModeler() {
               {
                 id: 'portvel',
                 title: 'Port air velocity',
-                caption: `Peak port air velocity at ${wattsLabel} through ${inp.portCount} × ${inp.portDiaIn}″ round port${inp.portCount > 1 ? 's' : ''}`,
+                caption: `Peak port air velocity at ${wattsLabel} through ${model.portLabel}`,
                 legend: [
                   ...legendOf(model.portVelocity),
-                  { label: '17 m/s chuffing threshold', color: SERIES.xmax },
+                  { label: '17 m/s — silent below', color: SERIES.sealed707 },
+                  { label: '30 m/s — audible while driving', color: SERIES.ib },
                 ],
               },
             ]
@@ -582,7 +685,7 @@ function WebModeler() {
       }
       const modeSummary =
         mode === 'ported'
-          ? `Ported — ${inp.vbFt3.toFixed(2)} ft³ net @ ${inp.fbHz.toFixed(1)} Hz · ${inp.portCount} × ${inp.portDiaIn}″ port${inp.portCount > 1 ? 's' : ''} · ${wattsLabel} input`
+          ? `Ported — ${inp.vbFt3.toFixed(2)} ft³ net @ ${inp.fbHz.toFixed(1)} Hz · ${model.portLabel} · ${wattsLabel} input`
           : mode === 'sealed'
             ? `Sealed — ${inp.sealedVbFt3.toFixed(2)} ft³ · Qtc ${sealedNums.qtc.toFixed(2)} · ${wattsLabel} input`
             : `Infinite baffle · ${wattsLabel} input`
@@ -590,7 +693,7 @@ function WebModeler() {
         driverLabel,
         custom,
         modeSummary,
-        rows: headlineRows.map((r) => ({ label: r.label, value: r.value })),
+        rows: [...headlineRows, ...portRows].map((r) => ({ label: r.label, value: r.value })),
         charts,
         footnote: `Lumped-element Thiele/Small model computed live from ${custom ? 'user-entered' : 'catalog'} parameters. Box leakage QL = 7; port compression and voice-coil inductance losses not modeled. Port length assumes round flared-free ends (0.732 D end correction).`,
       })
@@ -732,6 +835,195 @@ function WebModeler() {
         ) : null}
       </View>
 
+      {/* Port designer — ported alignment only. Inputs are fields; length,
+          resonance, displacement, and velocity are always calculated. */}
+      {mode === 'ported' ? (
+        <View style={{ marginBottom: blockGap } as any}>
+          <View
+            style={
+              {
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                borderTopWidth: 1,
+                borderTopColor: colors.line,
+                paddingTop: 12,
+              } as any
+            }
+          >
+            <Text
+              style={
+                {
+                  fontFamily: fonts.mono,
+                  fontWeight: '600',
+                  fontSize: labelSize,
+                  color: FG_2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.88,
+                } as any
+              }
+            >
+              Port designer
+            </Text>
+            {Number.isFinite(model.portVelPeak) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>
+                <View style={{ width: 10, height: 10, borderRadius: radius.pill, backgroundColor: tier.color } as any} />
+                <Text style={{ fontFamily: fonts.mono, fontSize: labelSize, color: INK } as any}>
+                  {Math.round(model.portVelPeak)} m/s — {tier.label}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text
+            style={
+              { fontFamily: fonts.mono, fontSize: labelSize, color: colors.inkFaint, marginTop: 8, marginBottom: controlsGap } as any
+            }
+          >
+            {inp.portMode === 'geometry'
+              ? `Enter the port size — length and air velocity are calculated to hold ${inp.fbHz.toFixed(1)} Hz.`
+              : `Enter the velocity limit and ${inp.portShape === 'round' ? 'the port count' : 'the slot height'} — the rest of the port is calculated for ${inp.fbHz.toFixed(1)} Hz.`}
+          </Text>
+
+          <View
+            style={
+              { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: controlsGap, marginBottom: controlsGap } as any
+            }
+          >
+            <FilterChipGroup
+              dense
+              label="Design by"
+              value={inp.portMode}
+              options={['geometry', 'velocity']}
+              renderOption={(o) => (o === 'geometry' ? 'Geometry' : 'Target velocity')}
+              onChange={(v) => {
+                if (v === 'geometry' && inp.portMode === 'velocity') {
+                  // Carry the solved dimension back so the design persists.
+                  patch({
+                    portMode: 'geometry',
+                    ...(inp.portShape === 'round' && Number.isFinite(model.solvedDiaIn)
+                      ? { portDiaIn: Number(model.solvedDiaIn.toFixed(2)) }
+                      : {}),
+                    ...(inp.portShape === 'slot' && Number.isFinite(model.solvedWidthIn)
+                      ? { slotWidthIn: Number(model.solvedWidthIn.toFixed(1)) }
+                      : {}),
+                  })
+                } else {
+                  patch({ portMode: v as ModelInputs['portMode'] })
+                }
+              }}
+            />
+            <FilterChipGroup
+              dense
+              label="Shape"
+              value={inp.portShape}
+              options={['round', 'slot']}
+              renderOption={(o) => (o === 'round' ? 'Round' : 'Slot')}
+              onChange={(v) => patch({ portShape: v as ModelInputs['portShape'] })}
+            />
+            {inp.portMode === 'geometry' ? (
+              inp.portShape === 'round' ? (
+                <>
+                  <NumberField
+                    label="Ports"
+                    value={inp.portCount}
+                    onChange={(v) => patch({ portCount: v })}
+                    min={1}
+                    max={8}
+                    decimals={0}
+                    width={72}
+                  />
+                  <SliderGroup
+                    label="Diameter"
+                    unit="in"
+                    min={2}
+                    max={10}
+                    step={0.25}
+                    value={inp.portDiaIn}
+                    onChange={(v) => patch({ portDiaIn: v })}
+                    width={sliderWidth}
+                    ariaLabel="Port diameter, inches"
+                  />
+                </>
+              ) : (
+                <>
+                  <NumberField
+                    label="Height"
+                    unit="in"
+                    value={inp.slotHeightIn}
+                    onChange={(v) => patch({ slotHeightIn: v })}
+                    min={0.5}
+                    max={8}
+                    decimals={2}
+                    width={88}
+                  />
+                  <NumberField
+                    label="Width"
+                    unit="in"
+                    value={inp.slotWidthIn}
+                    onChange={(v) => patch({ slotWidthIn: v })}
+                    min={1}
+                    max={60}
+                    decimals={1}
+                    width={88}
+                  />
+                </>
+              )
+            ) : (
+              <>
+                <SliderGroup
+                  label="Max velocity"
+                  unit="m/s"
+                  min={12}
+                  max={40}
+                  step={1}
+                  value={inp.targetVel}
+                  onChange={(v) => patch({ targetVel: v })}
+                  width={sliderWidth}
+                  ariaLabel="Maximum acceptable port air velocity, meters per second"
+                  decimals={0}
+                />
+                <NumberField
+                  label="At power"
+                  unit="W"
+                  value={inp.driveW}
+                  onChange={(v) => patch({ driveW: v })}
+                  min={1}
+                  max={20000}
+                  decimals={0}
+                  width={96}
+                />
+                {inp.portShape === 'round' ? (
+                  <NumberField
+                    label="Ports"
+                    value={inp.portCount}
+                    onChange={(v) => patch({ portCount: v })}
+                    min={1}
+                    max={8}
+                    decimals={0}
+                    width={72}
+                  />
+                ) : (
+                  <NumberField
+                    label="Height"
+                    unit="in"
+                    value={inp.slotHeightIn}
+                    onChange={(v) => patch({ slotHeightIn: v })}
+                    min={0.5}
+                    max={8}
+                    decimals={2}
+                    width={88}
+                  />
+                )}
+              </>
+            )}
+          </View>
+
+          <DataList rows={portRows} />
+        </View>
+      ) : null}
+
       {/* Headline numbers */}
       <View style={{ marginBottom: blockGap } as any}>
         <DataList rows={headlineRows} />
@@ -779,7 +1071,7 @@ function WebModeler() {
         yAxisLabel="EXCURSION — MM PEAK"
         yFloor={0}
         yCeil={ts.xmaxMm * 2.2}
-        refLine={{ y: ts.xmaxMm, color: SERIES.xmax, label: `Xmax ${ts.xmaxMm} mm` }}
+        refLines={[{ y: ts.xmaxMm, color: SERIES.xmax, label: `Xmax ${ts.xmaxMm} mm` }]}
         caption={`Peak cone excursion at ${wattsLabel} sine input`}
       />
 
@@ -812,8 +1104,11 @@ function WebModeler() {
             yUnit="m/s"
             yAxisLabel="PORT AIR VELOCITY — M/S"
             yFloor={0}
-            refLine={{ y: 17, color: SERIES.xmax, label: '17 m/s chuffing threshold' }}
-            caption={`Peak port air velocity at ${wattsLabel} through ${inp.portCount} × ${inp.portDiaIn}″ round port${inp.portCount > 1 ? 's' : ''}`}
+            refLines={[
+              { y: 17, color: SERIES.sealed707, label: '17 m/s — silent below' },
+              { y: 30, color: SERIES.ib, label: '30 m/s — audible while driving' },
+            ]}
+            caption={`Peak port air velocity at ${wattsLabel} through ${model.portLabel}`}
           />
         </>
       ) : null}
@@ -829,8 +1124,9 @@ function WebModeler() {
         }
       >
         Lumped-element Thiele/Small model computed live from catalog parameters. Box leakage QL = 7; port
-        compression and voice-coil inductance losses not modeled. Port length assumes round flared-free ends
-        (0.732 D end correction).
+        compression and voice-coil inductance losses not modeled. Port length uses the free-end correction
+        (0.732 D, WinISD's convention) for round and slot ports — a slot sharing box walls builds slightly
+        shorter in practice.
       </Text>
 
       {modalOpen ? (
@@ -883,8 +1179,6 @@ function ExactValuesModal({
   // Live-derived readouts so typed values can be sanity-checked before Apply.
   const draftTs = tsOf(draft)
   const sealedDraft = sealedAlignment(draftTs, draft.sealedVbFt3 * LITERS_PER_FT3)
-  const areaDraft = portAreaM2(draft)
-  const portLenDraftIn = portLengthM(draft.vbFt3 * LITERS_PER_FT3, draft.fbHz, areaDraft, draft.portCount) / INCH_M
   const draftEdited = catalogTs ? !tsEquals(draftTs, catalogTs) : false
 
   const sectionStyle = {
@@ -941,20 +1235,6 @@ function ExactValuesModal({
             <Text style={derivedStyle}>
               Ported {`${(draft.vbFt3 * LITERS_PER_FT3).toFixed(0)} L`} · Sealed{' '}
               {`${(draft.sealedVbFt3 * LITERS_PER_FT3).toFixed(0)} L → Qtc ${sealedDraft.qtc.toFixed(2)}, Fc ${Math.round(sealedDraft.fcHz)} Hz`}
-            </Text>
-          </View>
-
-          <View>
-            <Text style={sectionStyle}>Port</Text>
-            <View style={rowStyle}>
-              <NumberField label="Diameter" unit="in" value={draft.portDiaIn} onChange={set('portDiaIn')} min={1} max={10} />
-              <NumberField label="Ports" value={draft.portCount} onChange={set('portCount')} min={1} max={8} decimals={0} />
-            </View>
-            <Text style={derivedStyle}>
-              {`${Math.round(areaDraft * 1550)} in² total → `}
-              {Number.isFinite(portLenDraftIn) && portLenDraftIn > 0
-                ? `${portLenDraftIn.toFixed(1)}″ long for ${draft.fbHz.toFixed(1)} Hz in the ported box`
-                : 'no physical length lands this tuning — reduce area or raise tuning'}
             </Text>
           </View>
 
@@ -1080,7 +1360,7 @@ function ChartBlock({
   yAxisLabel,
   yFloor,
   yCeil,
-  refLine,
+  refLines,
   caption,
   exportId,
   registerCanvas,
@@ -1093,7 +1373,7 @@ function ChartBlock({
   yAxisLabel: string
   yFloor?: number
   yCeil?: number
-  refLine?: RefLine
+  refLines?: RefLine[]
   caption: string
   exportId?: string
   registerCanvas?: (id: string, c: HTMLCanvasElement | null) => void
@@ -1132,7 +1412,7 @@ function ChartBlock({
     }
 
     const X_MIN = 15
-    const allY = series.flatMap((s) => s.points.map((p) => p.y)).concat(refLine ? [refLine.y] : [])
+    const allY = series.flatMap((s) => s.points.map((p) => p.y)).concat((refLines ?? []).map((rl) => rl.y))
     const yMin = yFloor ?? Math.floor((Math.min(...allY) - yPad[0]) / yTickStep) * yTickStep
     const yMaxRaw = yCeil ?? Math.max(...allY) + yPad[1]
     const yMax = yCeil ?? Math.ceil(yMaxRaw / yTickStep) * yTickStep
@@ -1195,14 +1475,14 @@ function ChartBlock({
       ctx!.fillText(yAxisLabel, 0, 0)
       ctx!.restore()
 
-      // reference line (Xmax)
-      if (refLine) {
-        ctx!.strokeStyle = refLine.color
+      // reference lines (Xmax, velocity thresholds)
+      for (const rl of refLines ?? []) {
+        ctx!.strokeStyle = rl.color
         ctx!.lineWidth = fpx(1.5, 1.2)
         ctx!.setLineDash([fpx(4, 3), fpx(4, 3)])
         ctx!.beginPath()
-        ctx!.moveTo(pad.left, y(refLine.y))
-        ctx!.lineTo(pad.left + box.pW, y(refLine.y))
+        ctx!.moveTo(pad.left, y(rl.y))
+        ctx!.lineTo(pad.left + box.pW, y(rl.y))
         ctx!.stroke()
         ctx!.setLineDash([])
       }
@@ -1305,7 +1585,7 @@ function ChartBlock({
       canvas.removeEventListener('mousemove', onMove)
       canvas.removeEventListener('mouseleave', onLeave)
     }
-  }, [series, xMax, yTickStep, yPad, yFloor, yCeil, refLine, yAxisLabel])
+  }, [series, xMax, yTickStep, yPad, yFloor, yCeil, refLines, yAxisLabel])
 
   return (
     <View style={{ width: '100%' } as any}>
@@ -1345,12 +1625,12 @@ function ChartBlock({
             <Text style={{ fontFamily: fonts.body, fontSize: legendSize, color: FG_2 } as any}>{s.label}</Text>
           </View>
         ))}
-        {refLine ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>
-            <View style={{ width: swatchWidth, borderTopWidth: 2, borderTopColor: refLine.color, borderStyle: 'dashed' } as any} />
-            <Text style={{ fontFamily: fonts.body, fontSize: legendSize, color: FG_2 } as any}>{refLine.label}</Text>
+        {(refLines ?? []).map((rl) => (
+          <View key={rl.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 } as any}>
+            <View style={{ width: swatchWidth, borderTopWidth: 2, borderTopColor: rl.color, borderStyle: 'dashed' } as any} />
+            <Text style={{ fontFamily: fonts.body, fontSize: legendSize, color: FG_2 } as any}>{rl.label}</Text>
           </View>
-        ) : null}
+        ))}
       </View>
     </View>
   )
