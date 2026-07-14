@@ -64,6 +64,12 @@ def score_underseat(cur):
                           "sensitivity_db", "rms_watts",
                           {"score_300": 300, "score_100": 100})
 
+def score_midranges(cur):
+    # three-way midrange: low edge ~400Hz where the 6.5 hands off; single mode
+    return _ceiling_class(cur, "midranges", "sd_cm2", "xmax_mm_one_way",
+                          "sensitivity_db", "rms_watts",
+                          {"score_400": 400})
+
 def score_subs_sealed(cur):
     need = ("fs_hz", "qts", "vas_l", "sd_cm2", "xmax_mm", "rms_watts", "sensitivity_db_1w_1m")
     cur.execute("select slug,driver_size,effective_xmax_mm,impact_score," + ",".join(need)
@@ -85,6 +91,7 @@ CLASSES = {
     "component_sets":  score_component_sets,
     "widebands":       score_widebands,
     "underseat":       score_underseat,
+    "midranges":       score_midranges,
     "subs_sealed":     score_subs_sealed,
     # COVERAGE: pending port (still SSD-only). ported is a PROTOTYPE, do not canonicalize.
     "front_subs":      _not_ported("front_subs"),      # rescore_front_subs.py (63/100 in-box)
@@ -129,7 +136,7 @@ def run(names, write):
 
 _TABLE = {"midbass": "midbass_drivers", "component_sets": "component_sets",
           "widebands": "wideband_drivers", "underseat": "underseat_woofers",
-          "subs_sealed": "subwoofers"}
+          "midranges": "midranges", "subs_sealed": "subwoofers"}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
