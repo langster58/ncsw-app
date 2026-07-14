@@ -114,7 +114,10 @@ async function fetchItems(collection, fields) {
 async function braveSearch(query) {
   const url = new URL('https://api.search.brave.com/res/v1/web/search');
   url.searchParams.set('q', query);
-  url.searchParams.set('count', '10');
+  // Five tightly targeted results are enough to identify a fit-guide or an
+  // owner-install thread; requesting more adds API cost without improving the
+  // first-pass decision.
+  url.searchParams.set('count', '5');
   const response = await fetch(url, { headers: { 'X-Subscription-Token': braveKey, Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Brave ${response.status}: ${await response.text()}`);
   return ((await response.json()).web?.results ?? []).map(({ title, url: resultUrl, description }) => ({ title, url: resultUrl, description }));
