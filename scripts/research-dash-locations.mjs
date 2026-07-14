@@ -9,7 +9,7 @@
  *   node --env-file=.env scripts/research-dash-locations.mjs --make=BMW --output=/tmp/bmw-dash-research.json
  */
 
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 const args = parseArguments(process.argv.slice(2));
 const directusUrl = process.env.DIRECTUS_URL?.replace(/\/$/, '');
@@ -27,12 +27,16 @@ const unresolved = layouts.filter(isPopulatedUnsized)
   .filter((layout) => !args.make || layout.make?.toLowerCase() === args.make.toLowerCase());
 const families = groupFamilies(unresolved).slice(0, args.limit ?? Infinity);
 
+const prior = args.resume && args.output ? JSON.parse(await readFile(args.output, 'utf8')).research : [];
+const completed = new Map(prior.map((item) => [familyKey(item), item]));
 const research = [];
 for (let index = 0; index < families.length; index += 1) {
   const family = families[index];
+  if (completed.has(familyKey(family))) { research.push(completed.get(familyKey(family))); continue; }
   const query = buildQuery(family);
   const results = await braveSearch(query);
   research.push({ ...family, query, results });
+  if (args.output) await writeReport(args.output, unresolved.length, research);
   process.stderr.write(`Brave: ${index + 1}/${families.length} ${family.make} ${family.model}\n`);
 }
 
@@ -52,11 +56,12 @@ if (args.output) {
 }
 
 function parseArguments(values) {
-  const options = { make: null, limit: null, output: null };
+  const options = { make: null, limit: null, output: null, resume: false };
   for (const value of values) {
     if (value.startsWith('--make=')) options.make = value.slice(7);
     else if (value.startsWith('--limit=')) options.limit = Number(value.slice(8));
     else if (value.startsWith('--output=')) options.output = value.slice(9);
+    else if (value === '--resume') options.resume = true;
     else if (value === '--help') {
       process.stdout.write('Usage: node --env-file=.env scripts/research-dash-locations.mjs [--make=BMW] [--limit=20] [--output=/tmp/report.json]\n');
       process.exit(0);
@@ -67,6 +72,9 @@ function parseArguments(values) {
   }
   return options;
 }
+
+function familyKey(family) { return [family.make, family.model, family.body_style, family.audio_tier, family.current_dash_description, family.year_start, family.year_end].join('|'); }
+async function writeReport(output, unresolvedRows, research) { await writeFile(output, `${JSON.stringify({ generated_at: new Date().toISOString(), mode: 'read-only', unresolved_rows: unresolvedRows, research_families: research.length, research }, null, 2)}\n`); }
 
 function isPopulatedUnsized(layout) {
   const text = layout.dash_speaker?.trim().toLowerCase();
