@@ -74,7 +74,16 @@ _VB_FLOOR_FT3 = {"6.5": 0.15, "8": 0.25, "10": 0.45, "12": 0.7,
 _VB_FLOOR_EXC = {"sky-high-car-audio-fxxl-18": 3.6}
 _BAND = [20, 25, 31.5, 40, 50, 63]
 _FT = 55.0
-_SHAPE = [22.0 - 7.33 * math.log2(f / 25.0) for f in _BAND]
+
+def shape(f_hz):
+    """House target curve, dB above midrange reference level at f (0 at 200 Hz+)."""
+    return max(0.0, 22.0 - 7.33 * math.log2(f_hz / 25.0))
+
+def gain(f_hz):
+    """Cabin gain below the ~55 Hz transfer transition, dB."""
+    return max(0.0, 12 * math.log2(_FT / f_hz))
+
+_SHAPE = [shape(f) for f in _BAND]
 FT3_L = 28.3168
 
 def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
@@ -83,7 +92,7 @@ def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
     vd = sd * 1e-4 * xm * 1e-3
     marg = []
     for f, sh in zip(_BAND, _SHAPE):
-        g = max(0.0, 12 * math.log2(_FT / f))
+        g = gain(f)
         hdb = 20 * math.log10(H(f, fc, qtc))
         marg.append(min(108.4 + 20 * math.log10(f * f * vd),
                         sens + 10 * math.log10(rms) + hdb) + g - sh)
