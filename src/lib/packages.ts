@@ -181,11 +181,97 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
   return rows[0] ?? null
 }
 
-/** Resolve one component row for a detail block; collection per id-field. */
+/** Resolve one component row for a detail block; collection per id-field.
+ * Product collections use slug primary keys. */
 export async function fetchComponent<T = Record<string, unknown>>(
   collection: string,
-  id: number | string,
+  slug: string,
 ): Promise<T | null> {
-  const rows = await getItems<T>(collection, { filter: { id: { _eq: id } }, limit: 1 })
+  const rows = await getItems<T>(collection, { filter: { slug: { _eq: slug } }, limit: 1 })
   return rows[0] ?? null
+}
+
+// ------------------------------------------------- wired PDP (packages/detail)
+
+/** Fuller vehicle row for the PDP's vehicle blocks (spec strip, copy). */
+export type VehicleDetail = Vehicle & {
+  passenger_volume_cuft: number | null
+  branded_system_name: string | null
+  has_fullrange_output: string | boolean | null
+  head_unit_replacement_supported: boolean | null
+  alt_price_estimate: number | null
+}
+
+export async function fetchVehicleById(vehicleId: string): Promise<VehicleDetail | null> {
+  const rows = await getItems<VehicleDetail>('vehicles', {
+    filter: { vehicle_id: { _eq: vehicleId } },
+    fields: [
+      ...VEHICLE_FIELDS,
+      'passenger_volume_cuft', 'branded_system_name', 'has_fullrange_output',
+      'head_unit_replacement_supported', 'alt_price_estimate',
+    ],
+    limit: 1,
+  })
+  return rows[0] ?? null
+}
+
+export type ProductRow = {
+  slug: string
+  brand?: string | null
+  model?: string | null
+  price?: number | string | null
+  image_filename?: string | null
+  product_url?: string | null
+  description?: string | null
+  rms_watts?: number | null
+  rms_power?: number | string | null
+  channels?: number | string | null
+  snr?: number | string | null
+  tier?: string | null
+  type?: string | null
+  size?: string | null
+  volume_cuft?: number | string | null
+}
+
+export type ResolvedComponent = {
+  role: string
+  collection: string
+  slug: string
+  qty: number
+  row: ProductRow | null
+}
+
+const SLOT_ROLES: Array<[keyof PackageDetail, string, string]> = [
+  ['sub_id', 'subwoofers', 'Sub stage'],
+  ['sub_enclosure_id', 'sub_enclosures', 'Enclosure'],
+  ['mono_amp_id', 'mono_amps', 'Sub amplification'],
+  ['component_set_id', 'component_sets', 'Front stage'],
+  ['multichannel_amp_id', 'multichannel_amps', 'Front amplification'],
+  ['dsp_id', 'dsp_processors', 'Signal'],
+]
+
+/** Resolve every populated component slot of a package to its product row. */
+export async function fetchPackageComponents(pkg: PackageDetail): Promise<ResolvedComponent[]> {
+  const qtyFor = (collection: string, slug: string): number => {
+    const line = pkg.price_breakdown?.components?.find(
+      (l) => l.collection === collection && l.slug === slug,
+    )
+    return line?.qty ?? (collection === 'subwoofers' ? pkg.sub_count ?? 1 : 1)
+  }
+  const jobs = SLOT_ROLES.filter(([key]) => pkg[key]).map(async ([key, collection, role]) => {
+    const slug = String(pkg[key])
+    const row = await fetchComponent<ProductRow>(
+      collection === 'component_sets' && pkg.set_collection ? pkg.set_collection : collection,
+      slug,
+    )
+    return { role, collection, slug, qty: qtyFor(collection, slug), row }
+  })
+  return Promise.all(jobs)
+}
+
+export type InstallationRow = { slug: string; name: string; description: string | null }
+
+/** The install-standard narrative rows (shared by every package). */
+export async function fetchInstallationRows(): Promise<InstallationRow[]> {
+  return getItems<InstallationRow>('installation', { sort: ['slug'], limit: 20 })
 }

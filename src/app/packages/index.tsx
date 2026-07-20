@@ -171,7 +171,11 @@ export default function PackagesScreen() {
                   ) : items && items.length > 0 ? (
                     <View style={{ gap }}>
                       {items.map((p) => (
-                        <Link key={p.sku ?? p.id} href={`/packages/${encodeURIComponent(p.sku ?? String(p.id))}` as any} asChild>
+                        <Link
+                          key={p.sku ?? p.id}
+                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}` as any}
+                          asChild
+                        >
                           <Pressable>
                             <Card>
                               <View style={{ gap: 6 }}>
