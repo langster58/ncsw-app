@@ -15,13 +15,11 @@
     },
     {
       "name": "dist-preview",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "python3",
       "runtimeArgs": [
-        "serve",
-        "-s",
-        "dist",
-        "-l",
-        "4599"
+        "/Volumes/SSD 1TB/ncsw-app/scripts/dev/serve-dist.py",
+        "4599",
+        "/Volumes/SSD 1TB/ncsw-app/dist"
       ],
       "port": 4599
     }

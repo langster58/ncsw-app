@@ -14,6 +14,7 @@ import {
   FullWidthCopyContext,
   Metaline,
   PriceSummary,
+  SpecStrip,
   Schematic,
   Shelf,
   colors,
@@ -243,7 +244,7 @@ const SCHEMATIC_LEGEND = [
 ]
 
 const RELATED = [
-  { rel: 'Below this system', title: 'Essentials Prefab Sealed 12', sum: 'Same HC-15 in a prefab box, mid front stage, phone-tuned DSP.', price: '$3,140 installed', img: '/images/pattern-floor.png' },
+  { rel: 'Below this system', title: 'Essentials Prefab Sealed 15', sum: 'Same HC-15 in a prefab box, mid front stage, phone-tuned DSP.', price: '$3,140 installed', img: '/images/pattern-floor.png' },
   { rel: 'Below this system', title: 'Essentials Sealed 10', sum: 'A sealed 10 for the driver who wants the front stage first.', price: '$2,480 installed', img: '/images/pattern-frontstage.png' },
   { rel: 'Above this system', title: 'Reference Ported 12', sum: 'The 12W7AE in a tuned ported build. More output, at the cost of the cargo floor.', price: '$5,390 installed', img: '/images/pattern-floor.png' },
   { rel: 'NCSW Pick', title: 'Cargo Infinite Baffle 15', sum: 'The value-calculation winner for this chassis. The cargo floor becomes the enclosure.', price: '$4,890 installed', img: '/images/pattern-reference.png' },
@@ -288,10 +289,10 @@ export default function PdpScreen() {
   return (
     <>
       <Head>
-        <title>2026 Volkswagen Golf GTI Autobahn · Performance Sealed 12 — North Coast Soundworks</title>
+        <title>2024 Volkswagen Golf GTI 380 Autobahn · Performance Sealed 15 — North Coast Soundworks</title>
         <meta
           name="description"
-          content="A pre-engineered, pre-priced SQ system for the 2026 Golf GTI Autobahn: sealed 12, reference front stage, measured tune. Installed & tuned, $4,270."
+          content="A pre-engineered, pre-priced system for the 2024 Golf GTI 380 Autobahn: sealed 15, reference front stage, measured tune. Installed & tuned, $4,270."
         />
       </Head>
       <View style={outerStyle}>
@@ -310,9 +311,9 @@ export default function PdpScreen() {
           <Container>
             <View style={{ paddingTop: heroTop } as any}>
               <Heading level="h2">NCSW System</Heading>
-              <Heading level="h2">SKU GTI-P12S-26A</Heading>
-              <Heading level="h2">2026 Volkswagen</Heading>
-              <Heading level="h2">Golf GTI Autobahn</Heading>
+              <Heading level="h2">SKU GTI-P15S-24A</Heading>
+              <Heading level="h2">2024 Volkswagen</Heading>
+              <Heading level="h2">Golf GTI 380 Autobahn</Heading>
             </View>
           </Container>
 
@@ -320,28 +321,37 @@ export default function PdpScreen() {
           <PdpSection>
             <Band index="01" label="Overview" action="All GTI systems" actionHref="#" />
             <View style={{ marginBottom: gap } as any}>
-              <Heading level="h2sm">Performance Sealed 12</Heading>
+              <Heading level="h2sm">Performance Sealed 15</Heading>
             </View>
             <View style={{ flexDirection: narrow ? 'column' : 'row', gap, alignItems: 'flex-start' }}>
               <View style={{ flex: narrow ? undefined : 1.5, width: narrow ? '100%' : undefined } as any}>
                 <FullWidthCopyContext.Provider value={true}>
+                {/* Copy is composed, not bespoke — each paragraph renders from
+                    the grain where its facts live (the wiring contract):
+                    P1 package grain — template with slots from the package record.
+                    P2 platform grain — factory_integration.copy, written once per
+                       audio platform (HK / MIB3) and reused across every vehicle on it.
+                    P3 vehicle grain — generated from the vehicle row: measured boot
+                       dims, charging math, alt_price_estimate. */}
                 <Lead>
-                  The Performance Sealed 12 pairs the highest-impact sealed 12 in our evaluation with a reference two-way front
-                  stage, in a hatch whose 111 ft³ cabin does real work for it. The Fi HC-15 loads into a sealed box that keeps the
-                  cargo floor usable; extension comes from the alignment and from cabin gain below 80 Hz, not from brute power.
+                  The Performance Sealed 15 pairs the highest-impact sealed subwoofer in our evaluation with a reference two-way
+                  front stage, in a hatch whose 109 ft³ of cabin and cargo does real work for it. The Fi HC-15 loads into a
+                  fabricated sealed box that keeps the cargo floor usable; extension comes from the alignment and from cabin gain,
+                  not from brute power.
                 </Lead>
                 <View style={{ height: 14 }} />
                 <Lead>
-                  The trade is output ceiling. A ported build in this bay would play louder above tuning, but it costs the full
-                  cargo floor and gives up the transient control this front stage deserves. At 500 W continuous the sub stage stays
-                  inside the stock charging system's envelope, which is why this package carries no electrical line items at all.
+                  This GTI ships with the Harman Kardon system, a DSP-managed architecture with no full-range output anywhere in
+                  the car. We verified that. The package is engineered around it: the Helix processor reconstructs the fragmented
+                  signal, integration rides the CAN bus on a harness built for this platform, and your chimes, prompts, and
+                  warnings survive. The factory unit stays in the dash. Trims with a full-range output qualify for a simpler
+                  processor and a $300–350 savings; we confirm yours before you book.
                 </Lead>
                 <View style={{ height: 14 }} />
                 <Lead>
-                  The one component this GTI forces is the processor. The Harman Kardon amplifier hands off a fragmented,
-                  pre-equalized signal; the DSP MINI MK2 is specified for its ADEP.3 input stage, which reconstructs it cleanly.
-                  Trims with a full-range factory output qualify for a simpler processor and a $300–350 savings; we verify yours
-                  before you book.
+                  Every number below is this car's, not a category average. The enclosure is drawn against the measured cargo bay.
+                  The charging verdict is computed from this system's draw against the stock alternator, and if a heavier build
+                  ever outruns it, the high-output alternator for this chassis is a known part, quoted at $245.
                 </Lead>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: useVal(24, 20) as any }}>
@@ -350,30 +360,37 @@ export default function PdpScreen() {
                     $4,270
                   </Text>
                 </View>
-
-                <View style={{ marginTop: useVal(22, 18) as any }}>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginBottom: 12 } as any}>
-                    Vehicle data
-                  </Text>
-                  <DataList
-                    rows={[
-                      { label: 'Acoustic volume', value: '111 ft³' },
-                      { label: 'Cabin / cargo', value: '91 + 20 ft³' },
-                      { label: 'Head unit', value: 'Factory, retained' },
-                      { label: 'Factory signal', value: 'Fragmented (HK) → reconstruction included' },
-                      { label: 'Charging system', value: 'Stock verified for this system', accent: true },
-                      { label: 'Install type', value: 'Hatch · fabricated sealed' },
-                    ]}
-                  />
-                </View>
                 </FullWidthCopyContext.Provider>
               </View>
 
               <View style={{ flex: narrow ? undefined : 1, width: narrow ? '100%' : undefined } as any}>
                 <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.figBg }}>
-                  <WebImg src={VEHICLE_IMG} alt="2026 Volkswagen Golf GTI" style={{ width: '100%', aspectRatio: 16 / 10, objectFit: 'cover' }} />
+                  <WebImg src={VEHICLE_IMG} alt="2024 Volkswagen Golf GTI" style={{ width: '100%', aspectRatio: 16 / 10, objectFit: 'cover' }} />
                 </View>
               </View>
+            </View>
+
+            {/* The at-a-glance band: the automotive spec-strip format every car
+                shopper knows, carrying this vehicle + package's facts. All
+                values map to live columns (vehicles, factory_integration,
+                boot_families). Boot dims shown are the measured Mk7 sample —
+                the Mk8 measurement lands with the derived-envelope fill. */}
+            <View style={{ marginTop: useVal(40, 30) as any }}>
+              <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginBottom: 12 } as any}>
+                This car, on record
+              </Text>
+              <SpecStrip
+                cells={[
+                  { label: 'Body style', value: 'Hatchback', sub: 'Mk8 generation' },
+                  { label: 'Acoustic volume', value: '109 ft³', sub: '93 cabin + 16 cargo' },
+                  { label: 'Factory system', value: 'Harman Kardon', sub: 'DSP-managed · factory amp' },
+                  { label: 'Factory signal', value: 'No full-range output', sub: 'reconstruction included' },
+                  { label: 'Head unit', value: 'Factory, retained', sub: 'stays in the dash' },
+                  { label: 'Integration', value: 'CAN bus harness', sub: 'chimes & warnings retained' },
+                  { label: 'Charging system', value: 'Stock, verified', sub: 'HO alternator quoted $245', accent: true },
+                  { label: 'Enclosure envelope', value: '40 × 27 × 16 in', sub: 'measured cargo bay' },
+                ]}
+              />
             </View>
           </PdpSection>
 
@@ -424,7 +441,7 @@ export default function PdpScreen() {
                 media={<ProductMedia src="/images/products/ct-1000-1d.webp" alt="CT Sounds CT-1000.1D" />}
                 title="CT Sounds CT-1000.1D"
                 meta={<Metaline items={['Sub amplification', '1,000 W @ 1Ω', 'Class D', '93 dB SNR']} />}
-                desc="Sized by rule, not by upsell: 1,000 W is 1.0× the HC-15's continuous rating, inside our R1 pairing window. Enough headroom that the amp never runs compressed; not so much that the electrical system pays for watts the driver cannot use."
+                desc="Sized by rule, not by upsell: matched to the HC-15 inside our pairing window. Enough headroom that the amp never runs compressed; not so much that the electrical system pays for watts the driver cannot use."
                 price="$159.99"
               />
               <SysRow
@@ -522,7 +539,7 @@ export default function PdpScreen() {
                 <Card.MediaTag>NCSW Pick · Generated image pending</Card.MediaTag>
               </Card.Media>
               <Card.Body>
-                <Metaline items={['2026 Golf GTI', 'Cargo Infinite Baffle build']} />
+                <Metaline items={['2024 Golf GTI', 'Cargo Infinite Baffle build']} />
                 <Heading level="h3">The system we'd build in this GTI</Heading>
                 <Lead>
                   Our value calculation ranks the Cargo Infinite Baffle above every boxed build in this chassis. There is no
