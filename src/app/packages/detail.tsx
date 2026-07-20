@@ -20,7 +20,7 @@ import {
 } from '@/ui'
 import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
-import { Band, PdpSection, PhotoSlot, ProductMedia, SysRow, useVal } from '@/components/PdpBlocks'
+import { Band, PdpSection, PhotoSlot, SysRow, useVal } from '@/components/PdpBlocks'
 import {
   fetchInstallationRows,
   fetchPackageBySku,
@@ -61,6 +61,32 @@ const ALIGNMENT_LABEL: Record<string, string> = {
 function money(v: number | string | null | undefined): string {
   if (v == null) return ''
   return `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+// Product photo that degrades to the pending-photo slot when the catalog's
+// image_filename has no file behind it (the library is still being shot).
+function SafeMedia({ src, alt }: { src: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed || !IS_WEB) return <PhotoSlot label={'Product photo\npending'} />
+  return (
+    <View
+      style={{
+        aspectRatio: 4 / 3,
+        borderWidth: 1,
+        borderColor: colors.line,
+        borderRadius: 8,
+        backgroundColor: colors.figBg,
+        overflow: 'hidden',
+      }}
+    >
+      {React.createElement('img', {
+        src,
+        alt,
+        onError: () => setFailed(true),
+        style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },
+      })}
+    </View>
+  )
 }
 
 function componentTitle(c: ResolvedComponent): string {
@@ -117,6 +143,8 @@ export default function PackageDetailScreen() {
     return () => { live = false }
   }, [sku, vid])
 
+  // All fluid values hoisted here — hooks must never sit inside the
+  // conditional branches below (loading/ready changes the hook count).
   const { width } = useWindowDimensions()
   const narrow = width <= 900
   const gap = useVal(28, 22)
@@ -124,6 +152,14 @@ export default function PackageDetailScreen() {
   const priceSize = useFluidPx(type.h4)
   const metaSize = useFluidPx(type.meta)
   const smallSize = useFluidPx(type.small)
+  const priceRowTop = useVal(24, 20)
+  const stripTop = useVal(40, 30)
+  const tableTop = useVal(26, 22)
+  const installTop = useVal(120, 70)
+  const installRuleGap = useVal(28, 22)
+  const ctaTop = useVal(96, 56)
+  const ctaPadTop = useVal(40, 34)
+  const ctaPadBottom = useVal(48, 40)
 
   const vehicleName = vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : ''
   const title = pkg?.display_name ?? sku
@@ -208,7 +244,7 @@ export default function PackageDetailScreen() {
             <View style={{ paddingTop: 18, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
               <Eyebrow>Packages</Eyebrow>
               <Eyebrow>/</Eyebrow>
-              <Eyebrow tone="accent">{sku || 'Package detail'}</Eyebrow>
+              <Eyebrow tone="accent">Package detail</Eyebrow>
             </View>
           </Container>
 
@@ -254,7 +290,7 @@ export default function PackageDetailScreen() {
                   <View style={{ height: 14 }} />
                   <Lead>{p3}</Lead>
 
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: useVal(24, 20) as any }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: priceRowTop as any }}>
                     <Eyebrow>Total installed</Eyebrow>
                     <Text style={{ fontFamily: fonts.mono, fontSize: priceSize as any, fontWeight: '500', color: colors.ink } as any}>
                       {money(installedN)}
@@ -263,7 +299,7 @@ export default function PackageDetailScreen() {
                 </FullWidthCopyContext.Provider>
 
                 {cells.length > 0 ? (
-                  <View style={{ marginTop: useVal(40, 30) as any }}>
+                  <View style={{ marginTop: stripTop as any }}>
                     <Text style={{ fontFamily: fonts.mono, fontSize: metaSize as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginBottom: 12 } as any}>
                       {vehicle ? 'This car, on record' : 'This system, on record'}
                     </Text>
@@ -282,13 +318,11 @@ export default function PackageDetailScreen() {
                     prices are the ledger, and what the part costs is what the line reads.
                   </Lead>
                 </View>
-                <View style={{ marginTop: useVal(26, 22) as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
+                <View style={{ marginTop: tableTop as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
                   {components.map((c, i) => (
                     <SysRow
                       key={c.slug}
-                      media={c.row?.image_filename
-                        ? <ProductMedia src={`/images/products/${c.row.image_filename}`} alt={componentTitle(c)} />
-                        : <PhotoSlot label={'Product photo\npending'} />}
+                      media={<SafeMedia src={c.row?.image_filename ? `/images/products/${c.row.image_filename}` : null} alt={componentTitle(c)} />}
                       title={componentTitle(c)}
                       meta={<Metaline items={componentMeta(c)} />}
                       desc={c.row?.description ?? ''}
@@ -304,11 +338,11 @@ export default function PackageDetailScreen() {
 
                 {/* Installation standard */}
                 {install.length > 0 ? (
-                  <View style={{ marginTop: useVal(120, 70) as any }}>
+                  <View style={{ marginTop: installTop as any }}>
                     <Heading level="h2sm">{install[0]?.name ?? 'Installation'}</Heading>
-                    <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: useVal(28, 22) as any }} />
+                    <View style={{ borderTopWidth: 1, borderTopColor: colors.ink, marginTop: 18, marginBottom: installRuleGap as any }} />
                     {install[0]?.description ? <Lead>{install[0].description}</Lead> : null}
-                    <View style={{ marginTop: useVal(26, 22) as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
+                    <View style={{ marginTop: tableTop as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
                       {install.slice(1).map((row, i, arr) => (
                         <SysRow
                           key={row.slug}
@@ -322,7 +356,7 @@ export default function PackageDetailScreen() {
                   </View>
                 ) : null}
 
-                <View style={{ marginTop: useVal(26, 22) as any }}>
+                <View style={{ marginTop: tableTop as any }}>
                   <PriceSummary
                     lines={[
                       { label: 'Components', value: money(partsN) },
@@ -334,7 +368,7 @@ export default function PackageDetailScreen() {
               </PdpSection>
 
               {/* CTA */}
-              <View style={{ marginTop: useVal(96, 56) as any, borderTopWidth: 1, borderTopColor: colors.ink }}>
+              <View style={{ marginTop: ctaTop as any, borderTopWidth: 1, borderTopColor: colors.ink }}>
                 <Container>
                   <View
                     style={
@@ -344,8 +378,8 @@ export default function PackageDetailScreen() {
                         alignItems: narrow ? 'flex-start' : 'center',
                         gap: 28,
                         flexWrap: 'wrap',
-                        paddingTop: useVal(40, 34) as any,
-                        paddingBottom: useVal(48, 40) as any,
+                        paddingTop: ctaPadTop as any,
+                        paddingBottom: ctaPadBottom as any,
                       } as any
                     }
                   >
