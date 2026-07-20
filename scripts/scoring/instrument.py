@@ -129,6 +129,23 @@ def sub_impact(raw, anchor_raw):
     """Normalize a raw composite to impact_score (Fi HC-12 best box = 1.00)."""
     return round((raw / anchor_raw) ** 0.5, 3)
 
+def sub_ib_composite(row):
+    """Infinite-baffle composite: the sealed model with the box removed
+    (fc = Fs, Qtc = Qts; trunk/cabin is the enclosure). Same band ruling,
+    same margins, same anchor normalization as sealed — one currency.
+    (Ported verbatim from SSD rescore_ib_unified.py, re-banded per the
+    2026-07-19 composite ruling. No Qts gate: free-air rolloff is already
+    penalized by H(f, Fs, Qts) itself.)"""
+    xm = row.get("effective_xmax_mm") or row["xmax_mm"]
+    vd = row["sd_cm2"] * 1e-4 * xm * 1e-3
+    marg = []
+    for f, sh in zip(_BAND, _SHAPE):
+        hdb = 20 * math.log10(H(f, row["fs_hz"], row["qts"]))
+        marg.append(min(108.4 + 20 * math.log10(f * f * vd),
+                        row["sensitivity_db_1w_1m"] + 10 * math.log10(row["rms_watts"]) + hdb)
+                    + gain(f) - sh)
+    return composite_from_margins(marg)
+
 # ---------------------------------------------------- ported (vented) instrument
 # Canonicalized 2026-07-19 from two ratified sources:
 #   - archive/enclosure_calc.py (SSD): port length (Small, end correction k=0.732),

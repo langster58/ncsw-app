@@ -86,6 +86,19 @@ def _not_ported(name):
                          f"Do not score it from here until its instrument is moved into instrument.py.")
     return f
 
+def score_subs_ib(cur):
+    # IB = sealed model, box removed (fc=Fs, Qtc=Qts); same HC-12 sealed anchor.
+    need = ("fs_hz", "qts", "vas_l", "sd_cm2", "xmax_mm", "rms_watts", "sensitivity_db_1w_1m")
+    cur.execute("select slug,driver_size,effective_xmax_mm,cat_ib," + ",".join(need)
+                + " from subwoofers")
+    names = [d[0] for d in cur.description]
+    rows = [dict(zip(names, r)) for r in cur.fetchall()]
+    rows = [r for r in rows if all(r.get(k) for k in need)]
+    anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
+    aref = I.sub_best_composite(anchor)
+    return {r["slug"]: {"ib_composite": I.sub_impact(I.sub_ib_composite(r), aref)}
+            for r in rows if r.get("cat_ib")}
+
 CLASSES = {
     "midbass":         score_midbass,
     "component_sets":  score_component_sets,
@@ -93,10 +106,10 @@ CLASSES = {
     "underseat":       score_underseat,
     "midranges":       score_midranges,
     "subs_sealed":     score_subs_sealed,
-    # COVERAGE: pending port (still SSD-only). ported is a PROTOTYPE, do not canonicalize.
+    "subs_ib":         score_subs_ib,
+    # COVERAGE: pending port (still SSD-only).
     "front_subs":      _not_ported("front_subs"),      # rescore_front_subs.py (63/100 in-box)
-    "subs_ib":         _not_ported("subs_ib"),         # rescore_ib_unified.py (ib_composite; DB currently current)
-    "subs_ported":     _not_ported("subs_ported"),     # ported_instrument_prototype.py (NOT final)
+    "subs_ported":     _not_ported("subs_ported"),     # per-envelope via instrument.ported_best (package engine); no single bench column
 }
 
 # ---------------------------------------------------------------- check / write
@@ -136,7 +149,7 @@ def run(names, write):
 
 _TABLE = {"midbass": "midbass_drivers", "component_sets": "component_sets",
           "widebands": "wideband_drivers", "underseat": "underseat_woofers",
-          "midranges": "midranges", "subs_sealed": "subwoofers"}
+          "midranges": "midranges", "subs_sealed": "subwoofers", "subs_ib": "subwoofers"}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
