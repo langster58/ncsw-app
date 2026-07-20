@@ -52,8 +52,12 @@ def roman_to_int(s):
         prev = max(prev, v)
     return total
 
-def gen_key(generation, year_range):
+def gen_key(generation, year_range, model=None):
     if not generation or not generation.strip():
+        return f"yr:{year_range}"
+    # junk label: generation field just repeats the model name ("Passat", "Land
+    # Cruiser") -> carries no generation info; treat as unlabeled
+    if model and re.sub(r"[^a-z0-9]", "", generation.lower()) == re.sub(r"[^a-z0-9]", "", model.lower()):
         return f"yr:{year_range}"
     s = re.sub(r"\s*restyling(\s*\d+)?\s*$", "", generation.strip(), flags=re.I)
     m = re.match(r"^([IVX]+)\b", s)
@@ -84,7 +88,7 @@ fams = defaultdict(lambda: {"years": set(), "vehicle_ids": []})
 for vid, make, model, style, year, year_range, generation in rows:
     if not (make and model and year):
         continue
-    key = (make.strip(), base_model(model), style, gen_key(generation, year_range))
+    key = (make.strip(), base_model(model), style, gen_key(generation, year_range, base_model(model)))
     f = fams[key]
     f["years"].add(int(year))
     f["vehicle_ids"].append(vid)
@@ -110,6 +114,8 @@ for mkey, keys in by_model.items():
     for small in keys_by_size:
         if small not in fams:
             continue
+        if not small[3].startswith('yr:'):
+            continue   # only unlabeled fragments get absorbed
         sy = fams[small]["years"]
         for big in sorted(keys, key=lambda k: -len(fams[k]["years"]) if k in fams else 0):
             if big == small or big not in fams or small not in fams:
