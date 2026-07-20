@@ -3,18 +3,17 @@
 // Flow: pick your vehicle (year -> make -> model[/trim]) -> resolve the vehicle
 // row -> list the packages that fit it -> open one package's full composition.
 //
-// The packages collection is being curated (two-round model: a large curated
-// offering, then `ncsw_pick = true` on the handful we recommend per group —
-// the PLP filter defaults to picks so thousands narrow to a browsable list).
-// Until rows land, `fetchPackagesForVehicle` returns an empty list and the PLP
-// renders its honest empty state. The CONTRACT below is the source of truth
-// the curation must satisfy; columns marked (pending) do not exist yet in the
-// packages table and must be added by the curation pass:
-//   sku (exists) · vehicle_category/min_segment/cab_type (exist — the fit key)
-//   ncsw_pick boolean (pending) · display_name (pending) · topology (pending)
-//   price_total (pending) · price_installed (pending) · summary (pending)
-//   bass_alignment 'sealed'|'ported'|'trunk_ib'|'true_ib' (pending)
-//   boot_utilization 'compact'|'standard'|'full' (pending)
+// The packages collection is live with the interim v16 seed (see
+// scripts/packages/seed_v16_interim.py) until the curation pass replaces it
+// (two-round model: a large curated offering, then `ncsw_pick = true` on the
+// handful we recommend per group — the PLP filter defaults to picks).
+//
+// Wiring model: every component is a slug FK into its product collection and
+// the package stores NO price truth of its own. `price_total`/`price_installed`
+// are caches; `price_breakdown` records the line arithmetic. After any product
+// price change, scripts/packages/reprice_packages.py recomputes the caches —
+// that's the cascade. Fit key: `vehicle_category` is the envelope class
+// (truck/trunk/cargo), matching vehicles.vehicle_category directly.
 import { getItems } from './directus'
 
 // ------------------------------------------------------------- vehicle picker
@@ -83,7 +82,7 @@ export async function fetchVehicleRows(year: string, make: string, model: string
 // --------------------------------------------------------------- package list
 
 export type PackageSummary = {
-  id: number
+  id: string
   sku: string
   display_name?: string | null
   topology?: string | null
@@ -138,22 +137,40 @@ export async function fetchPackagesForVehicle(
 
 // ------------------------------------------------------------- package detail
 
+export type PackageBreakdownLine = {
+  collection: string
+  slug: string
+  name?: string
+  qty: number
+  unit: number
+}
+
+export type PackageBreakdown = {
+  components: PackageBreakdownLine[]
+  labor: { base: number; extra_amps: number; enclosure: number }
+  materials_kit?: PackageBreakdownLine[]
+  materials_total?: number
+}
+
+// Component FKs are slugs into their product collections (slug PKs everywhere).
 export type PackageDetail = PackageSummary & {
-  sub_id: number | null
+  sub_id: string | null
   sub_count: number | null
-  sub_enclosure_id: number | null
-  front_sub_id: number | null
-  front_sub_enclosure_id: number | null
-  component_set_id: number | null
-  tweeter_integration_id: number | null
-  mono_amp_id: number | null
-  multichannel_amp_id: number | null
-  dsp_id: number | null
-  alternator_id: number | null
-  battery_id: number | null
-  big3_id: number | null
-  installation_id: number | null
-  materials_id: number | null
+  sub_enclosure_id: string | null
+  front_sub_id: string | null
+  front_sub_enclosure_id: string | null
+  component_set_id: string | null
+  set_collection: string | null
+  tweeter_integration_id: string | null
+  mono_amp_id: string | null
+  multichannel_amp_id: string | null
+  dsp_id: string | null
+  alternator_id: string | null
+  battery_id: string | null
+  big3_id: string | null
+  installation_id: string | null
+  materials_id: string | null
+  price_breakdown: PackageBreakdown | null
 }
 
 export async function fetchPackageBySku(sku: string): Promise<PackageDetail | null> {
