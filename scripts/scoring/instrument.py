@@ -86,7 +86,18 @@ def gain(f_hz):
 _SHAPE = [shape(f) for f in _BAND]
 FT3_L = 28.3168
 
-def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
+def composite_from_margins(marg):
+    """Band composite from per-frequency margins (marg aligned to _BAND).
+
+    RULING 2026-07-19 (Brett): the min-term (worst point) runs over 25-63 Hz —
+    the band every system must deliver. 20 Hz is NOT in the score: a ~30 Hz
+    ported tune's bottom-octave sacrifice must inform (depth badge), not veto.
+    One scale, both alignments, no handicaps. Before this ruling the 20 Hz
+    point held veto power and buried ported's +10 dB slam-band wins."""
+    core = marg[1:]                      # 25, 31.5, 40, 50, 63
+    return 10 ** (min(core) / 10) * 10 ** ((sum(core) / len(core)) / 10)
+
+def _sub_margins(fs, qts, vas, sd, rms, sens, vb_l, xm):
     fc = fs * math.sqrt(1 + vas / vb_l)
     qtc = qts * math.sqrt(1 + vas / vb_l)
     vd = sd * 1e-4 * xm * 1e-3
@@ -96,7 +107,10 @@ def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
         hdb = 20 * math.log10(H(f, fc, qtc))
         marg.append(min(108.4 + 20 * math.log10(f * f * vd),
                         sens + 10 * math.log10(rms) + hdb) + g - sh)
-    return 10 ** (min(marg) / 10) * 10 ** ((sum(marg) / len(marg)) / 10)
+    return marg
+
+def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
+    return composite_from_margins(_sub_margins(fs, qts, vas, sd, rms, sens, vb_l, xm))
 
 def sub_best_composite(row):
     """Best-sealed-box composite for one sub row (raw, un-normalized)."""
@@ -205,8 +219,9 @@ def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
     is feasible when the aero port that keeps velocity <= 25 m/s physically fits:
     length >= 2 cm and <= max_port_run_cm. Returns (raw_composite, spec) for the
     best composite, or (None, None) when no feasible build exists.
-    spec = dict(vb_l, fb_hz, port_area_cm2, port_len_cm) - the build envelope,
-    not a cut sheet; exact aero tube count/diameter is a per-job design task."""
+    spec = dict(vb_l, fb_hz, port_area_cm2, port_len_cm, depth_20hz_db) - the
+    build envelope plus the 20 Hz depth badge (margin vs the curve; informs,
+    never vetoes). Exact aero tube count/diameter is a per-job design task."""
     xm = row.get("effective_xmax_mm") or row["xmax_mm"]
     floor = vb_floor_l or min(vb_cap_l, 0.25 * row["vas_l"])
     grid = [v for v in (floor * 1.13 ** i for i in range(40)) if v <= vb_cap_l] or [floor]
@@ -220,9 +235,10 @@ def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
             if not (2.0 <= plen <= max_port_run_cm):
                 continue
             m = ported_margins(row, vb, fb, xm)
-            c = 10 ** (min(m) / 10) * 10 ** ((sum(m) / len(m)) / 10)
+            c = composite_from_margins(m)
             if best is None or c > best:
                 best = c
                 best_spec = dict(vb_l=round(vb, 1), fb_hz=round(fb, 1),
-                                 port_area_cm2=round(area, 1), port_len_cm=round(plen, 1))
+                                 port_area_cm2=round(area, 1), port_len_cm=round(plen, 1),
+                                 depth_20hz_db=round(m[0], 1))
     return best, best_spec
