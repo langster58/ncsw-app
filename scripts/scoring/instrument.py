@@ -114,3 +114,115 @@ SUB_ANCHOR_SLUG = "fi-car-audio-hc-12"
 def sub_impact(raw, anchor_raw):
     """Normalize a raw composite to impact_score (Fi HC-12 best box = 1.00)."""
     return round((raw / anchor_raw) ** 0.5, 3)
+
+# ---------------------------------------------------- ported (vented) instrument
+# Canonicalized 2026-07-19 from two ratified sources:
+#   - archive/enclosure_calc.py (SSD): port length (Small, end correction k=0.732),
+#     peak port velocity, the 12 in^2/ft^3 SQ area floor, musical Fb window
+#     0.85-1.05 x Fs (floored at 28 Hz). Formulas verified against Small 1972/73
+#     JAES + Dickason; do not restate from memory.
+#   - ported_instrument_prototype.py (SSD): Small lumped vented response G(s) and
+#     cone-excursion X(s) (Ql = 7, WinISD convention), displacement ceiling
+#     calibrated NUMERICALLY against the universal mass-controlled asymptote
+#     (at f >> resonance every box's clean ceiling -> 108.4 + 20log10(f^2 Vd)),
+#     BW2 subsonic filter at 0.7 x Fb, same 20-63 Hz min x mean composite.
+#
+# NCSW builds ported enclosures CUSTOM with aero (flared) ports: flares stay
+# clean to higher air speed than straight ports, so the velocity ceiling is
+# 25 m/s (vs 17 m/s straight; founder standard 2026-07-19). Feasibility is
+# envelope-driven per vehicle: net volume cap + longest buildable port run come
+# from the car's boot (boot_families measured dims or the derived fill), not
+# from abstract box classes. A driver with no feasible (Vb, Fb, port) in the
+# envelope has NO ported realization there - that is an answer, not an error.
+
+QL_VENTED = 7.0          # leakage Q, WinISD convention
+VMAX_AERO = 25.0         # m/s peak port air speed, flared aero ports
+PORT_K_END = 0.732       # end correction (one flanged + one free end)
+PORT_AREA_FLOOR_SQIN_PER_FT3 = 12.0
+FB_RATIO_MIN, FB_RATIO_MAX = 0.85, 1.05   # musical window vs Fs
+FB_ABS_MIN = 28.0        # practical musical floor, Hz
+C_AIR = 343.0            # m/s
+
+def vented_tf(f, fs, fb, alpha, qts, ql=QL_VENTED):
+    """Small lumped vented-box model: (|G|, |Xnorm|) at f.
+    G = voltage->far-field pressure (4th-order HP); X = cone excursion with the
+    relief notch at Fb. Normalizations are arbitrary but consistent; callers
+    calibrate against the mass-controlled asymptote."""
+    s = complex(0.0, 2 * math.pi * f)
+    Ts, Tb = 1 / (2 * math.pi * fs), 1 / (2 * math.pi * fb)
+    D = (s**4 * Ts**2 * Tb**2
+         + s**3 * (Ts**2 * Tb / ql + Ts * Tb**2 / qts)
+         + s**2 * ((alpha + 1) * Tb**2 + Ts * Tb / (ql * qts) + Ts**2)
+         + s * (Tb / ql + Ts / qts) + 1)
+    G = (s**4 * Ts**2 * Tb**2) / D
+    X = (s**2 * Tb**2 + s * Tb / ql + 1) / D
+    return abs(G), abs(X)
+
+def subsonic_bw2(f, fb):
+    """Installer protection filter: 2nd-order Butterworth HP at 0.7 x Fb."""
+    fc = 0.7 * fb
+    x2 = (f / fc) ** 2
+    return x2 / math.sqrt((x2 - 1) ** 2 + 2 * x2)
+
+def port_length_cm(area_cm2, fb_hz, vb_l, k=PORT_K_END):
+    """Physical port length for a round port of given area tuning vb to fb."""
+    sv = area_cm2 / 1e4
+    vb = vb_l / 1000.0
+    a = math.sqrt(sv / math.pi)
+    length_m = (C_AIR * C_AIR * sv) / (4.0 * math.pi ** 2 * fb_hz ** 2 * vb) - k * a
+    return length_m * 100.0
+
+def port_area_cm2(sd_cm2, xm_mm, fb_hz, vb_l, vmax=VMAX_AERO):
+    """Required port area: max(velocity-limited at vmax, SQ floor 12 in^2/ft^3)."""
+    vel_cm2 = (sd_cm2 * 1e-4 * xm_mm * 1e-3 * 2 * math.pi * fb_hz / vmax) * 1e4
+    floor_cm2 = PORT_AREA_FLOOR_SQIN_PER_FT3 * (vb_l / FT3_L) * 6.4516
+    return max(vel_cm2, floor_cm2)
+
+def ported_margins(row, vb_l, fb, xm):
+    """Clean margins vs the house shape at each band frequency (in-seat), or
+    None if the port is not buildable. Same currency as the sealed composite."""
+    fs, qts, vas = row["fs_hz"], row["qts"], row["vas_l"]
+    sd, rms, sens = row["sd_cm2"], row["rms_watts"], row["sensitivity_db_1w_1m"]
+    alpha = vas / vb_l
+    vd = sd * 1e-4 * xm * 1e-3
+    # calibrate displacement ceiling at a frequency far above resonance
+    f_hi = 400.0
+    Ghi, Xhi = vented_tf(f_hi, fs, fb, alpha, qts)
+    K = 108.4 + 20 * math.log10(f_hi * f_hi * vd)
+    marg = []
+    for f in _BAND:
+        G, X = vented_tf(f, fs, fb, alpha, qts)
+        ss = subsonic_bw2(f, fb)
+        disp = K + 20 * math.log10((G / X) / (Ghi / Xhi)) + 20 * math.log10(ss)
+        therm = sens + 10 * math.log10(rms) + 20 * math.log10(G * ss)
+        marg.append(min(disp, therm) + gain(f) - shape(f))
+    return marg
+
+def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
+    """Best feasible ported realization inside an envelope.
+
+    Sweeps net volume (13%-step grid to the cap) x Fb (musical window). A combo
+    is feasible when the aero port that keeps velocity <= 25 m/s physically fits:
+    length >= 2 cm and <= max_port_run_cm. Returns (raw_composite, spec) for the
+    best composite, or (None, None) when no feasible build exists.
+    spec = dict(vb_l, fb_hz, port_area_cm2, port_len_cm) - the build envelope,
+    not a cut sheet; exact aero tube count/diameter is a per-job design task."""
+    xm = row.get("effective_xmax_mm") or row["xmax_mm"]
+    floor = vb_floor_l or min(vb_cap_l, 0.25 * row["vas_l"])
+    grid = [v for v in (floor * 1.13 ** i for i in range(40)) if v <= vb_cap_l] or [floor]
+    fbs = [max(FB_ABS_MIN, row["fs_hz"] * (FB_RATIO_MIN + i * 0.05))
+           for i in range(int((FB_RATIO_MAX - FB_RATIO_MIN) / 0.05) + 1)]
+    best, best_spec = None, None
+    for vb in grid:
+        for fb in fbs:
+            area = port_area_cm2(row["sd_cm2"], xm, fb, vb)
+            plen = port_length_cm(area, fb, vb)
+            if not (2.0 <= plen <= max_port_run_cm):
+                continue
+            m = ported_margins(row, vb, fb, xm)
+            c = 10 ** (min(m) / 10) * 10 ** ((sum(m) / len(m)) / 10)
+            if best is None or c > best:
+                best = c
+                best_spec = dict(vb_l=round(vb, 1), fb_hz=round(fb, 1),
+                                 port_area_cm2=round(area, 1), port_len_cm=round(plen, 1))
+    return best, best_spec
