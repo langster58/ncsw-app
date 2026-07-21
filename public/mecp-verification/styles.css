@@ -1,0 +1,189 @@
+:root {
+  color-scheme: light;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #343434;
+  background: #f5f5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f5f5f5;
+}
+
+.archive-shell {
+  width: min(100% - 32px, 1040px);
+  margin: 0 auto;
+  padding: 64px 0 80px;
+}
+
+.archive-header {
+  max-width: 760px;
+  margin: 0 auto 36px;
+  text-align: center;
+}
+
+.archive-kicker {
+  margin: 0 0 10px;
+  color: #5d5d5d;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.archive-header h1 {
+  margin: 0;
+  color: #242424;
+  font-size: clamp(30px, 5vw, 48px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.archive-context {
+  margin: 20px auto 16px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.source-link {
+  color: #075d74;
+  font-size: 15px;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.verification-capture {
+  padding: 28px;
+  border-radius: 3px;
+  background: #d3d3d3;
+}
+
+.result-count {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.kn-list-item-container {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  background: #fff;
+}
+
+.columns,
+.kn-details-group,
+.kn-details-group-column,
+.kn-table {
+  width: 100%;
+}
+
+.kn-table {
+  padding: 20px 10px 22px;
+  text-align: center;
+}
+
+.kn-detail-body h2 {
+  margin: 0 0 24px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.field_89_thumb_11 img {
+  display: block;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 10px;
+  object-fit: cover;
+}
+
+.kn-detail-label {
+  margin-top: 10px;
+  padding: 9px 12px;
+  background: #d3d3d3;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.field_98 .kn-detail-body {
+  padding: 9px 12px 2px;
+  font-size: 17px;
+}
+
+.field_135 .kn-detail-label {
+  margin-top: 8px;
+}
+
+.certification-list {
+  padding: 12px 10px 2px;
+  font-size: 16px;
+  line-height: 1.42;
+}
+
+.certification-list strong {
+  font-weight: 500;
+}
+
+.captured-label {
+  width: min(100%, 560px);
+  margin: 14px auto 0;
+  color: #555;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  .archive-shell {
+    width: min(100% - 20px, 1040px);
+    padding: 36px 0 48px;
+  }
+
+  .archive-context {
+    font-size: 15px;
+  }
+
+  .verification-capture {
+    padding: 14px;
+  }
+
+  .kn-table {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .kn-detail-body h2 {
+    font-size: 25px;
+  }
+
+  .kn-detail-label,
+  .field_98 .kn-detail-body {
+    font-size: 16px;
+  }
+
+  .certification-list {
+    font-size: 14px;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .archive-shell {
+    width: 100%;
+    padding: 24px;
+  }
+
+  .source-link {
+    display: none;
+  }
+
+  .verification-capture {
+    break-inside: avoid;
+  }
+}
