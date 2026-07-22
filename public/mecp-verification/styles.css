@@ -15,157 +15,162 @@ body {
   background: #f5f5f5;
 }
 
-.archive-shell {
+.record-shell {
   width: min(100% - 32px, 1040px);
   margin: 0 auto;
-  padding: 64px 0 80px;
+  padding: 48px 0 72px;
 }
 
-.archive-header {
-  max-width: 760px;
-  margin: 0 auto 36px;
-  text-align: center;
-}
-
-.archive-kicker {
-  margin: 0 0 10px;
-  color: #5d5d5d;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.archive-header h1 {
-  margin: 0;
-  color: #242424;
-  font-size: clamp(30px, 5vw, 48px);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
-.archive-context {
-  margin: 20px auto 16px;
-  font-size: 16px;
-  line-height: 1.6;
-}
-
-.source-link {
-  color: #075d74;
-  font-size: 15px;
-  font-weight: 600;
-  text-underline-offset: 3px;
-}
-
-.verification-capture {
-  padding: 28px;
-  border-radius: 3px;
-  background: #d3d3d3;
-}
-
-.result-count {
-  margin: 0 0 8px;
-  font-size: 14px;
-}
-
-.kn-list-item-container {
-  width: min(100%, 560px);
+.completion-record {
+  width: min(100%, 720px);
   margin: 0 auto;
   background: #fff;
 }
 
-.columns,
-.kn-details-group,
-.kn-details-group-column,
-.kn-table {
-  width: 100%;
-}
-
-.kn-table {
-  padding: 20px 10px 22px;
+.identity {
+  padding: 34px 28px 0;
   text-align: center;
 }
 
-.kn-detail-body h2 {
+.identity h1 {
   margin: 0 0 24px;
-  font-size: 28px;
+  color: #242424;
+  font-size: clamp(34px, 6vw, 52px);
   font-weight: 600;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
-.field_89_thumb_11 img {
+.identity img {
   display: block;
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 10px;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 20px;
   object-fit: cover;
 }
 
-.kn-detail-label {
-  margin-top: 10px;
-  padding: 9px 12px;
+.member-id {
+  margin: 0;
+}
+
+.member-id dt,
+.record-heading h2 {
+  margin: 0;
+  padding: 12px 18px;
   background: #d3d3d3;
-  font-size: 17px;
+  color: #303030;
+  font-size: 19px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
-.field_98 .kn-detail-body {
-  padding: 9px 12px 2px;
-  font-size: 17px;
+.member-id dd {
+  margin: 0;
+  padding: 14px 18px 18px;
+  color: #303030;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.field_135 .kn-detail-label {
-  margin-top: 8px;
+.record-heading h2 {
+  font-size: clamp(20px, 4vw, 26px);
+  text-wrap: balance;
+}
+
+.record-heading p {
+  max-width: 62ch;
+  margin: 0 auto;
+  padding: 16px 24px 18px;
+  font-size: 15px;
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: pretty;
 }
 
 .certification-list {
-  padding: 12px 10px 2px;
-  font-size: 16px;
-  line-height: 1.42;
+  margin: 0;
+  padding: 0 28px 30px;
+  list-style: none;
 }
 
-.certification-list strong {
-  font-weight: 500;
+.certification-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 0;
+  border-top: 1px solid #d5d5d5;
 }
 
-.captured-label {
-  width: min(100%, 560px);
-  margin: 14px auto 0;
-  color: #555;
-  font-size: 13px;
-  line-height: 1.45;
-  text-align: center;
+.certification-list h3 {
+  margin: 0;
+  color: #292929;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.certification-list p {
+  margin: 5px 0 0;
+  color: #525252;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.certification-list a {
+  flex: 0 0 auto;
+  color: #075d74;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: right;
+  text-underline-offset: 3px;
+}
+
+.certification-list a:hover,
+.certification-list a:focus-visible {
+  color: #003e50;
+}
+
+.certification-list a:focus-visible {
+  outline: 3px solid #8ad3e5;
+  outline-offset: 4px;
 }
 
 @media (max-width: 620px) {
-  .archive-shell {
+  .record-shell {
     width: min(100% - 20px, 1040px);
-    padding: 36px 0 48px;
+    padding: 24px 0 40px;
   }
 
-  .archive-context {
-    font-size: 15px;
+  .identity {
+    padding: 26px 14px 0;
   }
 
-  .verification-capture {
-    padding: 14px;
+  .identity img {
+    width: 132px;
+    height: 132px;
   }
 
-  .kn-table {
-    padding-right: 4px;
-    padding-left: 4px;
-  }
-
-  .kn-detail-body h2 {
-    font-size: 25px;
-  }
-
-  .kn-detail-label,
-  .field_98 .kn-detail-body {
-    font-size: 16px;
+  .record-heading p {
+    padding-right: 18px;
+    padding-left: 18px;
   }
 
   .certification-list {
-    font-size: 14px;
+    padding: 0 18px 22px;
+  }
+
+  .certification-list li {
+    display: block;
+    padding: 17px 0;
+  }
+
+  .certification-list a {
+    display: inline-block;
+    margin-top: 10px;
+    text-align: left;
   }
 }
 
@@ -174,16 +179,24 @@ body {
     background: #fff;
   }
 
-  .archive-shell {
+  .record-shell {
     width: 100%;
-    padding: 24px;
+    padding: 0;
   }
 
-  .source-link {
+  .completion-record {
+    width: 100%;
+  }
+
+  .identity {
+    padding-top: 0;
+  }
+
+  .certification-list a {
     display: none;
   }
 
-  .verification-capture {
+  .certification-list li {
     break-inside: avoid;
   }
 }
