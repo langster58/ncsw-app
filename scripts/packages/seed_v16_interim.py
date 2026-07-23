@@ -185,7 +185,9 @@ def main():
                 continue
             inserts.append(dict(
                 id=str(uuid.uuid4()),
-                sku=f"{f['row']['system_id']}-{CLASS_SUFFIX[cls]}",
+                # alignment letter keeps SKUs unique: sealed and ported families
+                # can select v16 rows sharing one system_id
+                sku=f"{f['row']['system_id']}-{alignment[0].upper()}-{CLASS_SUFFIX[cls]}",
                 vehicle_category=cls,
                 sub_id=f['sub'][0], sub_count=count, sub_enclosure_id=enc_slug,
                 mono_amp_id=f['mono'][0], multichannel_amp_id=f['multi'][0],
