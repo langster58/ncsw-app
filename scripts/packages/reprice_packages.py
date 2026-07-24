@@ -58,9 +58,12 @@ def main():
         enc_labor = 0.0
         for line in bd['components']:
             if line['collection'] == 'sub_enclosures':
+                # Enclosure line carries its FULL cost (materials + fabrication);
+                # the box is a system component with a price, so no enclosure
+                # entry in the labor section (would be a double count).
                 mat, enc_labor = enclosure_lines(line['slug'])
-                line['unit'] = mat
-                parts += mat
+                line['unit'] = mat + enc_labor
+                parts += mat + enc_labor
                 continue
             p = unit_price(line['collection'], line['slug'])
             if p is None:
@@ -79,8 +82,8 @@ def main():
             if p is not None:
                 line['unit'] = p
                 materials += p * line.get('qty', 1)
-        labor = base_labor + extra_amp_labor * max(0, n_amps - 1) + enc_labor
-        bd['labor'] = {'base': base_labor, 'extra_amps': extra_amp_labor * max(0, n_amps - 1), 'enclosure': enc_labor}
+        labor = base_labor + extra_amp_labor * max(0, n_amps - 1)
+        bd['labor'] = {'base': base_labor, 'extra_amps': extra_amp_labor * max(0, n_amps - 1)}
         bd['materials_total'] = round(materials, 2)
         bd['priced_at'] = 'reprice'
         installed = round(parts + labor + materials, 2)

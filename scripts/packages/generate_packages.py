@@ -274,7 +274,7 @@ def main():
                     continue
                 amp = cheapest_mono(st["watts"])
                 sub_stages.append(dict(sub=s, align=align, st=st, enc=enc, amp=amp,
-                                       price=s["price"] * SUB_COUNT + enc["mat"] + amp["price"]))
+                                       price=s["price"] * SUB_COUNT + enc["mat"] + enc["labor"] + amp["price"]))
 
         n_combos = n_kept = 0
         for fs_ in stages:
@@ -305,7 +305,10 @@ def main():
                 parts = (ss["price"] + fs_["price"] + (fsub["price"] if fsub else 0.0)
                          + multi["price"] + dspp)
                 n_amps = 2                        # mono + multichannel
-                labor = base_labor + extra_amp_labor * (n_amps - 1) + ss["enc"]["labor"]
+                # Enclosure fabrication is billed on the enclosure line item (below),
+                # not here — a custom box is a system component with a price, not
+                # generic install labor. Keeps every enclosure a non-zero line.
+                labor = base_labor + extra_amp_labor * (n_amps - 1)
                 installed = parts + labor + kit_total
                 comp_slugs = sorted([s["slug"], ss["enc"]["slug"], ss["amp"]["slug"],
                                      fs_["slug"], multi["slug"], dsp_slug] + ([fsub["slug"]] if fsub else []))
@@ -320,13 +323,13 @@ def main():
                 breakdown = {
                     "components": [
                         {"collection": "subwoofers", "slug": s["slug"], "name": f"{s['brand']} {s['model']}", "qty": SUB_COUNT, "unit": s["price"]},
-                        {"collection": "sub_enclosures", "slug": ss["enc"]["slug"], "qty": 1, "unit": ss["enc"]["mat"]},
+                        {"collection": "sub_enclosures", "slug": ss["enc"]["slug"], "qty": 1, "unit": ss["enc"]["mat"] + ss["enc"]["labor"]},
                         {"collection": "mono_amps", "slug": ss["amp"]["slug"], "qty": 1, "unit": ss["amp"]["price"]},
                         {"collection": fs_["collection"], "slug": fs_["slug"], "name": fs_["name"], "qty": 1, "unit": fs_["price"]},
                         {"collection": "multichannel_amps", "slug": multi["slug"], "qty": 1, "unit": multi["price"]},
                         {"collection": "dsp_processors", "slug": dsp_slug, "qty": 1, "unit": dspp},
                     ] + ([{"collection": "front_subs", "slug": fsub["slug"], "name": fsub["name"], "qty": 1, "unit": fsub["price"]}] if fsub else []),
-                    "labor": {"base": base_labor, "extra_amps": extra_amp_labor * (n_amps - 1), "enclosure": ss["enc"]["labor"]},
+                    "labor": {"base": base_labor, "extra_amps": extra_amp_labor * (n_amps - 1)},
                     "materials_kit": kit_lines,
                     "materials_total": round(kit_total, 2),
                     "enclosure_spec": ss["st"]["spec"],

@@ -159,8 +159,10 @@ def main():
         enc_slug, enc_vol, enc_mat, enc_hrs, enc_rate = f['enc']
         enc_labor = enc_hrs * enc_rate
         n_amps = f['mono_count'] + 1
-        labor = base_labor + extra_amp_labor * (n_amps - 1) + enc_labor
-        parts = f['parts']
+        # Enclosure fabrication rides its own line item (materials + build),
+        # not the labor section — every enclosure shows a real price.
+        labor = base_labor + extra_amp_labor * (n_amps - 1)
+        parts = f['parts'] + enc_labor
         installed = parts + labor + default_materials
         breakdown = {
             'components': [
@@ -169,9 +171,9 @@ def main():
                 {'collection': 'multichannel_amps', 'slug': f['multi'][0], 'name': f['multi'][1], 'qty': 1, 'unit': f['multi'][2]},
                 {'collection': 'dsp_processors', 'slug': f['dsp'][0], 'name': f['dsp'][1], 'qty': 1, 'unit': f['dsp'][2] or 0},
                 {'collection': 'component_sets', 'slug': f['fstage'][0], 'name': f['fstage'][1], 'qty': 1, 'unit': f['fstage'][2]},
-                {'collection': 'sub_enclosures', 'slug': enc_slug, 'qty': 1, 'unit': enc_mat},
+                {'collection': 'sub_enclosures', 'slug': enc_slug, 'qty': 1, 'unit': enc_mat + enc_labor},
             ],
-            'labor': {'base': base_labor, 'extra_amps': extra_amp_labor * (n_amps - 1), 'enclosure': enc_labor},
+            'labor': {'base': base_labor, 'extra_amps': extra_amp_labor * (n_amps - 1)},
             'materials_kit': kit_lines,
             'materials_total': round(default_materials, 2),
             'priced_at': 'seed',
