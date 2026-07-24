@@ -97,6 +97,10 @@ SET_COLLECTIONS = [
 
 TOPO_CODE = {"2-way": "2W", "wideband": "WB", "2-way+": "2WP", "3-way+": "3WP", "wideband+": "WBP"}
 CLASS_CODE = {"truck": "TRK", "trunk": "TRN", "cargo": "CGO"}
+# enclosure buckets = the PLP Enclosure column values (customer picks between them)
+BUCKET_LABEL = {"sealed_prefab": "Sealed", "custom_sealed": "Custom Sealed",
+                "ported": "Ported", "trunk_ib": "Trunk IB"}
+BUCKET_CODE = {"sealed_prefab": "SP", "custom_sealed": "SC", "ported": "P", "trunk_ib": "IB"}
 TIER_ORDER = {"entry": 0, "mid": 1, "performance": 2, "reference": 3}
 
 
@@ -124,31 +128,31 @@ def norm_tier(t):
 
 # --------------------------------------------------------------- sub stages
 
-def sealed_stage(row, cap_ft3):
-    """Best sealed box within the class cap. Returns (L, watts, vb_ft3)."""
+def _sealed_at(row, vb_ft3):
+    """Sealed L, watts at a FIXED net volume (used for prefab boxes)."""
     xm = row.get("effective_xmax_mm") or row["xmax_mm"]
+    m = I._sub_margins(row["fs_hz"], row["qts"], row["vas_l"], row["sd_cm2"],
+                       row["rms_watts"], row["sensitivity_db_1w_1m"], vb_ft3 * I.FT3_L, xm)
+    L = min(m[1:])   # 25-63 band ruling
+    fc = row["fs_hz"] * math.sqrt(1 + row["vas_l"] / (vb_ft3 * I.FT3_L))
+    qtc = row["qts"] * math.sqrt(1 + row["vas_l"] / (vb_ft3 * I.FT3_L))
+    W = 0.0
+    for f in I._BAND[1:]:
+        hdb = 20 * math.log10(I.H(f, fc, qtc))
+        W = max(W, 10 ** ((L + I.shape(f) - I.gain(f) - row["sensitivity_db_1w_1m"] - hdb) / 10))
+    return dict(L=round(L, 1), watts=min(W, row["rms_watts"]), vb_ft3=round(vb_ft3, 2), spec=None)
+
+
+def sealed_stage(row, cap_ft3):
+    """Best CUSTOM sealed box (optimal volume) within the class cap."""
     floor = I._VB_FLOOR_EXC.get(row["slug"], I._VB_FLOOR_FT3.get(str(row["driver_size"]).rstrip(".0"), 0.05))
     if floor > cap_ft3:
         return None
     cap_l = min(cap_ft3 * I.FT3_L, 4 * row["vas_l"])
     grid = [v for v in (0.05 * 1.13 ** i for i in range(60))
             if floor <= v and v * I.FT3_L <= cap_l] or [floor]
-
-    def L_of(vb_ft3):
-        m = I._sub_margins(row["fs_hz"], row["qts"], row["vas_l"], row["sd_cm2"],
-                           row["rms_watts"], row["sensitivity_db_1w_1m"], vb_ft3 * I.FT3_L, xm)
-        return min(m[1:])   # 25-63 band ruling
-
-    vb = max(grid, key=L_of)
-    L = L_of(vb)
-    # watts to reach L at the hardest band point (capped at RMS)
-    fc = row["fs_hz"] * math.sqrt(1 + row["vas_l"] / (vb * I.FT3_L))
-    qtc = row["qts"] * math.sqrt(1 + row["vas_l"] / (vb * I.FT3_L))
-    W = 0.0
-    for f in I._BAND[1:]:
-        hdb = 20 * math.log10(I.H(f, fc, qtc))
-        W = max(W, 10 ** ((L + I.shape(f) - I.gain(f) - row["sensitivity_db_1w_1m"] - hdb) / 10))
-    return dict(L=round(L, 1), watts=min(W, row["rms_watts"]), vb_ft3=round(vb, 2), spec=None)
+    vb = max(grid, key=lambda v: _sealed_at(row, v)["L"])
+    return _sealed_at(row, vb)
 
 
 def ported_stage(row, cap_ft3, run_in):
@@ -206,22 +210,22 @@ def main():
                   for r in cur.fetchall()]
     front_subs.sort(key=lambda f: f["price"])
 
-    # Enclosure PRICE is the separate-item cost the customer pays: the box price
-    # for prefabs (materials_cost today), TBD for custom fabricated (0 until the
-    # enclosure collections are priced). labor_hours is a build-time estimate and
-    # is intentionally NOT used for pricing.
-    cur.execute("select slug, type, size, driver_count, coalesce(price,0) from sub_enclosures where slug not like 'zen-%'")
-    enc_rows = {}
-    for slug, etype, size, count, price in cur.fetchall():
-        enc_rows[(etype, str(size), int(count), slug.endswith("-prefab"))] = dict(
-            slug=slug, price=float(price))
-
-    def enclosure(alignment, size):
-        for prefab in ((True, False) if alignment == "sealed" else (False,)):
-            e = enc_rows.get((alignment, str(size), SUB_COUNT, prefab))
-            if e:
-                return e
-        return None
+    # Enclosure PRICE is the separate-item cost the customer pays (0/TBD where the
+    # enclosure collections are not yet priced). Each enclosure is a distinct
+    # OPTION the PLP offers — the generator emits a package for every valid one,
+    # never collapsing to a single choice.
+    cur.execute("select slug, type, construction, size, driver_count, coalesce(price,0), coalesce(volume_cuft,0) from sub_enclosures where slug not like 'zen-%'")
+    fab_sealed, prefab_sealed, fab_ported = {}, {}, {}
+    for slug, etype, constr, size, count, price, vol in cur.fetchall():
+        if int(count) != SUB_COUNT:
+            continue
+        rec = dict(slug=slug, price=float(price), vol=float(vol))
+        if etype == "sealed" and constr == "prefab":
+            prefab_sealed.setdefault(str(size), []).append(rec)      # may be several boxes/size
+        elif etype == "sealed" and constr == "fabricated":
+            fab_sealed[str(size)] = rec
+        elif etype == "ported" and constr == "fabricated":
+            fab_ported[str(size)] = rec
 
     # Installation is ONE flat fee covering the whole install (mono + multichannel
     # amps, DSP, front stage, sub wiring, tune). No per-amp adder.
@@ -269,15 +273,24 @@ def main():
     for cls, cap in CLASS_CAPS_FT3.items():
         sub_stages = []
         for s in subs:
-            for align, st in (("sealed", sealed_stage(s, cap)),
-                              ("ported", ported_stage(s, cap, CLASS_PORT_RUN_IN[cls]))):
-                if not st:
-                    continue
-                enc = enclosure(align, str(s["driver_size"]).rstrip(".0").rstrip("."))
-                if not enc:
-                    continue
+            size = str(s["driver_size"]).rstrip(".0").rstrip(".")
+            # Every valid enclosure OPTION becomes its own sub-stage (the customer
+            # picks between them on the PLP): custom sealed, each prefab sealed box
+            # that fits, and ported. bucket = the PLP Enclosure column value.
+            options = []   # (bucket, bass_alignment, stage_dict, enc_rec)
+            sealed_opt = sealed_stage(s, cap)
+            if sealed_opt:
+                if size in fab_sealed:
+                    options.append(("custom_sealed", "sealed", sealed_opt, fab_sealed[size]))
+                for box in prefab_sealed.get(size, []):
+                    if 0 < box["vol"] <= cap:
+                        options.append(("sealed_prefab", "sealed", _sealed_at(s, box["vol"]), box))
+            ported_opt = ported_stage(s, cap, CLASS_PORT_RUN_IN[cls])
+            if ported_opt and size in fab_ported:
+                options.append(("ported", "ported", ported_opt, fab_ported[size]))
+            for bucket, align, st, enc in options:
                 amp = cheapest_mono(st["watts"])
-                sub_stages.append(dict(sub=s, align=align, st=st, enc=enc, amp=amp,
+                sub_stages.append(dict(sub=s, bucket=bucket, align=align, st=st, enc=enc, amp=amp,
                                        price=s["price"] * SUB_COUNT + enc["price"] + amp["price"]))
 
         n_combos = n_kept = 0
@@ -316,11 +329,11 @@ def main():
                 comp_slugs = sorted([s["slug"], ss["enc"]["slug"], ss["amp"]["slug"],
                                      fs_["slug"], multi["slug"], dsp_slug] + ([fsub["slug"]] if fsub else []))
                 h = hashlib.sha1("|".join(comp_slugs).encode()).hexdigest()[:6].upper()
-                sku = f"{CLASS_CODE[cls]}-{TOPO_CODE[fs_['topology']]}-{ss['align'][0].upper()}-1X{size}-{h}"
+                bucket_label = BUCKET_LABEL[ss["bucket"]]
+                sku = f"{CLASS_CODE[cls]}-{TOPO_CODE[fs_['topology']]}-{BUCKET_CODE[ss['bucket']]}-1X{size}-{h}"
                 tier_label = fs_["tier"].capitalize()
-                display = f"{tier_label} {fs_['topology'].replace('-', '-').title().replace('Way', 'Way')} · 1×{size} {ss['align'].capitalize()}"
-                display = f"{tier_label} {fs_['topology']} · 1×{size} {ss['align'].capitalize()}"
-                summary = (f"{s['brand']} {s['model']} in a {ss['align']} enclosure ({ss['st']['vb_ft3']} ft³) · "
+                display = f"{tier_label} {fs_['topology']} · 1×{size} {bucket_label}"
+                summary = (f"{s['brand']} {s['model']} in a {bucket_label.lower()} enclosure ({ss['st']['vb_ft3']} ft³) · "
                            f"{fs_['name']} front stage" + (f" · {fsub['name']} front sub" if fsub else "") +
                            f" · {'Zapco HB 46 II' if dsp_slug.startswith('zapco') else 'Helix ' + ('DSP.3S' if dsp_slug.endswith('3s') else 'DSP MINI MK2')}")
                 breakdown = {
@@ -346,6 +359,7 @@ def main():
                     dsp_id=dsp_slug, component_set_id=fs_["slug"], set_collection=fs_["collection"],
                     front_sub_id=fsub["slug"] if fsub else None,
                     display_name=display, topology=fs_["topology"], bass_alignment=ss["align"],
+                    enclosure_bucket=ss["bucket"],
                     tier=fs_["tier"], sub_size=size, ceiling_l=min(ss["st"]["L"], L_front),
                     depth_20hz_db=(ss["st"]["spec"] or {}).get("depth_20hz_db"),
                     summary=summary, price_total=round(parts, 2), price_installed=round(installed, 2),
@@ -377,7 +391,8 @@ def main():
         add column if not exists tier varchar(24),
         add column if not exists sub_size varchar(8),
         add column if not exists ceiling_l numeric(6,1),
-        add column if not exists depth_20hz_db numeric(6,1)""")
+        add column if not exists depth_20hz_db numeric(6,1),
+        add column if not exists enclosure_bucket varchar(24)""")
     cur.execute("select sku, ncsw_pick from packages where seed_source=%s and ncsw_pick", (GEN_TAG,))
     old_picks = {r[0] for r in cur.fetchall()}
     new_skus = {r["sku"] for r in rows}
@@ -390,7 +405,7 @@ def main():
         print(f"removed interim seed rows ({cur.rowcount})")
     cols = ["sku", "vehicle_category", "sub_id", "sub_count", "sub_enclosure_id", "mono_amp_id",
             "multichannel_amp_id", "dsp_id", "component_set_id", "set_collection", "front_sub_id",
-            "display_name", "topology", "bass_alignment", "tier", "sub_size", "ceiling_l",
+            "display_name", "topology", "bass_alignment", "enclosure_bucket", "tier", "sub_size", "ceiling_l",
             "depth_20hz_db", "summary", "price_total", "price_installed", "price_breakdown",
             "seed_source", "ncsw_pick"]
     psycopg2.extras.execute_values(

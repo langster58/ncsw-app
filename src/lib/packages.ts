@@ -87,6 +87,9 @@ export type PackageSummary = {
   display_name?: string | null
   topology?: string | null
   bass_alignment?: string | null
+  // enclosure_bucket = the PLP Enclosure column value (customer picks between
+  // every option that fits): 'sealed_prefab' | 'custom_sealed' | 'ported' | 'trunk_ib'.
+  enclosure_bucket?: string | null
   boot_utilization?: string | null
   price_total?: number | null
   price_installed?: number | null
