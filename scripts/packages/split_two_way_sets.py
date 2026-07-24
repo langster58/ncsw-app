@@ -52,21 +52,22 @@ SETS = {
     "Scan-Speak Silver 16W/4531G06 + SEAS": ("curation", ("scanspeak-16w-4531g06", "Scan-Speak", "16W/4531G06", 706.6), SEAS),
     "STEG Master Stroke MSS6 + MSS1": ("curation", ("steg-master-stroke-mss6", "STEG", "Master Stroke MSS6", 999.0), ("steg-master-stroke-mss1m", "STEG", "Master Stroke MSS1M", 679.0)),
     "AudioFrog GB60/GB15": ("curation", ("audiofrog-gb60", "AudioFrog", "GB60", 1299.0), ("audiofrog-gb15", "Audiofrog", "GB15", 569.0)),
-    # ---- product sets (slug null; '*' model = display placeholder) ----
-    "Karma Aspect 6.1": ("product", (None, "Karma", "Aspect 6.5 woofer*", None), (None, "Karma", "Aspect tweeter*", None)),
-    "Audible Physics Avatar 1.6": ("product", (None, "Audible Physics", "Avatar 6", None), (None, "Audible Physics", "Avatar tweeter*", None)),
+    # ---- product sets (slug null; drivers shown asterisked in the PLP) ----
+    # Driver models resolved from spec sheets / manufacturer listings 2026-07-24.
+    # RAM 406 is a single RAM406 midhigh driver; "RAM 6" midbass is a logical
+    # placeholder name (founder-sanctioned) pending the true woofer model.
+    "Karma Aspect 6.1": ("product", (None, "Karma", "Aspect 6", None), (None, "Karma", "Allure 1", None)),
+    "Audible Physics Avatar 1.6": ("product", (None, "Audible Physics", "Avatar 6", None), (None, "Audible Physics", "Avatar 1", None)),
     "Hertz CK 165 L": ("product", (None, "Hertz", "Cento C 165 L", None), (None, "Hertz", "Cento C 26", None)),
-    "Stevens Audio SA6CS": ("product", (None, "Stevens Audio", "SA6 woofer*", None), (None, "Stevens Audio", "SA6 tweeter*", None)),
-    "Focal Flax Evo PS165FXE": ("product", (None, "Focal", "Flax Evo woofer*", None), (None, "Focal", "Flax Evo TNF tweeter*", None)),
-    "Audible Physics RAM 406": ("product", (None, "Audible Physics", "RAM406 Woofer", None), (None, "Audible Physics", "RAM tweeter*", None)),
-    "Audible Physics Monitor 1": ("product", (None, "Audible Physics", "Monitor1 Midwoofer", None), (None, "Audible Physics", "Monitor tweeter*", None)),
+    "Stevens Audio SA6CS": ("product", (None, "Stevens Audio", "SA6", None), (None, "Stevens Audio", "SA6 tweeter", None)),
+    "Focal Flax Evo PS165FXE": ("product", (None, "Focal", "Flax Evo 6.5W", None), (None, "Focal", "TAM", None)),
+    "Audible Physics RAM 406": ("product", (None, "Audible Physics", "RAM 6", None), (None, "Audible Physics", "RAM406", None)),
+    "Audible Physics Monitor 1": ("product", (None, "Audible Physics", "Monitor1 Midwoofer", None), (None, "Audible Physics", "Monitor1", None)),
     "Hertz Mille Legend MLK 165.3": ("product", (None, "Hertz", "Mille Legend ML 165.3", None), (None, "Hertz", "Mille Legend ML 28.3", None)),
-    "Audison Voce II AVK 6.2A": ("product", (None, "Audison", "Voce AV 6.5", None), (None, "Audison", "Voce II tweeter*", None)),
-    "STEG Master Stroke MSS6 + MSS1 ": ("_skip", None, None),  # guard against trailing-space dup
-    "BLAM Live L165P": ("product", (None, "BLAM", "Live L165P woofer*", None), (None, "BLAM", "Live LT 25", None)),
-    "Audible Physics 3DEV": ("product", (None, "Audible Physics", "3DEV woofer*", None), (None, "Audible Physics", "3DEV tweeter*", None)),
-    "Focal K2 Evo ES165KX2E": ("product", (None, "Focal", "K2 Evo woofer*", None), (None, "Focal", "K2 Evo TNF tweeter*", None)),
-    "AudioFrog GB60/GB15 ": ("_skip", None, None),
+    "Audison Voce II AVK 6.2A": ("product", (None, "Audison", "AV 6.5 P II", None), (None, "Audison", "AV 1.1 II", None)),
+    "BLAM Live L165P": ("product", (None, "BLAM", "L165P woofer", None), (None, "BLAM", "LT 25", None)),
+    "Audible Physics 3DEV": ("product", (None, "Audible Physics", "3DEV-BD635", None), (None, "Audible Physics", "3DEV-TW120", None)),
+    "Focal K2 Evo ES165KX2E": ("product", (None, "Focal", "K2 Evo 6.5W", None), (None, "Focal", "FRAK", None)),
     "Hertz Mille Legend MLK 1650.3": ("product", (None, "Hertz", "Mille Legend ML 1650.3", None), (None, "Hertz", "Mille Legend ML 28.3", None)),
 }
 
