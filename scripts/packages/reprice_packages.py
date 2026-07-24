@@ -40,15 +40,14 @@ def main():
 
     def enclosure_price(slug):
         # Separate-item price for the enclosure (box price today; TBD/0 for custom
-        # until priced). labor_hours is a build estimate, not customer price.
-        cur.execute("select coalesce(materials_cost,0) from sub_enclosures where slug=%s", (slug,))
+        # until priced). Reads the dedicated `price` field.
+        cur.execute("select coalesce(price,0) from sub_enclosures where slug=%s", (slug,))
         row = cur.fetchone()
         return float(row[0]) if row else 0.0
 
+    # One flat installation fee for the whole install — no per-amp adder.
     cur.execute("select total_cost from labor_items where slug='labor-base-install'")
     base_labor = float(cur.fetchone()[0])
-    cur.execute("select total_cost from labor_items where slug='labor-extra-amp-install'")
-    extra_amp_labor = float(cur.fetchone()[0])
 
     cur.execute("select id, sku, price_installed, price_breakdown from packages where price_breakdown is not null")
     changed = 0
@@ -56,7 +55,6 @@ def main():
         if isinstance(bd, str):
             bd = json.loads(bd)
         parts = 0.0
-        n_amps = 0
         for line in bd['components']:
             if line['collection'] == 'sub_enclosures':
                 # Enclosure is a separately-priced item; installation is a flat
@@ -73,8 +71,6 @@ def main():
                 break
             line['unit'] = p
             parts += p * line.get('qty', 1)
-            if line['collection'] in ('mono_amps', 'multichannel_amps'):
-                n_amps += line.get('qty', 1)
         if parts is None:
             continue
         materials = 0.0
@@ -83,8 +79,8 @@ def main():
             if p is not None:
                 line['unit'] = p
                 materials += p * line.get('qty', 1)
-        labor = base_labor + extra_amp_labor * max(0, n_amps - 1)
-        bd['labor'] = {'base': base_labor, 'extra_amps': extra_amp_labor * max(0, n_amps - 1)}
+        labor = base_labor
+        bd['labor'] = {'base': base_labor}
         bd['materials_total'] = round(materials, 2)
         bd['priced_at'] = 'reprice'
         installed = round(parts + labor + materials, 2)

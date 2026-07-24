@@ -93,10 +93,10 @@ def main():
         cat['dsp'] = {norm(f'{b} {m}'): (s, f'{b} {m}', None) for s, b, m in cur.fetchall()}
 
     # enclosures: prefer prefab for sealed (entry pricing), fab otherwise
-    cur.execute("select slug, type, size, driver_count, volume_cuft, coalesce(materials_cost,0), coalesce(labor_hours,0), coalesce(labor_rate,100) from sub_enclosures where slug not like 'zen-%'")
+    cur.execute("select slug, type, size, driver_count, volume_cuft, coalesce(price,0) from sub_enclosures where slug not like 'zen-%'")
     enc_rows = {}
-    for slug, etype, size, count, vol, mat, hrs, rate in cur.fetchall():
-        enc_rows[(etype, str(size), int(count), slug.endswith('-prefab'))] = (slug, float(vol or 0), float(mat), float(hrs), float(rate))
+    for slug, etype, size, count, vol, price in cur.fetchall():
+        enc_rows[(etype, str(size), int(count), slug.endswith('-prefab'))] = (slug, float(vol or 0), float(price))
 
     def enclosure(alignment, size, count):
         for prefab in ((True, False) if alignment == 'sealed' else (False,)):
@@ -105,10 +105,9 @@ def main():
                 return hit
         return None
 
+    # One flat installation fee — no per-amp adder.
     cur.execute("select total_cost from labor_items where slug='labor-base-install'")
     base_labor = float(cur.fetchone()[0])
-    cur.execute("select total_cost from labor_items where slug='labor-extra-amp-install'")
-    extra_amp_labor = float(cur.fetchone()[0])
     # Standard install-materials kit: explicit quantities over DB unit costs so
     # material price changes cascade like everything else. Quantities are the
     # interim standard-install assumption; edit here, re-run to reprice.
@@ -156,13 +155,10 @@ def main():
     # ---- expand to (family x fitting class) rows ------------------------------
     inserts = []
     for (tier, alignment, size, count), f in sorted(families.items()):
-        enc_slug, enc_vol, enc_mat, enc_hrs, enc_rate = f['enc']
-        enc_labor = enc_hrs * enc_rate
-        n_amps = f['mono_count'] + 1
-        # Installation is a FLAT fee (base + per-extra-amp). The enclosure is a
-        # separately-priced item (box price today; TBD for custom) — its
-        # build-time labor_hours are NOT charged as labor.
-        labor = base_labor + extra_amp_labor * (n_amps - 1)
+        enc_slug, enc_vol, enc_price = f['enc']
+        # One flat installation fee covers the whole install. The enclosure is a
+        # separately-priced item (box price today; TBD for custom).
+        labor = base_labor
         parts = f['parts']
         installed = parts + labor + default_materials
         breakdown = {
@@ -172,9 +168,9 @@ def main():
                 {'collection': 'multichannel_amps', 'slug': f['multi'][0], 'name': f['multi'][1], 'qty': 1, 'unit': f['multi'][2]},
                 {'collection': 'dsp_processors', 'slug': f['dsp'][0], 'name': f['dsp'][1], 'qty': 1, 'unit': f['dsp'][2] or 0},
                 {'collection': 'component_sets', 'slug': f['fstage'][0], 'name': f['fstage'][1], 'qty': 1, 'unit': f['fstage'][2]},
-                {'collection': 'sub_enclosures', 'slug': enc_slug, 'qty': 1, 'unit': enc_mat},
+                {'collection': 'sub_enclosures', 'slug': enc_slug, 'qty': 1, 'unit': enc_price},
             ],
-            'labor': {'base': base_labor, 'extra_amps': extra_amp_labor * (n_amps - 1)},
+            'labor': {'base': base_labor},
             'materials_kit': kit_lines,
             'materials_total': round(default_materials, 2),
             'priced_at': 'seed',

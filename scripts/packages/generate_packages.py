@@ -210,11 +210,11 @@ def main():
     # for prefabs (materials_cost today), TBD for custom fabricated (0 until the
     # enclosure collections are priced). labor_hours is a build-time estimate and
     # is intentionally NOT used for pricing.
-    cur.execute("select slug, type, size, driver_count, coalesce(materials_cost,0) from sub_enclosures where slug not like 'zen-%'")
+    cur.execute("select slug, type, size, driver_count, coalesce(price,0) from sub_enclosures where slug not like 'zen-%'")
     enc_rows = {}
-    for slug, etype, size, count, mat in cur.fetchall():
+    for slug, etype, size, count, price in cur.fetchall():
         enc_rows[(etype, str(size), int(count), slug.endswith("-prefab"))] = dict(
-            slug=slug, price=float(mat))
+            slug=slug, price=float(price))
 
     def enclosure(alignment, size):
         for prefab in ((True, False) if alignment == "sealed" else (False,)):
@@ -223,10 +223,10 @@ def main():
                 return e
         return None
 
+    # Installation is ONE flat fee covering the whole install (mono + multichannel
+    # amps, DSP, front stage, sub wiring, tune). No per-amp adder.
     cur.execute("select total_cost from labor_items where slug='labor-base-install'")
     base_labor = float(cur.fetchone()[0])
-    cur.execute("select total_cost from labor_items where slug='labor-extra-amp-install'")
-    extra_amp_labor = float(cur.fetchone()[0])
     kit_lines, kit_total = [], 0.0
     for slug, qty in MATERIALS_KIT:
         cur.execute("select line_item, unit_cost from materials where slug=%s", (slug,))
@@ -308,12 +308,10 @@ def main():
                 size = str(s["driver_size"]).rstrip(".0").rstrip(".")
                 parts = (ss["price"] + fs_["price"] + (fsub["price"] if fsub else 0.0)
                          + multi["price"] + dspp)
-                n_amps = 2                        # mono + multichannel
-                # Installation is a FLAT fee (base install + per-extra-amp adder).
-                # Enclosure fabrication is NOT hourly labor — the enclosure is a
-                # separately-priced item (its own line below). labor_hours on the
-                # sub_enclosures rows is a build-time estimate, not customer price.
-                labor = base_labor + extra_amp_labor * (n_amps - 1)
+                # One flat installation fee covers the whole install (both amps,
+                # DSP, front stage, sub). The enclosure is a separately-priced
+                # item on its own line, not install labor.
+                labor = base_labor
                 installed = parts + labor + kit_total
                 comp_slugs = sorted([s["slug"], ss["enc"]["slug"], ss["amp"]["slug"],
                                      fs_["slug"], multi["slug"], dsp_slug] + ([fsub["slug"]] if fsub else []))
@@ -334,7 +332,7 @@ def main():
                         {"collection": "multichannel_amps", "slug": multi["slug"], "qty": 1, "unit": multi["price"]},
                         {"collection": "dsp_processors", "slug": dsp_slug, "qty": 1, "unit": dspp},
                     ] + ([{"collection": "front_subs", "slug": fsub["slug"], "name": fsub["name"], "qty": 1, "unit": fsub["price"]}] if fsub else []),
-                    "labor": {"base": base_labor, "extra_amps": extra_amp_labor * (n_amps - 1)},
+                    "labor": {"base": base_labor},
                     "materials_kit": kit_lines,
                     "materials_total": round(kit_total, 2),
                     "enclosure_spec": ss["st"]["spec"],
