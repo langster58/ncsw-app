@@ -206,11 +206,15 @@ def main():
                   for r in cur.fetchall()]
     front_subs.sort(key=lambda f: f["price"])
 
-    cur.execute("select slug, type, size, driver_count, coalesce(materials_cost,0), coalesce(labor_hours,0), coalesce(labor_rate,100) from sub_enclosures where slug not like 'zen-%'")
+    # Enclosure PRICE is the separate-item cost the customer pays: the box price
+    # for prefabs (materials_cost today), TBD for custom fabricated (0 until the
+    # enclosure collections are priced). labor_hours is a build-time estimate and
+    # is intentionally NOT used for pricing.
+    cur.execute("select slug, type, size, driver_count, coalesce(materials_cost,0) from sub_enclosures where slug not like 'zen-%'")
     enc_rows = {}
-    for slug, etype, size, count, mat, hrs, rate in cur.fetchall():
+    for slug, etype, size, count, mat in cur.fetchall():
         enc_rows[(etype, str(size), int(count), slug.endswith("-prefab"))] = dict(
-            slug=slug, mat=float(mat), labor=float(hrs) * float(rate))
+            slug=slug, price=float(mat))
 
     def enclosure(alignment, size):
         for prefab in ((True, False) if alignment == "sealed" else (False,)):
@@ -274,7 +278,7 @@ def main():
                     continue
                 amp = cheapest_mono(st["watts"])
                 sub_stages.append(dict(sub=s, align=align, st=st, enc=enc, amp=amp,
-                                       price=s["price"] * SUB_COUNT + enc["mat"] + enc["labor"] + amp["price"]))
+                                       price=s["price"] * SUB_COUNT + enc["price"] + amp["price"]))
 
         n_combos = n_kept = 0
         for fs_ in stages:
@@ -305,9 +309,10 @@ def main():
                 parts = (ss["price"] + fs_["price"] + (fsub["price"] if fsub else 0.0)
                          + multi["price"] + dspp)
                 n_amps = 2                        # mono + multichannel
-                # Enclosure fabrication is billed on the enclosure line item (below),
-                # not here — a custom box is a system component with a price, not
-                # generic install labor. Keeps every enclosure a non-zero line.
+                # Installation is a FLAT fee (base install + per-extra-amp adder).
+                # Enclosure fabrication is NOT hourly labor — the enclosure is a
+                # separately-priced item (its own line below). labor_hours on the
+                # sub_enclosures rows is a build-time estimate, not customer price.
                 labor = base_labor + extra_amp_labor * (n_amps - 1)
                 installed = parts + labor + kit_total
                 comp_slugs = sorted([s["slug"], ss["enc"]["slug"], ss["amp"]["slug"],
@@ -323,7 +328,7 @@ def main():
                 breakdown = {
                     "components": [
                         {"collection": "subwoofers", "slug": s["slug"], "name": f"{s['brand']} {s['model']}", "qty": SUB_COUNT, "unit": s["price"]},
-                        {"collection": "sub_enclosures", "slug": ss["enc"]["slug"], "qty": 1, "unit": ss["enc"]["mat"] + ss["enc"]["labor"]},
+                        {"collection": "sub_enclosures", "slug": ss["enc"]["slug"], "qty": 1, "unit": ss["enc"]["price"]},
                         {"collection": "mono_amps", "slug": ss["amp"]["slug"], "qty": 1, "unit": ss["amp"]["price"]},
                         {"collection": fs_["collection"], "slug": fs_["slug"], "name": fs_["name"], "qty": 1, "unit": fs_["price"]},
                         {"collection": "multichannel_amps", "slug": multi["slug"], "qty": 1, "unit": multi["price"]},

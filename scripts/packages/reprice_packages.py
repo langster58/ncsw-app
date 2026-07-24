@@ -38,10 +38,12 @@ def main():
         row = cur.fetchone()
         return float(row[0]) if row and row[0] is not None else None
 
-    def enclosure_lines(slug):
-        cur.execute("select coalesce(materials_cost,0), coalesce(labor_hours,0), coalesce(labor_rate,100) from sub_enclosures where slug=%s", (slug,))
-        mat, hrs, rate = cur.fetchone()
-        return float(mat), float(hrs) * float(rate)
+    def enclosure_price(slug):
+        # Separate-item price for the enclosure (box price today; TBD/0 for custom
+        # until priced). labor_hours is a build estimate, not customer price.
+        cur.execute("select coalesce(materials_cost,0) from sub_enclosures where slug=%s", (slug,))
+        row = cur.fetchone()
+        return float(row[0]) if row else 0.0
 
     cur.execute("select total_cost from labor_items where slug='labor-base-install'")
     base_labor = float(cur.fetchone()[0])
@@ -55,15 +57,14 @@ def main():
             bd = json.loads(bd)
         parts = 0.0
         n_amps = 0
-        enc_labor = 0.0
         for line in bd['components']:
             if line['collection'] == 'sub_enclosures':
-                # Enclosure line carries its FULL cost (materials + fabrication);
-                # the box is a system component with a price, so no enclosure
-                # entry in the labor section (would be a double count).
-                mat, enc_labor = enclosure_lines(line['slug'])
-                line['unit'] = mat + enc_labor
-                parts += mat + enc_labor
+                # Enclosure is a separately-priced item; installation is a flat
+                # fee, so enclosure fabrication is NOT hourly labor. Line carries
+                # the enclosure's own price (box price where set; 0/TBD for custom
+                # until the enclosure collections are priced).
+                line['unit'] = enclosure_price(line['slug'])
+                parts += line['unit']
                 continue
             p = unit_price(line['collection'], line['slug'])
             if p is None:
