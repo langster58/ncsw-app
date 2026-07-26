@@ -46,6 +46,21 @@ EXISTING_VALUE_TOLERANCE_IN = 0.51
 MODEL_EQUIVALENCES = {
     ("Mitsubishi", "Outlander Sport"): ("asx",),
     ("Ford", "Transit Connect"): ("tourneo connect", "grand tourneo connect"),
+    ("Mercedes-Benz", "GLC-Class"): ("glc",),
+    ("Mercedes-Benz", "GLE-Class"): ("gle",),
+    ("Volkswagen", "Golf SportWagen"): ("golf variant",),
+    ("Volkswagen", "Jetta SportWagen"): ("golf variant", "golf 5 variant"),
+}
+
+# These RiDC test years predate the first US row by one year because of the
+# transatlantic model-year boundary or incomplete first-year catalog coverage.
+ONE_YEAR_EARLY_EQUIVALENCES = {
+    ("Audi", "Q5", "2018-2024"),
+    ("Hyundai", "Santa Fe", "2019-2023"),
+    ("Mazda", "3", "2014-2018"),
+    ("Mercedes-Benz", "GLC-Class", "2016-2022"),
+    ("Porsche", "Macan", "2015-2024"),
+    ("Volkswagen", "Jetta SportWagen", "2010-2014"),
 }
 
 # The present vehicle-family data does not distinguish these configurations.
@@ -68,6 +83,13 @@ DEPTH_UNSAFE_FAMILIES = {
         "Pathfinder",
         "SUV / Crossover",
         "2005-2012",
+        "standard",
+    ): "mixed_five_and_seven_seat_depths",
+    (
+        "Mitsubishi",
+        "Outlander",
+        "SUV / Crossover",
+        "2013-2021",
         "standard",
     ): "mixed_five_and_seven_seat_depths",
 }
@@ -163,6 +185,12 @@ def model_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
 def year_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
     test_year = int(observation.get("test_year") or 0)
     if int(family["year_start"]) <= test_year <= int(family["year_end"]):
+        return True
+    if (
+        (family["make"], family["model"], family["generation"])
+        in ONE_YEAR_EARLY_EQUIVALENCES
+        and test_year == int(family["year_start"]) - 1
+    ):
         return True
     return (
         family["make"] == "Mitsubishi"
