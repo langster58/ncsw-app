@@ -2,11 +2,16 @@
 """Find cargo/trunk dimension evidence without using an LLM.
 
 The collector works at the physical-family level:
-    (make, model, body_style, generation)
+    (make, model, body_style, generation, doors)
 
 It reads unresolved families from the live vehicles table, searches Brave once
 per family, fetches only the strongest candidate pages, and extracts short
 verbatim windows around dimension-like text. It never writes to the database.
+
+Door count is a body boundary. When a model-generation contains more than one
+door variant, fetched evidence must state the matching door count before it can
+qualify for review. Unknown and conflicting door counts stay separate rather
+than allowing dimensions to cross physical bodies.
 
 The JSON report is an ephemeral review artifact. Keep it under /tmp unless a
 durable report is explicitly wanted.
@@ -158,14 +163,22 @@ class Family:
     model: str
     body_style: str
     generation: str
+    doors: int | None
     year_start: int
     year_end: int
     vehicle_rows: int
+    door_variant_count: int
 
     @property
     def key(self) -> str:
         return "|".join(
-            (self.make, self.model, self.body_style, self.generation)
+            (
+                self.make,
+                self.model,
+                self.body_style,
+                self.generation,
+                f"{self.doors}-door" if self.doors is not None else "doors-unknown",
+            )
         )
 
 
@@ -179,6 +192,7 @@ class SearchResult:
     search_has_dimensions: bool
     model_match: bool
     year_match: bool | None
+    door_match: bool | None
     body_style_match: bool | None
 
 
@@ -232,16 +246,35 @@ def read_families(limit: int, offset: int, status: str) -> list[Family]:
         )
         cursor.execute(
             f"""
-            select make, model, body_style, generation,
-                   min(year)::int, max(year)::int, count(*)::int
-              from vehicles
-             where body_style <> 'Truck'
-               and {status_clause}
-               and boot_width_in is null
-               and boot_depth_in is null
-               and boot_height_in is null
-             group by make, model, body_style, generation
-             order by count(*) desc, make, model, generation
+            with door_variants as (
+                select make, model, body_style, generation,
+                       count(distinct coalesce(doors, -1))::int
+                           as door_variant_count
+                  from vehicles
+                 where body_style <> 'Truck'
+                 group by make, model, body_style, generation
+            ),
+            unresolved as (
+                select make, model, body_style, generation, doors,
+                       min(year)::int as year_start,
+                       max(year)::int as year_end,
+                       count(*)::int as vehicle_rows
+                  from vehicles
+                 where body_style <> 'Truck'
+                   and {status_clause}
+                   and boot_width_in is null
+                   and boot_depth_in is null
+                   and boot_height_in is null
+                 group by make, model, body_style, generation, doors
+            )
+            select u.make, u.model, u.body_style, u.generation, u.doors,
+                   u.year_start, u.year_end, u.vehicle_rows,
+                   d.door_variant_count
+              from unresolved u
+              join door_variants d
+                using (make, model, body_style, generation)
+             order by u.vehicle_rows desc, u.make, u.model, u.generation,
+                      u.doors nulls last
              limit %s offset %s
             """,
             (limit, offset),
@@ -299,6 +332,7 @@ def family_domain_hints(
 def build_query(family: Family, domain_hint: str | None = None) -> str:
     area = "trunk" if family.body_style in TRUNK_STYLES else "cargo area"
     representative_year = family.year_start
+    doors = f'"{family.doors}-door" ' if family.doors is not None else ""
     if domain_hint:
         target = (
             "trunk dimensions size"
@@ -307,7 +341,7 @@ def build_query(family: Family, domain_hint: str | None = None) -> str:
         )
         return (
             f"site:{domain_hint} {representative_year} "
-            f"{family.make} {family.model} "
+            f"{family.make} {family.model} {doors}"
             f"{target} measurements"
         )
     target = (
@@ -316,7 +350,7 @@ def build_query(family: Family, domain_hint: str | None = None) -> str:
         else '"cargo dimensions" OR "cargo area measurements"'
     )
     return (
-        f'"{representative_year} {family.make} {family.model}" '
+        f'"{representative_year} {family.make} {family.model}" {doors}'
         f"({target}) forum"
     )
 
@@ -414,6 +448,32 @@ def year_match(family: Family, text: str) -> bool | None:
     return any(family.year_start <= year <= family.year_end for year in years)
 
 
+def mentioned_door_counts(text: str) -> set[int]:
+    words = {
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+    }
+    found: set[int] = set()
+    for value in re.findall(
+        r"\b(2|3|4|5|two|three|four|five)[ -]?door\b",
+        text,
+        flags=re.I,
+    ):
+        lower = value.lower()
+        found.add(words.get(lower, int(lower) if lower.isdigit() else -1))
+    found.discard(-1)
+    return found
+
+
+def door_match(family: Family, text: str) -> bool | None:
+    mentioned = mentioned_door_counts(text)
+    if not mentioned or family.doors is None:
+        return None
+    return family.doors in mentioned
+
+
 def body_style_match(family: Family, title: str) -> bool | None:
     style_terms = {
         "Sedan": {"sedan", "saloon"},
@@ -447,8 +507,13 @@ def score_result(
     text = f"{title} {description}"
     lower = text.lower()
     years_compatible = year_match(family, text)
+    doors_compatible = door_match(family, text)
     style_compatible = body_style_match(family, title)
-    if years_compatible is False or style_compatible is False:
+    if (
+        years_compatible is False
+        or doors_compatible is False
+        or style_compatible is False
+    ):
         return -100
     if family.model.lower() not in lower:
         return -100
@@ -462,6 +527,8 @@ def score_result(
     if family.model.lower() in lower:
         score += 2
     if years_compatible:
+        score += 2
+    if doors_compatible:
         score += 2
     if any(fragment in host for fragment in PREFERRED_HOST_FRAGMENTS):
         score += 3
@@ -547,6 +614,7 @@ def brave_search(
                 model_match=family.model.lower()
                 in f"{title} {description}".lower(),
                 year_match=year_match(family, f"{title} {description}"),
+                door_match=door_match(family, f"{title} {description}"),
                 body_style_match=body_style_match(family, title),
             )
         )
@@ -692,6 +760,11 @@ def page_identity_qualified(
         return False
     if year_match(family, identity_text) is not True:
         return False
+    doors_compatible = door_match(family, identity_text)
+    if doors_compatible is False:
+        return False
+    if family.door_variant_count > 1 and doors_compatible is not True:
+        return False
     if body_style_match(family, page["title"]) is False:
         return False
     return True
@@ -707,7 +780,15 @@ def run_self_test() -> None:
     windows = evidence_windows(sample)
     assert windows and "42 inches" in windows[0]
     family = Family(
-        "Example", "Model", "SUV / Crossover", "2018-2024", 2018, 2024, 10
+        "Example",
+        "Model",
+        "SUV / Crossover",
+        "2018-2024",
+        4,
+        2018,
+        2024,
+        10,
+        2,
     )
     good = score_result(
         family,
@@ -724,6 +805,10 @@ def run_self_test() -> None:
     assert good > 5
     assert bad < 0
     assert "trunk" not in build_query(family)
+    assert '"4-door"' in build_query(family)
+    assert door_match(family, "Measured a four-door model.") is True
+    assert door_match(family, "Measured a two-door model.") is False
+    assert door_match(family, "No door count stated.") is None
     assert build_query(family, "example.com").startswith("site:example.com")
     print("self-test: ok")
 
