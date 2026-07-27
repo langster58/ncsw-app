@@ -177,6 +177,9 @@ export async function collectStylePages(
   options = {},
 ) {
   const limit = Number(options.limit || 40);
+  const maxStylesPerFamily = Number(
+    options.maxStylesPerFamily || Number.POSITIVE_INFINITY,
+  );
   const concurrency = Math.max(1, Math.min(4, Number(options.concurrency || 1)));
   const observations = await loadPayload(observationsPath, {
     schema_version: 1,
@@ -188,10 +191,16 @@ export async function collectStylePages(
     observations.pages.map((page) => `${page.family_key}|${page.target_url}`),
   );
   const targets = [];
+  const selectedPerFamily = new Map();
   for (const page of observations.pages) {
     if (
       page.status !== "ok" ||
       (familyKeys.size && !familyKeys.has(page.family_key))
+    ) {
+      continue;
+    }
+    if (
+      (selectedPerFamily.get(page.family_key) || 0) >= maxStylesPerFamily
     ) {
       continue;
     }
@@ -205,6 +214,15 @@ export async function collectStylePages(
         style_name: style.style_name,
       });
       existing.add(key);
+      selectedPerFamily.set(
+        page.family_key,
+        (selectedPerFamily.get(page.family_key) || 0) + 1,
+      );
+      if (
+        (selectedPerFamily.get(page.family_key) || 0) >= maxStylesPerFamily
+      ) {
+        break;
+      }
       if (targets.length >= limit) break;
     }
     if (targets.length >= limit) break;
