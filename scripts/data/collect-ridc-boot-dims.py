@@ -8,10 +8,9 @@ fields needed here directly:
 * Width of boot floor at narrowest point
 * Length of boot floor - back row of seats upright
 
-RiDC blocks automated HTTP/browser collection with a Cloudflare challenge.
-Retrieval therefore happens through the platform's normal web-search tool,
-which can return the complete indexed fact sheet. This script validates the
-small structured observation produced from that page, matches it to a physical
+RiDC protects its site with a Cloudflare challenge. Retrieval therefore happens
+through a user-verified Chrome session and ``ridc-browser-collector.mjs``. This
+script validates those structured observations, matches them to a physical
 US-market family, converts millimetres to inches, and performs guarded bulk
 updates. It never treats a search-result snippet as evidence.
 
@@ -38,7 +37,15 @@ database_connection = SHARED["database_connection"]
 
 WIDTH_LABEL = "Width of boot floor at narrowest point"
 DEPTH_LABEL = "Length of boot floor - back row of seats upright"
-SUPPORTED_BODY_STYLES = {"SUV / Crossover", "Minivan", "Wagon", "Hatchback"}
+SUPPORTED_BODY_STYLES = {
+    "Sedan",
+    "SUV / Crossover",
+    "Coupe",
+    "Convertible",
+    "Hatchback",
+    "Wagon",
+    "Minivan",
+}
 AGREEMENT_TOLERANCE_MM = 13
 EXISTING_VALUE_TOLERANCE_IN = 0.51
 
@@ -79,6 +86,13 @@ UNSAFE_FAMILIES = {
 # the five- and seven-seat versions inside this family.
 DEPTH_UNSAFE_FAMILIES = {
     (
+        "Kia",
+        "Sorento",
+        "SUV / Crossover",
+        "2010-2014",
+        "standard",
+    ): "mixed_five_and_seven_seat_depths",
+    (
         "Nissan",
         "Pathfinder",
         "SUV / Crossover",
@@ -92,10 +106,27 @@ DEPTH_UNSAFE_FAMILIES = {
         "2013-2021",
         "standard",
     ): "mixed_five_and_seven_seat_depths",
+    (
+        "Tesla",
+        "Model X",
+        "SUV / Crossover",
+        "2016-2026",
+        "standard",
+    ): "mixed_five_six_and_seven_seat_depths",
+    (
+        "Tesla",
+        "Model Y",
+        "SUV / Crossover",
+        "2020-2026",
+        "standard",
+    ): "mixed_five_and_seven_seat_depths",
 }
 
 BODY_TYPE_COMPATIBILITY = {
+    "Sedan": {"saloon"},
     "SUV / Crossover": {"4x4", "saloon", "mpv"},
+    "Coupe": {"coupe"},
+    "Convertible": {"convertible"},
     "Minivan": {"mpv", "estate", "saloon"},
     "Wagon": {"estate"},
     "Hatchback": {"hatch"},
@@ -176,10 +207,42 @@ def model_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
         return False
     title = normalize(observation.get("title", ""))
     model = normalize(family["model"])
+    if model.isdigit():
+        make = normalize(family["make"])
+        return bool(
+            re.search(
+                rf"\b{re.escape(make)}\s+{re.escape(model)}\b",
+                title,
+            )
+        )
     if re.search(rf"\b{re.escape(model)}\b", title):
         return True
     aliases = MODEL_EQUIVALENCES.get((family["make"], family["model"]), ())
-    return any(re.search(rf"\b{re.escape(alias)}\b", title) for alias in aliases)
+    if any(re.search(rf"\b{re.escape(alias)}\b", title) for alias in aliases):
+        return True
+
+    # RiDC commonly labels BMWs by the three-digit derivative rather than the
+    # US catalog's series name (for example, 320d versus 3 Series).
+    if normalize(family["make"]) == "bmw":
+        series_match = re.fullmatch(
+            r"([1-8]) series(?: (gran coupe|gran turismo))?",
+            model,
+        )
+        if series_match:
+            digit, derivative = series_match.groups()
+            if not re.search(rf"\b{digit}\d{{2}}[a-z]*\b", title):
+                return False
+            if derivative:
+                return derivative in title
+            return "gran coupe" not in title and "gran turismo" not in title
+
+    # The same issue occurs for Mercedes classes (C 220 versus C-Class).
+    if normalize(family["make"]) == "mercedes benz" and model.endswith(" class"):
+        code = model.removesuffix(" class")
+        return bool(
+            re.search(rf"\b{re.escape(code)}\s*\d{{2,3}}[a-z]*\b", title)
+        )
+    return False
 
 
 def year_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
@@ -205,6 +268,14 @@ def variant_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool
         family.get("variant") or family.get("cargo_body_variant") or "standard"
     )
     title = normalize(observation.get("title", ""))
+    model = normalize(family["model"])
+    if (
+        family["body_style"] == "SUV / Crossover"
+        and "sportback" in title
+        and "sportback" not in model
+        and "coupe" not in model
+    ):
+        return False
     if variant == "standard":
         return True
     if "unlimited" in variant and "unlimited" not in title:
@@ -279,8 +350,14 @@ def build_review(
     for key, family in lookup.items():
         usable = [item for item in by_family.get(key, []) if item["accepted"]]
         unsafe_reason = UNSAFE_FAMILIES.get(family_tuple(family))
-        if not usable or unsafe_reason:
-            reasons = [unsafe_reason] if unsafe_reason else ["no_usable_fact_sheet"]
+        closed_no_data = bool(family.get("closed_no_data"))
+        if not usable or unsafe_reason or closed_no_data:
+            if closed_no_data:
+                reasons = ["closed_no_data"]
+            elif unsafe_reason:
+                reasons = [unsafe_reason]
+            else:
+                reasons = ["no_usable_fact_sheet"]
             decisions.append(
                 {
                     "family_key": key,
@@ -567,6 +644,20 @@ def run_self_test() -> None:
     assert millimetres("940mm") == 940
     assert consistent([1126, 1127, 1130])
     assert not consistent([1126, 900])
+    bmw_family = {**family, "make": "BMW", "model": "3 Series"}
+    bmw_observation = {**observation, "make": "BMW", "title": "BMW 320d 4dr saloon"}
+    assert model_matches(bmw_family, bmw_observation)
+    mercedes_family = {
+        **family,
+        "make": "Mercedes-Benz",
+        "model": "C-Class",
+    }
+    mercedes_observation = {
+        **observation,
+        "make": "Mercedes Benz",
+        "title": "Mercedes Benz C180T 5dr estate",
+    }
+    assert model_matches(mercedes_family, mercedes_observation)
     print("self-test: ok")
 
 
