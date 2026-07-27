@@ -230,7 +230,10 @@ def model_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
         )
         if series_match:
             digit, derivative = series_match.groups()
-            if not re.search(rf"\b{digit}\d{{2}}[a-z]*\b", title):
+            if not re.search(
+                rf"^(?:bmw )?{digit}(?:\d{{2}}[a-z]*|er)\b",
+                title,
+            ):
                 return False
             if derivative:
                 return derivative in title
@@ -368,58 +371,78 @@ def build_review(
             )
             continue
 
-        widths = [millimetres(item["width_mm"]) for item in usable]
-        depths = [millimetres(item["depth_mm"]) for item in usable]
-        width_values = [value for value in widths if value is not None]
-        depth_values = [value for value in depths if value is not None]
+        width_items = [
+            (millimetres(item["width_mm"]), item)
+            for item in usable
+            if millimetres(item["width_mm"]) is not None
+        ]
+        depth_items = [
+            (millimetres(item["depth_mm"]), item)
+            for item in usable
+            if millimetres(item["depth_mm"]) is not None
+        ]
+        width_values = [value for value, _ in width_items]
+        depth_values = [value for value, _ in depth_items]
         reasons = []
-        width_ok = consistent(width_values)
-        depth_ok = consistent(depth_values)
-        if not width_ok:
-            reasons.append("width_conflict")
-        if not depth_ok:
-            reasons.append("depth_conflict")
+        width_ok = bool(width_values)
+        depth_ok = bool(depth_values)
+        if width_ok and not consistent(width_values):
+            reasons.append("width_variation_used_conservative_minimum")
+        if depth_ok and not consistent(depth_values):
+            reasons.append("depth_variation_used_conservative_minimum")
         depth_unsafe = DEPTH_UNSAFE_FAMILIES.get(family_tuple(family))
         if depth_unsafe:
             depth_ok = False
             reasons.append(depth_unsafe)
 
-        representative_year = min(int(family["year_end"]), 2026)
-        best = min(
-            usable,
-            key=lambda item: (
-                abs(int(item["test_year"]) - representative_year),
-                -int(item["test_year"]),
-            ),
-        )
         width = None
         depth = None
         if family.get("width_missing", True) and width_ok:
-            width_mm = millimetres(best["width_mm"])
+            width_mm, width_source = min(width_items, key=lambda pair: pair[0])
             width = {
                 "label": WIDTH_LABEL,
                 "value_mm": width_mm,
                 "value_in": inches_from_mm(width_mm),
+                "source_url": width_source["source_url"],
+                "source_title": width_source["title"],
+                "test_year": width_source["test_year"],
             }
         if family.get("depth_missing", True) and depth_ok:
-            depth_mm = millimetres(best["depth_mm"])
+            depth_mm, depth_source = min(depth_items, key=lambda pair: pair[0])
             depth = {
                 "label": DEPTH_LABEL,
                 "value_mm": depth_mm,
                 "value_in": inches_from_mm(depth_mm),
+                "source_url": depth_source["source_url"],
+                "source_title": depth_source["title"],
+                "test_year": depth_source["test_year"],
             }
         quotes = []
         for selected in (width, depth):
             if selected:
                 quotes.append(f"{selected['label']}: {selected['value_mm']:g}mm")
+        selected_sources = [
+            selected
+            for selected in (width, depth)
+            if selected
+        ]
+        source_urls = list(
+            dict.fromkeys(selected["source_url"] for selected in selected_sources)
+        )
+        source_titles = list(
+            dict.fromkeys(selected["source_title"] for selected in selected_sources)
+        )
+        test_years = list(
+            dict.fromkeys(selected["test_year"] for selected in selected_sources)
+        )
         decisions.append(
             {
                 "family_key": key,
                 "family": family,
                 "accepted": bool(width or depth),
-                "source_url": best["source_url"],
-                "source_title": best["title"],
-                "test_year": best["test_year"],
+                "source_url": " | ".join(source_urls),
+                "source_title": " | ".join(source_titles),
+                "test_year": " | ".join(str(year) for year in test_years),
                 "width": width,
                 "depth": depth,
                 "quotes": quotes,
