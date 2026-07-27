@@ -105,17 +105,6 @@ def body_matches(family: dict[str, Any], observation: dict[str, Any]) -> bool:
     return body_type in BODY_TYPE_COMPATIBILITY.get(family["body_style"], set())
 
 
-def candidate_matches(
-    family: dict[str, Any], observation: dict[str, Any]
-) -> bool:
-    return (
-        model_matches(family, observation)
-        and year_matches(family, observation)
-        and body_matches(family, observation)
-        and variant_matches(family, observation)
-    )
-
-
 def most_specific_candidate(
     candidates: list[dict[str, Any]],
     observation: dict[str, Any],
@@ -164,10 +153,29 @@ def match(
             normalize(str(observation.get("make") or "")),
             [],
         )
-        candidates = [
+        model_candidates = [
             family
             for family in make_families
-            if candidate_matches(family, observation)
+            if model_matches(family, observation)
+        ]
+        if model_candidates:
+            longest_model = max(
+                len(normalize(family["model"]))
+                for family in model_candidates
+            )
+            model_candidates = [
+                family
+                for family in model_candidates
+                if len(normalize(family["model"])) == longest_model
+            ]
+        candidates = [
+            family
+            for family in model_candidates
+            if (
+                year_matches(family, observation)
+                and body_matches(family, observation)
+                and variant_matches(family, observation)
+            )
         ]
         selected = most_specific_candidate(candidates, observation)
         if selected:
