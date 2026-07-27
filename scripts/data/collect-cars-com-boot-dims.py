@@ -48,7 +48,15 @@ WIDTH_LABEL_PRIORITY = (
     "Interior cargo area min width",
     "Cargo Box Width @ Floor",
 )
-SUPPORTED_BODY_STYLES = {"SUV / Crossover", "Minivan", "Wagon", "Hatchback"}
+SUPPORTED_BODY_STYLES = {
+    "Sedan",
+    "SUV / Crossover",
+    "Coupe",
+    "Convertible",
+    "Hatchback",
+    "Wagon",
+    "Minivan",
+}
 MAX_SEATS_UP_DEPTH_IN = 55
 EXISTING_VALUE_TOLERANCE_IN = 0.51
 NUMBER_WITH_INCHES = re.compile(
@@ -241,6 +249,11 @@ def style_matches_family(
         if any(re.search(rf"\b{re.escape(term)}\b", style) for term in terms)
     }
     expected_style = family["body_style"]
+    if (
+        expected_style in {"Sedan", "Coupe", "Convertible"}
+        and expected_style not in mentioned_styles
+    ):
+        return False
     if mentioned_styles and expected_style not in mentioned_styles:
         return False
     if (
@@ -688,6 +701,25 @@ def run_self_test() -> None:
     )
     assert two_row_six_passenger["value_in"] == 52
     assert two_row_six_passenger["seat_row"] == 2
+    sedan_family = Family(
+        make="Subaru",
+        model="Impreza",
+        body_style="Sedan",
+        generation="2001-2007",
+        cargo_body_variant="standard",
+        year_start=2001,
+        year_end=2007,
+        vehicle_rows=5,
+        body_style_variant_count=1,
+    )
+    assert not style_matches_family(
+        asdict(sedan_family),
+        {"style_name": "4dr H4 MT i", "body_type": None, "title": ""},
+    )
+    assert style_matches_family(
+        asdict(sedan_family),
+        {"style_name": "4dr Sedan H4 MT i", "body_type": None, "title": ""},
+    )
     assert select_width({"Cargo Area Width @ Beltline": "59 in"}) is None
     assert numeric_inches("N/A") is None
     print("self-test: ok")
