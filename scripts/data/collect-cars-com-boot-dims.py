@@ -51,9 +51,6 @@ WIDTH_LABEL_PRIORITY = (
 SUPPORTED_BODY_STYLES = {"SUV / Crossover", "Minivan", "Wagon", "Hatchback"}
 MAX_SEATS_UP_DEPTH_IN = 55
 EXISTING_VALUE_TOLERANCE_IN = 0.51
-DEPTH_LABELS = tuple(
-    f"Cargo Area Length @ Floor to Seat {row}" for row in range(5, 1, -1)
-)
 NUMBER_WITH_INCHES = re.compile(
     r"^\s*(?P<value>\d{1,3}(?:\.\d+)?)\s*(?:in\.?|inches?|[\"”])\s*$",
     re.I,
@@ -169,12 +166,20 @@ def select_depth(measurements: dict[str, Any]) -> dict[str, Any] | None:
     capacity_value = measurements.get("Passenger Capacity")
     capacity_match = re.search(r"\d+", str(capacity_value or ""))
     capacity = int(capacity_match.group()) if capacity_match else None
-    expected_row = 3 if capacity and capacity > 5 else 2 if capacity else None
-    labels = (
-        (f"Cargo Area Length @ Floor to Seat {expected_row}",)
-        if expected_row
-        else DEPTH_LABELS
+    third_row_labels = (
+        "Cargo Area Length @ Floor to Seat 3",
+        "Cargo Volume to Seat 3",
+        "Third Head Room",
+        "Third Hip Room",
+        "Third Leg Room",
+        "Third Shoulder Room",
     )
+    has_third_row = any(
+        re.search(r"\d", str(measurements.get(label) or ""))
+        for label in third_row_labels
+    )
+    expected_row = 3 if has_third_row else 2
+    labels = (f"Cargo Area Length @ Floor to Seat {expected_row}",)
     for label in labels:
         value = numeric_inches(measurements.get(label))
         if value is not None and 8 <= value <= 90:
@@ -668,10 +673,21 @@ def run_self_test() -> None:
             {
                 "Passenger Capacity": "7",
                 "Cargo Area Length @ Floor to Seat 2": "50 in",
+                "Cargo Volume to Seat 3": "18 ft³",
             }
         )
         is None
     )
+    two_row_six_passenger = select_depth(
+        {
+            "Passenger Capacity": "6",
+            "Cargo Area Length @ Floor to Seat 2": "52 in",
+            "Cargo Area Length @ Floor to Seat 3": "Not Available in",
+            "Cargo Volume to Seat 3": "Not Available ft³",
+        }
+    )
+    assert two_row_six_passenger["value_in"] == 52
+    assert two_row_six_passenger["seat_row"] == 2
     assert select_width({"Cargo Area Width @ Beltline": "59 in"}) is None
     assert numeric_inches("N/A") is None
     print("self-test: ok")
