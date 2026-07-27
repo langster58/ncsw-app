@@ -65,6 +65,7 @@ HEADER_LABELS = {
 # US-market vehicles table, even though the make/model strings overlap.
 MARKET_BODY_EXCLUSIONS = {
     ("Ford", "Explorer"),
+    ("Volkswagen", "ID. Buzz"),
 }
 MARKET_GENERATION_EXCLUSIONS = {
     ("Honda", "HR-V", "2023-2027"),
@@ -83,6 +84,24 @@ MAKE_ALIASES = {
     "Mini": ("mini",),
     "Volkswagen": ("volkswagen", "vw"),
     "Land Rover": ("land rover", "range rover"),
+}
+MODEL_ALIASES = {
+    ("Audi", "Q4 e-tron"): ("q4",),
+    ("Lexus", "RZ"): ("rz", "rz550e"),
+    ("Mercedes-Benz", "CLA-Class"): ("cla",),
+    ("Toyota", "RAV4 Hybrid"): ("rav4",),
+}
+SOURCE_YEAR_OVERRIDES = {
+    # Auto Express tested the new electric CLA shortly before its 2026
+    # US-market model year began.
+    ("Mercedes-Benz", "CLA-Class"): (
+        re.compile(r"\bMercedes CLA 250\+", re.I),
+        2026,
+    ),
+}
+CARGO_FAMILY_EQUIVALENCE = {
+    # The 2026 Q4 e-tron is a continuation of the same first-generation body.
+    ("Audi", "Q4 e-tron", "2022-2025"): ("2026-2026",),
 }
 
 WAGON_HINTS = (" estate", " touring", " avant", " sport turismo", " wagon")
@@ -302,11 +321,35 @@ def numbers(value: str) -> list[float]:
 
 
 def table_header(rows: list[list[str]]) -> list[str] | None:
-    for row in rows:
+    for index, row in enumerate(rows):
         if len(row) < 2:
             continue
         label = normalize(row[0])
         if label in HEADER_LABELS:
+            # Newer comparison tables often put the actual model names in an
+            # unlabeled row immediately above "Our choice"; that second row
+            # contains trims only. Preserve both pieces of context.
+            model_row = next(
+                (
+                    candidate
+                    for candidate in reversed(rows[:index])
+                    if len(candidate) == len(row)
+                    and not normalize(candidate[0])
+                    and all(candidate[column] for column in range(1, len(row)))
+                ),
+                None,
+            )
+            if model_row:
+                merged = [row[0]]
+                for column in range(1, len(row)):
+                    model = model_row[column]
+                    trim = row[column]
+                    merged.append(
+                        model
+                        if not trim or normalize(trim) in normalize(model)
+                        else f"{model} {trim}"
+                    )
+                return merged
             return row
     return None
 
@@ -447,6 +490,9 @@ def family_matches_label(
     title: str,
     article_year: int,
 ) -> bool:
+    override = SOURCE_YEAR_OVERRIDES.get((family.make, family.model))
+    if override and override[0].search(label):
+        article_year = override[1]
     start, end = family.generation_years
     if not start <= article_year <= end:
         return False
@@ -468,7 +514,19 @@ def family_matches_label(
     make_aliases = MAKE_ALIASES.get(family.make, (normalize(family.make),))
     if not any(contains_phrase(label_text, alias) for alias in make_aliases):
         return False
-    if not contains_phrase(label_text, normalize(family.model)):
+    if normalize(family.model).isdigit() and not any(
+        contains_phrase(
+            label_text,
+            normalize(f"{alias} {family.model}"),
+        )
+        for alias in make_aliases
+    ):
+        return False
+    model_aliases = MODEL_ALIASES.get(
+        (family.make, family.model),
+        (normalize(family.model),),
+    )
+    if not any(contains_phrase(label_text, alias) for alias in model_aliases):
         return False
 
     body_style = inferred_body_style(f"{label} {title}")
@@ -588,6 +646,40 @@ def collect(
                         "published": page.get("published"),
                         "title": page.get("title"),
                     }
+                )
+
+    for source_key, equivalent_generations in CARGO_FAMILY_EQUIVALENCE.items():
+        source_family = next(
+            (
+                family
+                for family in families
+                if (
+                    family.make,
+                    family.model,
+                    family.generation,
+                ) == source_key
+            ),
+            None,
+        )
+        if source_family is None or source_family.key not in options:
+            continue
+        for generation in equivalent_generations:
+            equivalent = next(
+                (
+                    family
+                    for family in families
+                    if family.make == source_family.make
+                    and family.model == source_family.model
+                    and family.body_style == source_family.body_style
+                    and family.cargo_body_variant
+                    == source_family.cargo_body_variant
+                    and family.generation == generation
+                ),
+                None,
+            )
+            if equivalent is not None:
+                options.setdefault(equivalent.key, []).extend(
+                    options[source_family.key]
                 )
 
     decisions: list[dict[str, Any]] = []
@@ -794,6 +886,16 @@ def self_test() -> None:
     result = parse_measurements(ranged)
     assert result[0].depth_mm == 964
     assert result[0].width_mm == 970
+    split_header = """
+    <table>
+      <tr><td></td><td>Mercedes CLA 250+</td><td>Tesla Model 3</td></tr>
+      <tr><td>Our choice</td><td>AMG Line Premium</td><td>Long Range RWD</td></tr>
+      <tr><td>Boot length/width</td><td>1,034/995mm</td><td>1,075/945mm</td></tr>
+    </table>
+    """
+    result = parse_measurements(split_header)
+    assert result[0].model_label == "Mercedes CLA 250+ AMG Line Premium"
+    assert result[1].model_label == "Tesla Model 3 Long Range RWD"
     assert not plausible(8895, 1015)
     print("self-test passed")
 
