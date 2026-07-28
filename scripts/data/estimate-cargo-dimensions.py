@@ -25,7 +25,7 @@ import argparse
 import itertools
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import median
 
@@ -40,6 +40,139 @@ HEIGHT_BY_BODY_STYLE = {
     "Sedan": 19.0,
     "SUV / Crossover": 23.0,
     "Wagon": 23.0,
+}
+
+# Hand-reviewed corrections for partial families where the generic nearest
+# neighbor is visibly the wrong physical comparison. A None value preserves
+# the already sourced dimension.
+PARTIAL_OVERRIDES = {
+    (
+        "GMC",
+        "Yukon",
+        "SUV / Crossover",
+        "2007-2014",
+        "standard",
+    ): (
+        49.0,
+        None,
+        "Same GMT900 wheelhouse geometry as adjacent Yukon and Tahoe "
+        "generations, which consistently report 49 inches between the "
+        "wheelhousings.",
+    ),
+    (
+        "GMC",
+        "Yukon XL",
+        "SUV / Crossover",
+        "2007-2014",
+        "standard",
+    ): (
+        49.0,
+        None,
+        "Same GMT900 extended-body cargo shell as the Chevrolet Suburban; "
+        "the source-backed 2001-2006 and 2015-2020 Suburban families both "
+        "report 49 inches between the wheelhousings.",
+    ),
+    (
+        "Isuzu",
+        "Rodeo",
+        "SUV / Crossover",
+        "1991-1997",
+        "standard",
+    ): (
+        40.0,
+        None,
+        "Same-era Isuzu Trooper physical analog; its source-backed cargo "
+        "floor is 40 W x 35 D inches.",
+    ),
+    (
+        "Isuzu",
+        "Rodeo",
+        "SUV / Crossover",
+        "1998-2004",
+        "standard",
+    ): (
+        40.0,
+        None,
+        "Same-era Isuzu Trooper physical analog; its source-backed cargo "
+        "floor is 40 W x 35 D inches.",
+    ),
+    (
+        "Jeep",
+        "Grand Cherokee L",
+        "SUV / Crossover",
+        "2021-2027",
+        "standard",
+    ): (
+        44.0,
+        19.0,
+        "Three-row midsize analog: the source-backed 2023-2026 Honda Pilot "
+        "cargo floor is 44 W x 19 D inches behind the upright third row. "
+        "This replaces the prior seats-down Grand Cherokee L depth.",
+    ),
+    (
+        "Jeep",
+        "Patriot",
+        "SUV / Crossover",
+        "2007-2017",
+        "standard",
+    ): (
+        None,
+        32.0,
+        "Same-width Jeep Compass analog: the source-backed Compass cargo "
+        "floor is 38.1 W x 32.2 D inches.",
+    ),
+    (
+        "Nissan",
+        "Armada",
+        "SUV / Crossover",
+        "2025-2027",
+        "standard",
+    ): (
+        None,
+        20.0,
+        "The 2025 Armada has 20.4 cu ft behind its upright third row; a "
+        "20-inch working depth is consistent with the preceding Armada's "
+        "owner-measured 20.3-inch cargo floor.",
+    ),
+    (
+        "Nissan",
+        "Murano",
+        "SUV / Crossover",
+        "2008-2014",
+        "standard",
+    ): (
+        45.0,
+        None,
+        "Cars.com reports 45 inches between the wheelhousings for the 2014 "
+        "Murano: https://www.cars.com/research/compare/?vehicles="
+        "nissan-murano-2014%2Cnissan-murano-2015",
+    ),
+    (
+        "Nissan",
+        "Murano CrossCabriolet",
+        "SUV / Crossover",
+        "2011-2014",
+        "standard",
+    ): (
+        45.0,
+        None,
+        "The CrossCabriolet shares the same-generation Murano cargo-floor "
+        "width; Cars.com reports 45 inches between the 2014 Murano "
+        "wheelhousings.",
+    ),
+    (
+        "Nissan",
+        "Rogue Select",
+        "SUV / Crossover",
+        "2008-2015",
+        "standard",
+    ): (
+        41.0,
+        None,
+        "Compact-crossover analog: the source-backed Ford Escape cargo floor "
+        "is 41.4 W x 37.8 D inches, matching the Rogue Select's sourced "
+        "37.8-inch depth.",
+    ),
 }
 
 UNIQUE_WITHOUT_SAME_MODEL = {"Convertible"}
@@ -90,6 +223,7 @@ class Family:
     year_end: int
     rows: int
     doors: frozenset[int]
+    configs: frozenset[str]
     segment: str
     volume: float | None
     passenger_volume: float | None
@@ -163,6 +297,7 @@ def read_families(connection) -> list[Family]:
                    as variant,
                min(year)::int, max(year)::int, count(*)::int,
                array_remove(array_agg(distinct doors order by doors), null),
+               array_remove(array_agg(distinct dims_config), null),
                mode() within group (order by segment),
                percentile_cont(.5) within group (
                    order by luggage_volume_cuft
@@ -184,6 +319,8 @@ def read_families(connection) -> list[Family]:
                      and boot_depth_in is not null
                      and coalesce(dims_quote, '')
                          not like 'ANALOG ESTIMATE —%%'
+                     and coalesce(dims_taper_note, '')
+                         not like '%%Partial analog completion —%%'
                      and coalesce(dims_config, '')
                          in ('seats_up', 'seats up')
                ) as source_width,
@@ -194,6 +331,8 @@ def read_families(connection) -> list[Family]:
                      and boot_depth_in is not null
                      and coalesce(dims_quote, '')
                          not like 'ANALOG ESTIMATE —%%'
+                     and coalesce(dims_taper_note, '')
+                         not like '%%Partial analog completion —%%'
                      and coalesce(dims_config, '')
                          in ('seats_up', 'seats up')
                ) as source_depth,
@@ -202,6 +341,8 @@ def read_families(connection) -> list[Family]:
                      and boot_depth_in is not null
                      and coalesce(dims_quote, '')
                          not like 'ANALOG ESTIMATE —%%'
+                     and coalesce(dims_taper_note, '')
+                         not like '%%Partial analog completion —%%'
                      and coalesce(dims_config, '')
                          in ('seats_up', 'seats up')
                )::int as source_rows
@@ -228,6 +369,7 @@ def read_families(connection) -> list[Family]:
             year_end,
             rows,
             doors,
+            configs,
             segment,
             volume,
             passenger_volume,
@@ -249,6 +391,7 @@ def read_families(connection) -> list[Family]:
                 year_end=year_end,
                 rows=rows,
                 doors=frozenset(doors or []),
+                configs=frozenset(configs or []),
                 segment=segment,
                 volume=float(volume) if volume is not None else None,
                 passenger_volume=(
@@ -716,7 +859,17 @@ def nearest_physical_peer_estimate(
         volume_gap = volume_difference(target, donor)
         passenger_gap = passenger_volume_difference(target, donor)
         year_gap = year_distance(target, donor)
-        combined = volume_gap / 2 + passenger_gap / 5 + year_gap / 10
+        known_dimension_gap = 0.0
+        if target.width is not None:
+            known_dimension_gap += abs(target.width - donor.source_width)
+        if target.depth is not None:
+            known_dimension_gap += abs(target.depth - donor.source_depth)
+        combined = (
+            volume_gap / 2
+            + passenger_gap / 5
+            + year_gap / 10
+            + known_dimension_gap / 2
+        )
         if donor.make == target.make:
             combined -= 0.25
         return (
@@ -863,6 +1016,61 @@ def build_estimates(
     return estimates, excluded
 
 
+def build_partial_estimates(
+    families: list[Family],
+) -> tuple[list[Estimate], dict[tuple[str, str, str, str, str], str]]:
+    donors = [family for family in families if family.has_source_dimensions]
+    estimates: list[Estimate] = []
+    excluded: dict[tuple[str, str, str, str, str], str] = {}
+    for target in families:
+        if (target.width is None) == (target.depth is None):
+            continue
+        seats_down = any(
+            config.strip().lower().replace("_", " ") == "seats down"
+            for config in target.configs
+        )
+        comparison_target = (
+            replace(target, width=None, depth=None)
+            if seats_down
+            else target
+        )
+        estimate = nearest_by_model(
+            comparison_target,
+            donors,
+            families,
+        )
+        if estimate is None:
+            estimate = related_model_estimate(comparison_target, donors)
+        if estimate is None:
+            estimate = nearest_physical_peer_estimate(
+                comparison_target,
+                donors,
+            )
+        if estimate is None:
+            excluded[target.key] = "no_physical_donor"
+            continue
+        override = PARTIAL_OVERRIDES.get(target.key)
+        if override is not None:
+            override_width, override_depth, override_note = override
+            estimate = replace(
+                estimate,
+                width=(
+                    override_width
+                    if override_width is not None
+                    else estimate.width
+                ),
+                depth=(
+                    override_depth
+                    if override_depth is not None
+                    else estimate.depth
+                ),
+                method="hand_reviewed_partial",
+                note=override_note,
+            )
+        estimates.append(replace(estimate, target=target))
+    return estimates, excluded
+
+
 def apply_height_defaults(connection, families: list[Family]) -> int:
     cursor = connection.cursor()
     changed = 0
@@ -896,6 +1104,121 @@ def apply_height_defaults(connection, families: list[Family]) -> int:
                 body_style,
             ),
         )
+        changed += cursor.rowcount
+    return changed
+
+
+def apply_partial_estimates(
+    connection,
+    estimates: list[Estimate],
+) -> int:
+    cursor = connection.cursor()
+    changed = 0
+    for estimate in estimates:
+        target = estimate.target
+        seats_down = any(
+            config.strip().lower().replace("_", " ") == "seats down"
+            for config in target.configs
+        )
+        if seats_down:
+            quote = (
+                "ANALOG ESTIMATE — Replaced a partial seats-down measurement "
+                "with a seats-up working envelope. "
+                f"{estimate.note} Assigned working envelope: "
+                f"{estimate.width:g} W x {estimate.depth:g} D x "
+                f"{estimate.height:g} H inches."
+            )
+            cursor.execute(
+                """
+                update vehicles
+                   set boot_width_in=%s,
+                       boot_depth_in=%s,
+                       boot_height_in=%s,
+                       dims_status='researched',
+                       dims_confidence=null,
+                       dims_config='seats_up',
+                       dims_source_url=null,
+                       dims_quote=%s,
+                       dims_checked_at=now(),
+                       dims_taper_note=%s
+                 where make=%s and model=%s and body_style=%s
+                   and generation=%s
+                   and coalesce(
+                           nullif(trim(cargo_body_variant), ''),
+                           'standard'
+                       )=%s
+                """,
+                (
+                    estimate.width,
+                    estimate.depth,
+                    estimate.height,
+                    quote,
+                    (
+                        "Body-class floor-to-seatback standard: "
+                        f"{estimate.height:g} inches."
+                    ),
+                    target.make,
+                    target.model,
+                    target.body_style,
+                    target.generation,
+                    target.variant,
+                ),
+            )
+        else:
+            known_field = "width" if target.width is not None else "depth"
+            known_value = (
+                target.width if target.width is not None else target.depth
+            )
+            filled_field = "width" if target.width is None else "depth"
+            filled_value = (
+                estimate.width
+                if target.width is None
+                else estimate.depth
+            )
+            partial_note = (
+                "Partial analog completion — Preserved source-backed "
+                f"{known_field} {known_value:g} inches; assigned "
+                f"{filled_field} {filled_value:g} inches. {estimate.note}"
+            )
+            cursor.execute(
+                """
+                update vehicles
+                   set boot_width_in=coalesce(boot_width_in, %s),
+                       boot_depth_in=coalesce(boot_depth_in, %s),
+                       boot_height_in=coalesce(boot_height_in, %s),
+                       dims_status='researched',
+                       dims_confidence=null,
+                       dims_config=coalesce(dims_config, 'seats_up'),
+                       dims_checked_at=now(),
+                       dims_taper_note=concat_ws(
+                           ' ',
+                           nullif(dims_taper_note, ''),
+                           %s
+                       )
+                 where make=%s and model=%s and body_style=%s
+                   and generation=%s
+                   and coalesce(
+                           nullif(trim(cargo_body_variant), ''),
+                           'standard'
+                       )=%s
+                """,
+                (
+                    estimate.width,
+                    estimate.depth,
+                    estimate.height,
+                    partial_note,
+                    target.make,
+                    target.model,
+                    target.body_style,
+                    target.generation,
+                    target.variant,
+                ),
+            )
+        if cursor.rowcount != target.rows:
+            raise RuntimeError(
+                f"{target.key}: expected {target.rows} partial rows, "
+                f"updated {cursor.rowcount}"
+            )
         changed += cursor.rowcount
     return changed
 
@@ -1002,12 +1325,72 @@ def summarize(
         print(" | ".join(key), "|", reason)
 
 
+def summarize_partials(
+    estimates: list[Estimate],
+    excluded: dict[tuple[str, str, str, str, str], str],
+    *,
+    verbose: bool = True,
+) -> None:
+    print(
+        {
+            "partial_families": len(estimates) + len(excluded),
+            "estimated": len(estimates),
+            "left_unresolved": len(excluded),
+            "seats_down_replacements": sum(
+                any(
+                    config.strip().lower().replace("_", " ")
+                        == "seats down"
+                    for config in estimate.target.configs
+                )
+                for estimate in estimates
+            ),
+        }
+    )
+    if not verbose:
+        return
+    print("\nPARTIAL ESTIMATES")
+    for estimate in estimates:
+        target = estimate.target
+        action = (
+            "replace both (source was seats-down)"
+            if any(
+                config.strip().lower().replace("_", " ") == "seats down"
+                for config in target.configs
+            )
+            else (
+                f"fill width {estimate.width:g}"
+                if target.width is None
+                else f"fill depth {estimate.depth:g}"
+            )
+        )
+        print(
+            f"{target.make} {target.model} {target.generation} "
+            f"[{target.body_style}] -> {action} | {estimate.method} | "
+            f"{estimate.note}"
+        )
+    if excluded:
+        print("\nUNRESOLVED PARTIALS")
+        for key, reason in excluded.items():
+            print(" | ".join(key), "|", reason)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--apply",
         action="store_true",
         help="Write estimates and body-class height defaults.",
+    )
+    mode.add_argument(
+        "--partials",
+        action="store_true",
+        help="Dry-run estimates for families missing one dimension.",
+    )
+    mode.add_argument(
+        "--apply-partials",
+        action="store_true",
+        help="Write only the missing dimension in partial families.",
     )
     return parser.parse_args()
 
@@ -1018,6 +1401,28 @@ def main() -> int:
     connection.autocommit = False
     try:
         families = read_families(connection)
+        if args.partials or args.apply_partials:
+            estimates, excluded = build_partial_estimates(families)
+            summarize_partials(
+                estimates,
+                excluded,
+                verbose=not args.apply_partials,
+            )
+            if not args.apply_partials:
+                connection.rollback()
+                return 0
+            estimated_rows = apply_partial_estimates(
+                connection,
+                estimates,
+            )
+            connection.commit()
+            print(
+                {
+                    "applied_partial_families": len(estimates),
+                    "applied_partial_rows": estimated_rows,
+                }
+            )
+            return 0
         estimates, excluded = build_estimates(families)
         summarize(families, estimates, excluded)
         if not args.apply:
