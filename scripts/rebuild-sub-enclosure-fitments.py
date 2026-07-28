@@ -33,6 +33,22 @@ CAB_PATTERNS = [
     (r"standard[- ]?cab|regular[- ]?cab|single[- ]?cab|std[- ]?cab", "single"),
 ]
 
+VARIANT_PATTERNS = [
+    (r"crew[- ]?max", "CrewMax"),
+    (r"mega[- ]?cab", "Mega Cab"),
+    (r"super[- ]?crew(?:[- ]?cab)?", "SuperCrew"),
+    (r"super[- ]?cab", "SuperCab"),
+    (r"king[- ]?cab", "King Cab"),
+    (r"access[- ]?cab", "Access Cab"),
+    (r"xtra[- ]?cab", "XtraCab"),
+    (r"quad[- ]?cab", "Quad Cab"),
+    (r"club[- ]?cab", "Club Cab"),
+    (r"double[- ]?cab", "Double Cab"),
+    (r"crew[- ]?cab", "Crew Cab"),
+    (r"extended[- ]?cab|ext[- ]?cab", "Extended Cab"),
+    (r"standard[- ]?cab|regular[- ]?cab|single[- ]?cab|std[- ]?cab", "Regular Cab"),
+]
+
 # constraint-make/model -> vehicles-table (make, model) candidates
 MODEL_ALIASES = {
     ("Dodge", "1500"): [("Ram", "1500"), ("Ram", "1500 Classic"), ("Dodge", "Ram Pickup 1500")],
@@ -50,6 +66,12 @@ MODEL_ALIASES = {
 # enclosure for these correctly gets zero fitments; don't report as failure.
 RETIRED_OK = {"Infiniti/G35", "Infiniti/G37", "Infiniti/I35", "Infiniti/QX4",
               "Mercury/Milan", "Pontiac/G5", "Pontiac/G6", "Pontiac/G8"}
+
+CONTROLLED_TRUCKS = {
+    "Ford/Ranger", "Nissan/Frontier", "Toyota/Tacoma", "Ford/F-150",
+    "Dodge/1500", "Dodge/2500", "Dodge/3500",
+    "Ram/1500", "Ram/1500 Classic", "Ram/2500", "Ram/3500",
+}
 
 def year_span(label, url, slug):
     """Extract (y0, y1) from label_raw first, then vendor_url, then slug digits."""
@@ -84,6 +106,41 @@ def year_span(label, url, slug):
             return y0, y1
     return None
 
+def normalized_variants(text, vehicle_constraint):
+    found = {name for pattern, name in VARIANT_PATTERNS if re.search(pattern, text or "", re.I)}
+    # A phrase such as "SuperCrew Cab" also contains "Crew Cab". Keep only the
+    # manufacturer's more specific physical-cab name.
+    if "SuperCrew" in found:
+        found.discard("Crew Cab")
+    if "Extended Cab" in found:
+        found.remove("Extended Cab")
+        if vehicle_constraint in {"Ford/F-150", "Ford/Ranger"}:
+            found.add("SuperCab")
+        elif vehicle_constraint == "Nissan/Frontier":
+            found.add("King Cab")
+        elif vehicle_constraint == "Toyota/Tacoma":
+            found.update({"XtraCab", "Access Cab"})
+        else:
+            found.add("Extended Cab")
+    return found
+
+
+def cab_variant(label, url, slug, vehicle_constraint):
+    """Return (acceptable exact variants, conflict).
+
+    The product description is preferred over slug/URL metadata, but a direct
+    disagreement between a single label variant and a single URL variant fails
+    closed instead of silently choosing one.
+    """
+    label_variants = normalized_variants(label or "", vehicle_constraint)
+    url_variants = normalized_variants(" ".join(filter(None, [url, slug])), vehicle_constraint)
+    if len(label_variants) == 1 and len(url_variants) == 1 and label_variants != url_variants:
+        return set(), f"cab variant conflict label={sorted(label_variants)} url={sorted(url_variants)}"
+    if label_variants:
+        return label_variants, None
+    return url_variants, None
+
+
 def cab_type(label, url, slug, vehicle_constraint):
     text = " ".join(filter(None, [label, url, slug])).lower()
     if re.search(r"double[- ]?cab", text):
@@ -115,6 +172,11 @@ def main():
         candidates = MODEL_ALIASES.get((make, model), [(make, model)])
         span = year_span(label, url, slug)
         cab = cab_type(label, url, slug, vc)
+        variants, variant_conflict = cab_variant(label, url, slug, vc)
+        if vc in CONTROLLED_TRUCKS and not variants and not variant_conflict:
+            variant_conflict = "no exact physical cab variant in vendor metadata"
+        if vc in CONTROLLED_TRUCKS and not span and not variant_conflict:
+            variant_conflict = "no year span in vendor metadata"
 
         clauses, params = [], []
         for m_make, m_model in candidates:
@@ -128,17 +190,25 @@ def main():
 
         cab_note = f"cab={cab}"
         ids = []
-        if cab:
-            cur.execute(q + " and (cab_type = %s or cab_type is null)", base_params + [cab])
+        if variant_conflict:
+            unmatched.append((slug, variant_conflict, vc))
+        elif cab:
+            exact_q = q + " and cab_type = %s"
+            exact_params = base_params + [cab]
+            if variants:
+                exact_q += " and (cargo_body_variant = any(%s) or cargo_body_variant is null)"
+                exact_params.append(sorted(variants))
+                cab_note += f"; variants={','.join(sorted(variants))}"
+            cur.execute(exact_q, exact_params)
             ids = [r[0] for r in cur.fetchall()]
         else:
             cur.execute(q, base_params)
             ids = [r[0] for r in cur.fetchall()]
 
-        report.append((slug, vc, span, cab, len(ids)))
-        if not ids:
+        report.append((slug, vc, span, cab, sorted(variants), len(ids)))
+        if not ids and not variant_conflict:
             if vc in RETIRED_OK:
-                report[-1] = (slug, vc, span, cab, 0)
+                report[-1] = (slug, vc, span, cab, sorted(variants), 0)
             else:
                 unmatched.append((slug, f"0 vehicles for {vc} span={span} cab={cab}", vc))
         for vid in ids:
@@ -153,20 +223,32 @@ def main():
     print("\nWorst/none matchers:")
     for slug, why, vc in unmatched[:25]:
         print(f"  {slug[:44]:46} {why}")
-    counts = sorted(report, key=lambda r: r[4])
+    counts = sorted(report, key=lambda r: r[5])
     print("\nLowest match counts:")
-    for slug, vc, span, cab, n in counts[:15]:
+    for slug, vc, span, cab, variants, n in counts[:15]:
         print(f"  {n:5}  {slug[:40]:42} {vc[:28]:30} span={span} cab={cab}")
     print("\nHighest match counts:")
-    for slug, vc, span, cab, n in counts[-10:]:
+    for slug, vc, span, cab, variants, n in counts[-10:]:
         print(f"  {n:5}  {slug[:40]:42} {vc[:28]:30} span={span} cab={cab}")
+
+    print("\nControlled truck products:")
+    for slug, vc, span, cab, variants, n in report:
+        if vc in CONTROLLED_TRUCKS:
+            print(f"  {n:5}  {slug[:40]:42} {vc[:20]:22} "
+                  f"span={span} variants={','.join(variants) or 'NONE'}")
 
     if not write:
         print("\nDRY RUN — rerun with --write to archive old table and replace.")
         return
 
     stamp = datetime.date.today().isoformat()
-    arc = f"/Users/brettcombs/Documents/NCSW Application/Data/db-archives/sub_enclosure_fitments_corrupted_archive_{stamp}.json"
+    archive_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "output", "db-archives")
+    )
+    os.makedirs(archive_dir, exist_ok=True)
+    arc = os.path.join(
+        archive_dir, f"sub_enclosure_fitments_corrupted_archive_{stamp}.json"
+    )
     cur.execute("select id, sub_enclosure_slug, vehicle_id, source, notes, sort, date_created from sub_enclosure_fitments")
     old = [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
     with open(arc, "w") as f:
