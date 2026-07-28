@@ -28,8 +28,8 @@ def db():
     return psycopg2.connect(env["DATABASE_URL"])
 
 CAB_PATTERNS = [
-    (r"supercrew|crew[- ]?cab|crew[- ]?max|double[- ]?cab|mega[- ]?cab|quad[- ]?cab", "crew"),
-    (r"super[- ]?cab|extended[- ]?cab|ext[- ]?cab|king[- ]?cab|access[- ]?cab", "ext"),
+    (r"supercrew|crew[- ]?cab|crew[- ]?max|mega[- ]?cab", "crew"),
+    (r"super[- ]?cab|extended[- ]?cab|ext[- ]?cab|king[- ]?cab|access[- ]?cab|quad[- ]?cab", "ext"),
     (r"standard[- ]?cab|regular[- ]?cab|single[- ]?cab|std[- ]?cab", "single"),
 ]
 
@@ -84,8 +84,15 @@ def year_span(label, url, slug):
             return y0, y1
     return None
 
-def cab_type(label, url, slug):
+def cab_type(label, url, slug, vehicle_constraint):
     text = " ".join(filter(None, [label, url, slug])).lower()
+    if re.search(r"double[- ]?cab", text):
+        # "Double Cab" names different physical cabins by make. Tacoma uses it
+        # for the full crew cab; Tundra and GM use it for the shorter four-door
+        # cab. Never treat this as a universal alias.
+        if vehicle_constraint in {"Toyota/Tundra", "Chevrolet/Silverado", "GMC/Sierra"}:
+            return "ext"
+        return "crew"
     for pat, cab in CAB_PATTERNS:
         if re.search(pat, text):
             return cab
@@ -107,7 +114,7 @@ def main():
         make, model = vc.split("/", 1)
         candidates = MODEL_ALIASES.get((make, model), [(make, model)])
         span = year_span(label, url, slug)
-        cab = cab_type(label, url, slug)
+        cab = cab_type(label, url, slug, vc)
 
         clauses, params = [], []
         for m_make, m_model in candidates:
@@ -124,12 +131,6 @@ def main():
         if cab:
             cur.execute(q + " and (cab_type = %s or cab_type is null)", base_params + [cab])
             ids = [r[0] for r in cur.fetchall()]
-            if not ids:
-                # per-model cab_type data is unreliable (e.g. Tacoma Double Cab
-                # rows are typed 'ext'); fall back to no cab filter, flagged.
-                cur.execute(q, base_params)
-                ids = [r[0] for r in cur.fetchall()]
-                cab_note = f"cab={cab} per vendor; DB cab_type unreliable for this model — verify cab on intake"
         else:
             cur.execute(q, base_params)
             ids = [r[0] for r in cur.fetchall()]
