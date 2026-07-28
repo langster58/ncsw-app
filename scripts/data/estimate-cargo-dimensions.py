@@ -175,6 +175,194 @@ PARTIAL_OVERRIDES = {
     ),
 }
 
+CONVERTIBLE_OVERRIDES = {
+    (
+        "Mercedes-Benz",
+        "SLC-Class",
+        "Convertible",
+        "2017-2021",
+        "standard",
+    ): (
+        36.5,
+        23.5,
+        "Direct model-line predecessor: source-backed 2012-2017 "
+        "Mercedes-Benz SLK-Class convertible (36.7 W x 23.8 D inches).",
+    ),
+    (
+        "Volkswagen",
+        "Eos",
+        "Convertible",
+        "2007-2016",
+        "standard",
+    ): (
+        38.0,
+        32.5,
+        "Contemporary retractable-hardtop analog: source-backed 2006-2014 "
+        "Volvo C70 convertible (38 W x 32.7 D inches).",
+    ),
+}
+
+VARIANT_OVERRIDES = {
+    ("Chevrolet", "Tahoe", "SUV / Crossover", "1995-1999",
+     "4-door long body"): (
+        49.0, 52.0,
+        "Same GMT400 four-door cargo shell as the source-backed 1992-1999 "
+        "GMC Yukon four-door long body (49 W x 52 D inches).",
+    ),
+    ("Ford", "Bronco", "SUV / Crossover", "2021-2027",
+     "2-door short body"): (
+        42.5, 20.5,
+        "The source-backed four-door Bronco establishes the wheelhouse width; "
+        "owners tape-measure 20-21 inches behind the upright rear seat in the "
+        "two-door body.",
+    ),
+    ("GMC", "S-15 Jimmy", "SUV / Crossover", "1983-1991",
+     "2-door short body"): (
+        38.0, 40.5,
+        "Nearest source-backed same-model successor: 1995-2001 GMC Jimmy "
+        "two-door short body (38.1 W x 40.5 D inches).",
+    ),
+    ("GMC", "S-15 Jimmy", "SUV / Crossover", "1983-1991",
+     "4-door long body"): (
+        38.0, 40.5,
+        "Nearest source-backed same-model successor: 1995-2001 GMC Jimmy "
+        "four-door long body (38.1 W x 40.5 D inches).",
+    ),
+    ("Isuzu", "Trooper", "SUV / Crossover", "1992-2002",
+     "2-door short body"): (
+        39.0, 27.0,
+        "Source-backed same-era short-body Isuzu Amigo analog "
+        "(39 W x 27 D inches).",
+    ),
+    ("Jeep", "Wrangler", "SUV / Crossover", "1997-2006",
+     "standard wheelbase"): (
+        35.5, 14.0,
+        "The 1997 Wrangler specification reports 35.6 inches between the "
+        "wheelhousings; the short body has approximately 14 inches behind "
+        "the upright rear seat.",
+    ),
+    ("Jeep", "Wrangler", "SUV / Crossover", "1997-2006",
+     "Unlimited long wheelbase"): (
+        35.5, 27.0,
+        "Same wheelhouse width as the standard-wheelbase TJ; the Unlimited "
+        "body adds approximately 13 inches of rear cargo-floor length.",
+    ),
+    ("Jeep", "Wrangler", "SUV / Crossover", "2007-2007", "2-door"): (
+        44.5, 14.0,
+        "Same JK two-door cargo body as the 2008-2017 family; approximately "
+        "14 inches remain behind the upright rear seat.",
+    ),
+    ("Jeep", "Wrangler JK", "SUV / Crossover", "2007-2018", "2-door"): (
+        44.5, 14.0,
+        "Same JK two-door cargo body as the completed 2008-2017 Wrangler "
+        "two-door family.",
+    ),
+    ("Jeep", "Wrangler JK", "SUV / Crossover", "2007-2018",
+     "Unlimited 4-door"): (
+        35.5, 37.0,
+        "Same JK Unlimited cargo body as the source-backed 2008-2017 "
+        "Wrangler Unlimited family (35.5 W x 37 D inches).",
+    ),
+    ("Kia", "Sportage", "SUV / Crossover", "1994-2004",
+     "2-door short body"): (
+        39.0, 27.0,
+        "Same-era compact two-door SUV analog: source-backed Isuzu Amigo "
+        "(39 W x 27 D inches).",
+    ),
+    ("Kia", "Sportage", "SUV / Crossover", "1994-2004",
+     "4-door long body"): (
+        40.0, 35.0,
+        "Same-era four-door SUV analog: source-backed Isuzu Trooper "
+        "(40 W x 35 D inches).",
+    ),
+    ("Land Rover", "Defender", "SUV / Crossover", "2020-2027",
+     "Defender 130"): (
+        45.0, 15.5,
+        "Land Rover Defender 130 specification: 45.2 inches between the "
+        "wheel arches and 15.7 inches behind the upright third row.",
+    ),
+    ("Lexus", "RX", "SUV / Crossover", "2016-2022",
+     "RX L three-row"): (
+        44.5, 15.0,
+        "The RX L retains the standard RX wheelhouse width; the working depth "
+        "is the conservative space behind its upright third row.",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2007-2017",
+     "L extended body"): (
+        51.0, 28.5,
+        "Same-platform source-backed Ford Expedition EL cargo body "
+        "(51.4 W x 28.9 D inches).",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2007-2017",
+     "standard body"): (
+        49.0, 20.0,
+        "Same-platform source-backed standard Ford Expedition cargo body "
+        "(49.2 W x 20.4 D inches).",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2018-2024",
+     "L extended body"): (
+        51.0, 34.0,
+        "Same-platform source-backed Ford Expedition MAX cargo body "
+        "(51.3 W x 34.2 D inches).",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2018-2024",
+     "standard body"): (
+        51.0, 22.0,
+        "Same-platform source-backed standard Ford Expedition cargo body "
+        "(51.3 W x 22.2 D inches).",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2025-2027",
+     "L extended body"): (
+        51.0, 33.0,
+        "Same-platform source-backed 2025+ Ford Expedition MAX cargo body "
+        "(51.4 W x 33.2 D inches).",
+    ),
+    ("Lincoln", "Navigator", "SUV / Crossover", "2025-2027",
+     "standard body"): (
+        51.0, 21.0,
+        "Same-platform source-backed standard 2025+ Ford Expedition cargo "
+        "body (51.4 W x 21.3 D inches).",
+    ),
+    ("Mitsubishi", "Montero", "SUV / Crossover", "1990-1990",
+     "2-door short body"): (
+        39.0, 27.0,
+        "Same-era short-body SUV analog: source-backed Isuzu Amigo "
+        "(39 W x 27 D inches).",
+    ),
+    ("Mitsubishi", "Montero", "SUV / Crossover", "1990-1990",
+     "4-door long body"): (
+        40.0, 35.0,
+        "Same-era four-door SUV analog: source-backed Isuzu Trooper "
+        "(40 W x 35 D inches).",
+    ),
+    ("Nissan", "Pathfinder", "SUV / Crossover", "1987-1995", "2-door"): (
+        40.0, 35.0,
+        "Conservative same-era body-on-frame SUV working envelope, preserving "
+        "the separate two-door Pathfinder variant.",
+    ),
+    ("Nissan", "Pathfinder", "SUV / Crossover", "1987-1995", "4-door"): (
+        40.0, 35.0,
+        "Conservative same-era body-on-frame SUV working envelope, preserving "
+        "the separate four-door Pathfinder variant.",
+    ),
+    ("Toyota", "4Runner", "SUV / Crossover", "1990-1995", "2-door"): (
+        38.0, 35.0,
+        "Short-body estimate anchored to the source-backed adjacent 4Runner "
+        "generation's 38-inch wheelhouse width.",
+    ),
+    ("Toyota", "4Runner", "SUV / Crossover", "1990-1995", "4-door"): (
+        38.0, 45.0,
+        "Source-backed adjacent 1996-2002 4Runner cargo floor "
+        "(38 W x 45 D inches).",
+    ),
+    ("Toyota", "Land Cruiser", "SUV / Crossover", "1967-1980",
+     "55 Series wagon"): (
+        42.0, 45.0,
+        "Nearest source-backed same-model wagon successor: 1981-1990 "
+        "Land Cruiser 60/62 Series (42 W x 45 D inches).",
+    ),
+}
+
 UNIQUE_WITHOUT_SAME_MODEL = {"Convertible"}
 
 UNIQUE_MODEL_NAMES = {
@@ -183,11 +371,17 @@ UNIQUE_MODEL_NAMES = {
     ("Audi", "R8"),
     ("BMW", "i8"),
     ("Chevrolet", "Corvette"),
+    ("Chevrolet", "SSR"),
     ("Dodge", "Viper"),
     ("Ford", "GT"),
     ("Honda", "S2000"),
+    ("Cadillac", "XLR"),
+    ("Cadillac", "XLR-V"),
+    ("Fiat", "124 Spider"),
+    ("Jaguar", "XK"),
     ("Jaguar", "F-TYPE"),
     ("Mazda", "MX-5 Miata"),
+    ("Mazda", "Mazdaspeed MX-5 Miata"),
     ("Mercedes-Benz", "AMG GT"),
     ("Mercedes-Benz", "SLS AMG"),
     ("Nissan", "350Z"),
@@ -195,11 +389,14 @@ UNIQUE_MODEL_NAMES = {
     ("Nissan", "GT-R"),
     ("Porsche", "718"),
     ("Porsche", "911"),
+    ("Porsche", "914"),
     ("Porsche", "Boxster"),
     ("Porsche", "Cayman"),
     ("Toyota", "86"),
     ("Toyota", "GR86"),
+    ("Toyota", "MR2"),
     ("Toyota", "Supra"),
+    ("Tesla", "Roadster"),
 }
 
 UNIQUE_MAKES = {
@@ -1071,6 +1268,236 @@ def build_partial_estimates(
     return estimates, excluded
 
 
+def convertible_sibling_model(make: str, model: str) -> str:
+    aliases = {
+        ("Infiniti", "G Convertible"): "G",
+        ("Infiniti", "Q60 Convertible"): "Q60",
+        ("Mercedes-Benz", "Maybach SL"): "SL-Class",
+        ("Mercedes-Benz", "SLC-Class"): "SLK-Class",
+        ("Mini", "Cooper Convertible"): "Convertible",
+        ("Mini", "Cooper Roadster"): "Convertible",
+        ("Mitsubishi", "Eclipse Spyder"): "Eclipse",
+        ("Oldsmobile", "Delta 88"): "Eighty-Eight",
+        ("Volkswagen", "Beetle Convertible"): "Beetle",
+        ("Volkswagen", "Cabrio"): "Golf",
+        ("Volkswagen", "Cabriolet"): "Golf",
+        ("Volkswagen", "Rabbit Convertible"): "Golf",
+    }
+    return aliases.get((make, model), model)
+
+
+def convertible_body_sibling_estimate(
+    target: Family,
+    families: list[Family],
+) -> Estimate | None:
+    model = convertible_sibling_model(target.make, target.model)
+    candidates = [
+        family
+        for family in families
+        if family.make == target.make
+        and family.model == model
+        and family.body_style != "Convertible"
+        and family.width is not None
+        and family.depth is not None
+    ]
+    if not candidates:
+        return None
+    body_priority = {
+        "Coupe": 0,
+        "Sedan": 1,
+        "Hatchback": 2,
+        "Wagon": 3,
+        "SUV / Crossover": 4,
+    }
+    sibling = min(
+        candidates,
+        key=lambda family: (
+            0 if family.generation == target.generation else 1,
+            year_distance(target, family),
+            body_priority.get(family.body_style, 9),
+        ),
+    )
+    width = conservative_half(sibling.width)
+    # The convertible shares the body width, while the folded-top well
+    # consumes a substantial portion of the body sibling's usable depth.
+    depth = conservative_half(max(14.0, sibling.depth * 0.75))
+    note = (
+        f"Same-model body-shell comparison: {sibling.make} {sibling.model} "
+        f"{sibling.generation} {sibling.body_style}, "
+        f"{sibling.width:g} W x {sibling.depth:g} D inches. Width is retained "
+        "from the shared body; depth is reduced by 25 percent for convertible "
+        "top storage."
+    )
+    return Estimate(
+        target=target,
+        width=width,
+        depth=depth,
+        height=HEIGHT_BY_BODY_STYLE["Convertible"],
+        method="convertible_body_sibling",
+        donors=(sibling,),
+        note=note,
+    )
+
+
+def build_remaining_safe_estimates(
+    families: list[Family],
+) -> tuple[list[Estimate], dict[tuple[str, str, str, str, str], str]]:
+    donors = [family for family in families if family.has_source_dimensions]
+    estimates: list[Estimate] = []
+    excluded: dict[tuple[str, str, str, str, str], str] = {}
+    for target in families:
+        if not target.missing_both:
+            continue
+        override = VARIANT_OVERRIDES.get(target.key)
+        if override is not None:
+            width, depth, note = override
+            estimates.append(
+                Estimate(
+                    target=target,
+                    width=width,
+                    depth=depth,
+                    height=HEIGHT_BY_BODY_STYLE[target.body_style],
+                    method="hand_reviewed_body_variant",
+                    donors=(),
+                    note=note,
+                )
+            )
+            continue
+        if target.variant != "standard":
+            excluded[target.key] = "unresolved_body_variant"
+            continue
+        if (
+            target.body_style != "Convertible"
+            or target.segment == "two_seat"
+            or is_unique_model(target)
+        ):
+            excluded[target.key] = "genuinely_unique_vehicle"
+            continue
+
+        convertible_override = CONVERTIBLE_OVERRIDES.get(target.key)
+        if convertible_override is not None:
+            width, depth, note = convertible_override
+            estimate = Estimate(
+                target=target,
+                width=width,
+                depth=depth,
+                height=HEIGHT_BY_BODY_STYLE["Convertible"],
+                method="hand_reviewed_convertible",
+                donors=(),
+                note=note,
+            )
+        else:
+            estimate = convertible_body_sibling_estimate(target, families)
+        if estimate is None:
+            estimate = nearest_by_model(target, donors, families)
+        if estimate is None:
+            estimate = related_model_estimate(target, donors)
+        if estimate is None:
+            estimate = nearest_physical_peer_estimate(target, donors)
+        if estimate is None:
+            excluded[target.key] = "no_convertible_analog"
+            continue
+        estimates.append(estimate)
+    return estimates, excluded
+
+
+def apply_defender_variant_split(connection) -> dict[str, int]:
+    """Resolve ambiguous 2026 Defender rows and fill exact body lengths."""
+
+    assignments = {
+        44402: "Defender 110",
+        44403: "Defender 130",
+        44406: "Defender 110",
+        44408: "Defender 130",
+        44409: "Defender 110",
+        44410: "Defender 130",
+        44411: "Defender 110",
+        44412: "Defender 110",
+        44413: "Defender 130",
+    }
+    cursor = connection.cursor()
+    cursor.execute(
+        """
+        select vehicle_id, cargo_body_variant
+          from vehicles
+         where vehicle_id = any(%s)
+         order by vehicle_id
+        """,
+        (list(assignments),),
+    )
+    current = dict(cursor.fetchall())
+    if set(current) != set(assignments):
+        raise RuntimeError(
+            "The expected 2026 Defender duplicate rows have changed."
+        )
+    if any(
+        current[vehicle_id] != "110/130 unresolved"
+        for vehicle_id in assignments
+    ):
+        raise RuntimeError(
+            "A 2026 Defender row is no longer marked unresolved."
+        )
+    split_rows = 0
+    for vehicle_id, variant in assignments.items():
+        cursor.execute(
+            """
+            update vehicles
+               set cargo_body_variant=%s
+             where vehicle_id=%s
+               and cargo_body_variant='110/130 unresolved'
+            """,
+            (variant, vehicle_id),
+        )
+        if cursor.rowcount != 1:
+            raise RuntimeError(
+                f"Defender vehicle_id {vehicle_id} was not split."
+            )
+        split_rows += 1
+
+    bodies = {
+        "Defender 90": (45.0, 15.5),
+        "Defender 110": (45.5, 36.0),
+        "Defender 130": (45.0, 15.5),
+    }
+    dimension_rows = 0
+    for variant, (width, depth) in bodies.items():
+        quote = (
+            "ANALOG ESTIMATE — Exact Defender body-length specification. "
+            f"Assigned working envelope: {width:g} W x {depth:g} D x "
+            "23 H inches."
+        )
+        cursor.execute(
+            """
+            update vehicles
+               set boot_width_in=%s,
+                   boot_depth_in=%s,
+                   boot_height_in=23,
+                   dims_status='researched',
+                   dims_confidence=null,
+                   dims_config='seats_up',
+                   dims_source_url=null,
+                   dims_quote=%s,
+                   dims_checked_at=now(),
+                   dims_taper_note=
+                       'Body-class floor-to-seatback standard: 23 inches.'
+             where make='Land Rover'
+               and model='Defender'
+               and cargo_body_variant=%s
+               and (
+                   boot_width_in is null
+                   or boot_depth_in is null
+                   or boot_height_in is null
+               )
+            """,
+            (width, depth, quote, variant),
+        )
+        dimension_rows += cursor.rowcount
+    return {
+        "defender_rows_split": split_rows,
+        "defender_rows_filled": dimension_rows,
+    }
+
+
 def apply_height_defaults(connection, families: list[Family]) -> int:
     cursor = connection.cursor()
     changed = 0
@@ -1392,6 +1819,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Write only the missing dimension in partial families.",
     )
+    mode.add_argument(
+        "--remaining-safe",
+        action="store_true",
+        help="Dry-run structured body variants and ordinary convertibles.",
+    )
+    mode.add_argument(
+        "--apply-remaining-safe",
+        action="store_true",
+        help="Write structured body variants and ordinary convertibles.",
+    )
     return parser.parse_args()
 
 
@@ -1420,6 +1857,29 @@ def main() -> int:
                 {
                     "applied_partial_families": len(estimates),
                     "applied_partial_rows": estimated_rows,
+                }
+            )
+            return 0
+        if args.remaining_safe or args.apply_remaining_safe:
+            defender_result = {
+                "defender_rows_split": 0,
+                "defender_rows_filled": 0,
+            }
+            if args.apply_remaining_safe:
+                defender_result = apply_defender_variant_split(connection)
+                families = read_families(connection)
+            estimates, excluded = build_remaining_safe_estimates(families)
+            summarize(families, estimates, excluded)
+            if not args.apply_remaining_safe:
+                connection.rollback()
+                return 0
+            estimated_rows = apply_estimates(connection, estimates)
+            connection.commit()
+            print(
+                {
+                    "applied_remaining_families": len(estimates),
+                    "applied_remaining_rows": estimated_rows,
+                    **defender_result,
                 }
             )
             return 0
