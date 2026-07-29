@@ -165,11 +165,22 @@ def sub_ib_composite(row):
 # from the car's boot (boot_families measured dims or the derived fill), not
 # from abstract box classes. A driver with no feasible (Vb, Fb, port) in the
 # envelope has NO ported realization there - that is an answer, not an error.
+#
+# PORT MODEL (founder-ratified 2026-07-28, replaces the 12 in^2/ft^3 floor):
+# the old floor was a SLOT-port area rule; NCSW ports are n x 4" flared aero
+# tubes, n set by the 25 m/s velocity limit (2 typical; 4-5 in larger boxes as
+# needed). Port area never enters the response model, so this changes NO
+# scores — only which builds are feasible and the physical spec. Routing
+# (founder): tubes run straight along the boot WIDTH in cargo; same run with
+# an elbow opening at the baffle face in trunks; ~40" of run is available in
+# most vehicles. Trucks deferred for ported (2026-07-28).
 
 QL_VENTED = 7.0          # leakage Q, WinISD convention
 VMAX_AERO = 25.0         # m/s peak port air speed, flared aero ports
 PORT_K_END = 0.732       # end correction (one flanged + one free end)
-PORT_AREA_FLOOR_SQIN_PER_FT3 = 12.0
+PORT_TUBE_DIAM_IN = 4.0  # NCSW standard aero tube bore
+PORT_TUBE_MAX = 6        # tubes per build before we call it unbuildable
+PORT_RUN_CAP_CM = 101.6  # ~40" straight run along the boot width (elbowed in trunks)
 FB_RATIO_MIN, FB_RATIO_MAX = 0.85, 1.05   # musical window vs Fs
 FB_ABS_MIN = 28.0        # practical musical floor, Hz
 C_AIR = 343.0            # m/s
@@ -195,19 +206,33 @@ def subsonic_bw2(f, fb):
     x2 = (f / fc) ** 2
     return x2 / math.sqrt((x2 - 1) ** 2 + 2 * x2)
 
-def port_length_cm(area_cm2, fb_hz, vb_l, k=PORT_K_END):
-    """Physical port length for a round port of given area tuning vb to fb."""
+def port_length_cm(area_cm2, fb_hz, vb_l, k=PORT_K_END, a_cm=None):
+    """Physical port length for round port(s) of given TOTAL area tuning vb to fb.
+
+    a_cm: end-correction radius. For a single tube it is the tube radius
+    (default, derived from area); for n identical tubes in parallel pass the
+    INDIVIDUAL tube radius — the end correction acts per tube mouth."""
     sv = area_cm2 / 1e4
     vb = vb_l / 1000.0
-    a = math.sqrt(sv / math.pi)
+    a = (a_cm / 100.0) if a_cm else math.sqrt(sv / math.pi)
     length_m = (C_AIR * C_AIR * sv) / (4.0 * math.pi ** 2 * fb_hz ** 2 * vb) - k * a
     return length_m * 100.0
 
-def port_area_cm2(sd_cm2, xm_mm, fb_hz, vb_l, vmax=VMAX_AERO):
-    """Required port area: max(velocity-limited at vmax, SQ floor 12 in^2/ft^3)."""
+def aero_port_spec(sd_cm2, xm_mm, fb_hz, vb_l, vmax=VMAX_AERO):
+    """NCSW build practice: n x 4" flared aero tubes, n from the velocity limit.
+
+    Returns (n_tubes, len_cm_per_tube, total_area_cm2), or None when the build
+    would need more than PORT_TUBE_MAX tubes. Each tube gets the same length;
+    n tubes of area A behave as one port of area n*A with per-tube end
+    correction."""
+    a1_cm = PORT_TUBE_DIAM_IN * 2.54 / 2.0
+    tube_cm2 = math.pi * a1_cm ** 2
     vel_cm2 = (sd_cm2 * 1e-4 * xm_mm * 1e-3 * 2 * math.pi * fb_hz / vmax) * 1e4
-    floor_cm2 = PORT_AREA_FLOOR_SQIN_PER_FT3 * (vb_l / FT3_L) * 6.4516
-    return max(vel_cm2, floor_cm2)
+    n = max(1, math.ceil(vel_cm2 / tube_cm2))
+    if n > PORT_TUBE_MAX:
+        return None
+    area = n * tube_cm2
+    return n, port_length_cm(area, fb_hz, vb_l, a_cm=a1_cm), area
 
 def ported_margins(row, vb_l, fb, xm):
     """Clean margins vs the house shape at each band frequency (in-seat), or
@@ -233,12 +258,14 @@ def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
     """Best feasible ported realization inside an envelope.
 
     Sweeps net volume (13%-step grid to the cap) x Fb (musical window). A combo
-    is feasible when the aero port that keeps velocity <= 25 m/s physically fits:
-    length >= 2 cm and <= max_port_run_cm. Returns (raw_composite, spec) for the
-    best composite, or (None, None) when no feasible build exists.
-    spec = dict(vb_l, fb_hz, port_area_cm2, port_len_cm, depth_20hz_db) - the
-    build envelope plus the 20 Hz depth badge (margin vs the curve; informs,
-    never vetoes). Exact aero tube count/diameter is a per-job design task."""
+    is feasible when its n x 4" aero build (velocity <= 25 m/s) physically fits:
+    tube length >= 2 cm and <= max_port_run_cm, n <= PORT_TUBE_MAX. Returns
+    (raw_composite, spec) for the best composite, or (None, None) when no
+    feasible build exists.
+    spec = dict(vb_l, fb_hz, tubes, port_area_cm2, port_len_cm, port_disp_l,
+    depth_20hz_db) - the build plus the 20 Hz depth badge (margin vs the curve;
+    informs, never vetoes). port_disp_l is the tubes' bore volume — add it (plus
+    driver displacement) to net Vb when sizing the physical box."""
     xm = row.get("effective_xmax_mm") or row["xmax_mm"]
     floor = vb_floor_l or min(vb_cap_l, 0.25 * row["vas_l"])
     grid = [v for v in (floor * 1.13 ** i for i in range(40)) if v <= vb_cap_l] or [floor]
@@ -247,15 +274,51 @@ def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
     best, best_spec = None, None
     for vb in grid:
         for fb in fbs:
-            area = port_area_cm2(row["sd_cm2"], xm, fb, vb)
-            plen = port_length_cm(area, fb, vb)
+            port = aero_port_spec(row["sd_cm2"], xm, fb, vb)
+            if port is None:
+                continue
+            n, plen, area = port
             if not (2.0 <= plen <= max_port_run_cm):
                 continue
             m = ported_margins(row, vb, fb, xm)
             c = composite_from_margins(m)
             if best is None or c > best:
                 best = c
-                best_spec = dict(vb_l=round(vb, 1), fb_hz=round(fb, 1),
+                best_spec = dict(vb_l=round(vb, 1), fb_hz=round(fb, 1), tubes=n,
                                  port_area_cm2=round(area, 1), port_len_cm=round(plen, 1),
+                                 port_disp_l=round(area * plen / 1000.0, 1),
                                  depth_20hz_db=round(m[0], 1))
     return best, best_spec
+
+# ------------------------------------------------------------- ported knee bench
+
+PORTED_KNEE_DB = 1.0          # design volume = smallest Vb within this of the flat top
+PORTED_SWEEP_MAX_FT3 = 10.0   # score-vs-volume curves are flat well before this
+
+def ported_knee(row):
+    """Ported DESIGN point for a driver: the -1 dB knee of score vs volume.
+
+    Founder ruling 2026-07-28: ported volume has hard diminishing returns — steep
+    gains up to a driver-specific knee, tenths of a dB after. The box takes what
+    the driver needs, not what the car allows, so the knee (NOT an envelope cap)
+    is the stored ported realization; the vehicle's dimensions then just gate
+    which knees fit. Port run capped at PORT_RUN_CAP_CM (~40", straight along
+    the boot width in cargo, elbowed to the baffle face in trunks).
+
+    Returns (raw_composite_at_knee, spec) with spec['vb_ft3'] added, or
+    (None, None) when no feasible build exists at any swept volume."""
+    curve = []   # (vb_l, raw, spec) — best musical tune at each feasible volume
+    vb = 0.3 * FT3_L
+    while vb <= PORTED_SWEEP_MAX_FT3 * FT3_L:
+        raw, spec = ported_best(row, vb, PORT_RUN_CAP_CM, vb_floor_l=vb * 0.999)
+        if raw:
+            curve.append((vb, raw, spec))
+        vb *= 1.13
+    if not curve:
+        return None, None
+    top = max(r for _, r, _ in curve)
+    for vb, raw, spec in curve:            # smallest volume within the knee window
+        if 10 * math.log10(raw) >= 10 * math.log10(top) - PORTED_KNEE_DB:
+            spec = dict(spec, vb_ft3=round(vb / FT3_L, 2))
+            return raw, spec
+    return None, None

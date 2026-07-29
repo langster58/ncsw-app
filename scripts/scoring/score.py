@@ -99,6 +99,29 @@ def score_subs_ib(cur):
     return {r["slug"]: {"ib_composite": I.sub_impact(I.sub_ib_composite(r), aref)}
             for r in rows if r.get("cat_ib")}
 
+def score_subs_ported(cur):
+    # Ported bench = the driver's -1 dB KNEE build (founder ruling 2026-07-28):
+    # design volume is a property of the driver, not the car — the vehicle's
+    # dims only gate which knees fit. n x 4" aero ports, <=40" run, musical Fb.
+    # Same HC-12 sealed anchor = one currency with impact_score / ib_composite.
+    # cat_ported is NOT a gate (alignment ruling): every driver with full T/S
+    # gets a ported realization or a NULL (no feasible build — an answer).
+    need = ("fs_hz", "qts", "vas_l", "sd_cm2", "xmax_mm", "rms_watts", "sensitivity_db_1w_1m")
+    cur.execute("select slug,driver_size,effective_xmax_mm," + ",".join(need)
+                + " from subwoofers")
+    names = [d[0] for d in cur.description]
+    rows = [dict(zip(names, r)) for r in cur.fetchall()]
+    rows = [r for r in rows if all(r.get(k) for k in need)]
+    anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
+    aref = I.sub_best_composite(anchor)
+    out = {}
+    for r in rows:
+        raw, spec = I.ported_knee(r)
+        if raw:
+            out[r["slug"]] = {"ported_score": I.sub_impact(raw, aref),
+                              "ported_design_vb_ft3": spec["vb_ft3"]}
+    return out
+
 CLASSES = {
     "midbass":         score_midbass,
     "component_sets":  score_component_sets,
@@ -107,9 +130,9 @@ CLASSES = {
     "midranges":       score_midranges,
     "subs_sealed":     score_subs_sealed,
     "subs_ib":         score_subs_ib,
+    "subs_ported":     score_subs_ported,
     # COVERAGE: pending port (still SSD-only).
     "front_subs":      _not_ported("front_subs"),      # rescore_front_subs.py (63/100 in-box)
-    "subs_ported":     _not_ported("subs_ported"),     # per-envelope via instrument.ported_best (package engine); no single bench column
 }
 
 # ---------------------------------------------------------------- check / write
@@ -123,8 +146,14 @@ def run(names, write):
         cols = sorted({c for v in scored.values() for c in v}) if scored else []
         if not cols:
             print(f"{name}: no scoreable rows"); continue
-        cur.execute(f"select slug,{','.join(cols)} from " + _TABLE[name])
-        cur_map = {r[0]: dict(zip(cols, r[1:])) for r in cur.fetchall()}
+        try:
+            cur.execute(f"select slug,{','.join(cols)} from " + _TABLE[name])
+            cur_map = {r[0]: dict(zip(cols, r[1:])) for r in cur.fetchall()}
+        except psycopg2.errors.UndefinedColumn:
+            conn.rollback()
+            print(f"{name}: column(s) {cols} not in {_TABLE[name]} yet — "
+                  f"showing all computed values as new (ALTER TABLE before --write)")
+            cur_map = {}
         drift = []
         for slug, vals in scored.items():
             old = cur_map.get(slug, {})
@@ -149,7 +178,8 @@ def run(names, write):
 
 _TABLE = {"midbass": "midbass_drivers", "component_sets": "component_sets",
           "widebands": "wideband_drivers", "underseat": "underseat_woofers",
-          "midranges": "midranges", "subs_sealed": "subwoofers", "subs_ib": "subwoofers"}
+          "midranges": "midranges", "subs_sealed": "subwoofers", "subs_ib": "subwoofers",
+          "subs_ported": "subwoofers"}
 
 if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
