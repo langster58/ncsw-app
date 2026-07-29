@@ -50,6 +50,8 @@ DIMENSION_FIELDS = {
     "boot_width_in",
     "boot_depth_in",
     "boot_height_in",
+    "opening_width_in",
+    "opening_height_in",
     "dims_status",
     "dims_source_url",
     "dims_quote",
@@ -444,6 +446,7 @@ def apply(connection, vehicles: list[Vehicle], existing: list[ExistingPlan], cop
             behind_seat_install_supported=null,
             behind_seat_depth_in=null,
             boot_width_in=null, boot_depth_in=null, boot_height_in=null,
+            opening_width_in=null, opening_height_in=null,
             dims_status=null, dims_source_url=null, dims_quote=null,
             dims_confidence=null, dims_config=null, dims_taper_note=null,
             dims_checked_at=null
