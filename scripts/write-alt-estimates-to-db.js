@@ -2,7 +2,7 @@
 // Run: node --env-file=.env scripts/write-alt-estimates-to-db.js
 //
 // Writes ebay-alt-price-estimates.csv into the vehicles collection:
-//   alt_price_estimate (float) + alt_price_basis (listing | make_estimate | no_alternator)
+//   alternator (float) + alternator_basis (listing | make_estimate | no_alternator)
 // Batched PATCHes by vehicle_id. Re-runnable (idempotent per row).
 
 import fs from 'fs';
@@ -30,8 +30,8 @@ for (const line of lines.slice(1)) {
   const basis = basisMap[p[iBasis]] ?? null;
   updates.push({
     vehicle_id: id,
-    alt_price_estimate: priceRaw === '' ? null : parseFloat(priceRaw),
-    alt_price_basis: basis,
+    alternator: priceRaw === '' ? null : parseFloat(priceRaw),
+    alternator_basis: basis,
   });
 }
 console.log(`${updates.length} rows to write in batches of ${BATCH}`);

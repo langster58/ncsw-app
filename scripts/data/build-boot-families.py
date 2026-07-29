@@ -150,7 +150,6 @@ cur.execute("""create table boot_families (
     year_start int, year_end int,
     vehicle_ids text[], layout_ids int[],
     boot_width_in real, boot_depth_in real, boot_height_in real,
-    opening_width_in real, opening_height_in real,
     dims_status varchar default 'pending')""")
 execute_values(cur,
     """insert into boot_families

@@ -218,8 +218,8 @@ export default function PackageDetailScreen() {
       })
     }
     cells.push({ label: 'Head unit', value: 'Factory, retained', sub: vehicle.head_unit_replacement_supported === false ? 'replacement not supported — not needed' : undefined })
-    if (vehicle.alt_price_estimate) {
-      cells.push({ label: 'Charging system', value: 'Stock alternator', sub: `HO upgrade quoted ${money(vehicle.alt_price_estimate)}`, accent: true })
+    if (vehicle.alternator) {
+      cells.push({ label: 'Charging system', value: 'Stock alternator', sub: `HO upgrade quoted ${money(vehicle.alternator)}`, accent: true })
     }
   }
   if (pkg?.bass_alignment && sub) {

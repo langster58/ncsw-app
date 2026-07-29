@@ -30,8 +30,8 @@ export interface Vehicles {
   factory_chime_notes: string | null
   install_harness: string | null
   install_notes: string | null
-  alt_price_estimate: number | null
-  alt_price_basis: string | null
+  alternator: number | null
+  alternator_basis: string | null
   generation: string | null
 }
 
@@ -45,17 +45,8 @@ export interface Packages {
   front_sub_id: string | null
   multichannel_amp_id: string | null
   dsp_id: string | null
-  alternator_id: string | null
-  battery_id: string | null
   sku: string | null
   vehicle_category: string | null
-  min_segment: string | null
-  cab_type: string | null
-  tweeter_integration_id: string | null
-  front_sub_enclosure_id: string | null
-  big3_id: string | null
-  installation_id: string | null
-  materials_id: string | null
 }
 
 export interface Subwoofers {
@@ -82,11 +73,8 @@ export interface Subwoofers {
   sensitivity_db_1w_1m: number | null
   vd_liters: number | null
   effective_xmax_mm: number | null
-  motor_upgrade_price: number | null
-  motor_upgrade_label: string | null
   description: string | null
   gallery: unknown | null
-  motor_upgrade_description: string | null
   in_stock: boolean | null
   coming_soon: boolean | null
   alignment: string | null

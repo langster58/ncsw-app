@@ -90,14 +90,11 @@ export type PackageSummary = {
   // enclosure_bucket = the PLP Enclosure column value (customer picks between
   // every option that fits): 'sealed_prefab' | 'custom_sealed' | 'ported' | 'trunk_ib'.
   enclosure_bucket?: string | null
-  boot_utilization?: string | null
   price_total?: number | null
   price_installed?: number | null
   summary?: string | null
   ncsw_pick?: boolean | null
   vehicle_category: string | null
-  min_segment: string | null
-  cab_type: string | null
 }
 
 export type PackageFilters = {
@@ -107,9 +104,9 @@ export type PackageFilters = {
   maxPrice?: number
 }
 
-/** Packages that fit a vehicle. Fit key today = vehicle_category (+ cab_type
- * for trucks); segment ordering (min_segment) is enforced client-side until
- * the curation pass settles its encoding. */
+/** Packages that fit a vehicle. Fit key today = vehicle_category. The cab_type
+ * and min_segment refinements were dropped 2026-07-28 along with their columns,
+ * which had never been populated — reinstate here if curation reintroduces them. */
 export async function fetchPackagesForVehicle(
   vehicle: Vehicle,
   filters: PackageFilters = {},
@@ -117,7 +114,6 @@ export async function fetchPackagesForVehicle(
   const filter: Record<string, unknown> = {
     vehicle_category: { _eq: vehicle.vehicle_category },
   }
-  if (vehicle.cab_type) filter.cab_type = { _in: [vehicle.cab_type, null] }
   if (filters.ncswPicksOnly) filter.ncsw_pick = { _eq: true }
   if (filters.topology) filter.topology = { _eq: filters.topology }
   if (filters.bassAlignment) filter.bass_alignment = { _eq: filters.bassAlignment }
@@ -161,18 +157,11 @@ export type PackageDetail = PackageSummary & {
   sub_count: number | null
   sub_enclosure_id: string | null
   front_sub_id: string | null
-  front_sub_enclosure_id: string | null
   component_set_id: string | null
   set_collection: string | null
-  tweeter_integration_id: string | null
   mono_amp_id: string | null
   multichannel_amp_id: string | null
   dsp_id: string | null
-  alternator_id: string | null
-  battery_id: string | null
-  big3_id: string | null
-  installation_id: string | null
-  materials_id: string | null
   price_breakdown: PackageBreakdown | null
 }
 
@@ -202,7 +191,7 @@ export type VehicleDetail = Vehicle & {
   branded_system_name: string | null
   has_fullrange_output: string | boolean | null
   head_unit_replacement_supported: boolean | null
-  alt_price_estimate: number | null
+  alternator: number | null
 }
 
 export async function fetchVehicleById(vehicleId: string): Promise<VehicleDetail | null> {
@@ -211,7 +200,7 @@ export async function fetchVehicleById(vehicleId: string): Promise<VehicleDetail
     fields: [
       ...VEHICLE_FIELDS,
       'passenger_volume_cuft', 'branded_system_name', 'has_fullrange_output',
-      'head_unit_replacement_supported', 'alt_price_estimate',
+      'head_unit_replacement_supported', 'alternator',
     ],
     limit: 1,
   })

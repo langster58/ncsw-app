@@ -26,3 +26,4 @@ scripts/ebay-alt-price-estimates.csv
 
 expo-env.d.ts
 # @end expo-cli
+output/

@@ -155,7 +155,7 @@ export default function PdpScreen() {
                     P2 platform grain — factory_integration.copy, written once per
                        audio platform (HK / MIB3) and reused across every vehicle on it.
                     P3 vehicle grain — generated from the vehicle row: measured boot
-                       dims, charging math, alt_price_estimate. */}
+                       dims, charging math, alternator. */}
                 <Lead>
                   The Performance Sealed 15 pairs the highest-impact sealed subwoofer in our evaluation with a reference two-way
                   front stage, in a hatch whose 109 ft³ of cabin and cargo does real work for it. The Fi HC-15 loads into a
