@@ -129,6 +129,34 @@ def sub_impact(raw, anchor_raw):
     """Normalize a raw composite to impact_score (Fi HC-12 best box = 1.00)."""
     return round((raw / anchor_raw) ** 0.5, 3)
 
+def sub_best_box(row):
+    """Like sub_best_composite but returns (raw, vb_l) — the ARGMAX box.
+
+    The design box is a per-driver property (founder model 2026-07-28: 'if the
+    car only takes a 2 ft3 enclosure, there is a driver that is best with
+    2 ft3' — filter on each driver's own best box, never rescore in a
+    constrained one)."""
+    xm = row.get("effective_xmax_mm") or row["xmax_mm"]
+    cap_l = min(_VB_CAP_FT3 * FT3_L, 4 * row["vas_l"])
+    floor = _VB_FLOOR_EXC.get(row["slug"], _VB_FLOOR_FT3.get(str(row["driver_size"]), 0.05))
+    grid = [v for v in (0.05 * 1.13 ** i for i in range(60))
+            if v * FT3_L <= cap_l and v >= floor] or [min(floor, _VB_CAP_FT3)]
+    return max((_sub_core(row["fs_hz"], row["qts"], row["vas_l"], row["sd_cm2"],
+                          row["rms_watts"], row["sensitivity_db_1w_1m"], v * FT3_L, xm),
+                v * FT3_L) for v in grid)
+
+# Size-class physical standards for the FIT FILTER (screening constants, not
+# build specs — the real enclosure is designed in the bay, per founder ruling
+# 2026-07-28). Flange = outer frame diameter; mount = mounting depth; disp =
+# volume the motor/basket steals from the box. Typical of the deep high-Xmax
+# drivers NCSW installs.
+DRIVER_FLANGE_IN = {"6.5": 7.2, "8": 8.7, "10": 10.9, "12": 12.8, "13.5": 14.2,
+                    "15": 15.8, "18": 19.0, "21": 22.0}
+DRIVER_MOUNT_DEPTH_IN = {"6.5": 4.0, "8": 5.5, "10": 7.0, "12": 8.5, "13.5": 9.0,
+                         "15": 10.0, "18": 11.5, "21": 13.0}
+DRIVER_DISP_FT3 = {"6.5": 0.03, "8": 0.05, "10": 0.08, "12": 0.12, "13.5": 0.14,
+                   "15": 0.18, "18": 0.28, "21": 0.40}
+
 def sub_ib_composite(row):
     """Infinite-baffle composite: the sealed model with the box removed
     (fc = Fs, Qtc = Qts; trunk/cabin is the enclosure). Same band ruling,

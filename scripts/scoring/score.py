@@ -78,7 +78,15 @@ def score_subs_sealed(cur):
     rows = [dict(zip(names, r)) for r in cur.fetchall() if all(dict(zip(names, r)).get(k) for k in need)]
     anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
     aref = I.sub_best_composite(anchor)
-    return {r["slug"]: {"impact_score": I.sub_impact(I.sub_best_composite(r), aref)} for r in rows}
+    out = {}
+    for r in rows:
+        raw, vb_l = I.sub_best_box(r)
+        vb_ft3 = vb_l / I.FT3_L
+        gross = vb_ft3 + I.DRIVER_DISP_FT3.get(str(r["driver_size"]), 0.12)
+        out[r["slug"]] = {"impact_score": I.sub_impact(raw, aref),
+                          "sealed_design_vb_ft3": round(vb_ft3, 2),
+                          "sealed_gross_ft3": round(gross, 2)}
+    return out
 
 def _not_ported(name):
     def f(cur):
@@ -118,8 +126,11 @@ def score_subs_ported(cur):
     for r in rows:
         raw, spec = I.ported_knee(r)
         if raw:
+            gross = (spec["vb_ft3"] + spec["port_disp_l"] / I.FT3_L
+                     + I.DRIVER_DISP_FT3.get(str(r["driver_size"]), 0.12))
             out[r["slug"]] = {"ported_score": I.sub_impact(raw, aref),
-                              "ported_design_vb_ft3": spec["vb_ft3"]}
+                              "ported_design_vb_ft3": spec["vb_ft3"],
+                              "ported_gross_ft3": round(gross, 2)}
     return out
 
 CLASSES = {
