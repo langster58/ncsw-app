@@ -42,6 +42,7 @@ shift $(( $# >= 2 ? 2 : $# ))
 
 exec curl \
   --fail-with-body \
+  --globoff \
   --silent \
   --show-error \
   --request "$request_method" \
