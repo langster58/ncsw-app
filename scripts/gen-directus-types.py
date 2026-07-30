@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate src/lib/directus-schema.ts from the live Directus schema.
 
-Usage:  source .env && python3 scripts/gen-directus-types.py
+Usage:  scripts/directus-api.sh run python3 scripts/gen-directus-types.py
 
 Uses curl (not urllib) because the Render edge rejects non-browser TLS/UA
 fingerprints. Collections that are folders (no table) are skipped.
@@ -16,7 +16,7 @@ from datetime import date
 URL = os.environ.get("DIRECTUS_URL")
 TOK = os.environ.get("DIRECTUS_TOKEN")
 if not URL or not TOK:
-    sys.exit("DIRECTUS_URL / DIRECTUS_TOKEN not set — run: source .env first")
+    sys.exit("DIRECTUS_URL / DIRECTUS_TOKEN not set — run through scripts/directus-api.sh run")
 
 COLLECTIONS = [
     "vehicles", "packages", "subwoofers", "enclosures", "enclosure_fitments",

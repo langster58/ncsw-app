@@ -1,5 +1,7 @@
 # Welcome to your Expo app 👋
 
+For the repository location, Directus access contract, credential handling, and deployment responsibilities, read [WORKSPACE.md](./WORKSPACE.md) before doing catalog or schema work.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

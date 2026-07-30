@@ -8,13 +8,19 @@ The user has standing authorization for git commits and pushes to main. Commit a
 
 # Directus access
 
-Directus is the only catalog database and the source of truth. Before any database task, verify authenticated access with:
+Directus is the only catalog interface and the source of truth. The workspace root is `/Volumes/SSD 1TB/ncsw-app`; `/Users/brettcombs/Documents/Database` is only a compatibility symlink to that same repository.
+
+Before any catalog or schema task, verify authenticated Directus API access with:
 
 ```bash
 scripts/directus-api.sh GET /users/me
 ```
 
-The persistent credential source is `~/.config/directus-render.env`, which must remain owner-readable only. Use `scripts/directus-api.sh` for Directus API reads and writes. Do not use the repository `.env` as the authoritative admin credential, and do not substitute a local database, JSON file, CSV, mock collection, or other datastore when authentication fails. A public Directus read is not proof of authenticated access. If the access check fails, stop the catalog task and repair this credential path first.
+The sole local credential source is `~/.config/directus-render.env`, containing only `DIRECTUS_URL` and `DIRECTUS_TOKEN` and remaining owner-readable only. Use `scripts/directus-api.sh` for direct requests and `scripts/directus-api.sh run <command>` for repository programs that call Directus. The repository `.env` must not contain `DIRECTUS_TOKEN`.
+
+Do not connect directly to PostgreSQL, use `DATABASE_URL`, `psql`, or `psycopg` for catalog work. Historical scripts containing those mechanisms are unsupported migration history, not an available workflow. Do not substitute a local database, JSON file, CSV, mock collection, Vercel proxy, or another datastore when Directus authentication fails. A public Directus read is not proof of authenticated access. If the authenticated check fails, stop the catalog task and repair the single credential path first.
+
+The Vercel Directus token exists only for the deployed application's server-side proxy. It is deployment infrastructure, not the workspace database-access path. See `WORKSPACE.md` for setup and rotation.
 
 # AI workspace strategy
 

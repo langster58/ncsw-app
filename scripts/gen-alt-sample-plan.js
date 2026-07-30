@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run: node --env-file=.env scripts/gen-alt-sample-plan.js
+// Run: scripts/directus-api.sh run node scripts/gen-alt-sample-plan.js
 //
 // Generates the stratified eBay sampling plan for alternator pricing:
 // for every ICE (make, model), sample every STRIDE-th model year (sorted

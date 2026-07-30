@@ -4,7 +4,7 @@
  * Read-only year-range audit sampler.
  *
  * Usage:
- *   node --env-file=.env scripts/audit-year-ranges.mjs [seed]
+ *   scripts/directus-api.sh run node scripts/audit-year-ranges.mjs [seed]
  *
  * Prints a reproducible, stratified sample of unique make/model/body/range
  * assignments. It does not write to Directus or create local output files.

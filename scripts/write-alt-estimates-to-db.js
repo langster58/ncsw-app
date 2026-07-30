@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run: node --env-file=.env scripts/write-alt-estimates-to-db.js
+// Run: scripts/directus-api.sh run node scripts/write-alt-estimates-to-db.js
 //
 // Writes ebay-alt-price-estimates.csv into the vehicles collection:
 //   alternator (float) + alternator_basis (listing | make_estimate | no_alternator)

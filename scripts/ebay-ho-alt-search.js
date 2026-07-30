@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Run: node --env-file=.env --env-file=.env.local scripts/ebay-ho-alt-search.js
-// Test on N models first: MAX_MODELS=20 node --env-file=.env --env-file=.env.local scripts/ebay-ho-alt-search.js
+// Run: scripts/directus-api.sh run node --env-file=.env.local scripts/ebay-ho-alt-search.js
+// Test on N models first: MAX_MODELS=20 scripts/directus-api.sh run node --env-file=.env.local scripts/ebay-ho-alt-search.js
 //
 // Establishes a cost basis for high-output alternators for every ICE vehicle in
 // the Directus vehicles collection. For each (year,make,model) it queries the

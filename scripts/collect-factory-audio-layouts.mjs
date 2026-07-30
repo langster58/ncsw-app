@@ -51,7 +51,7 @@ if (args.write && !args.verifiedInput) {
 }
 
 if (!directusUrl || !directusToken) {
-  throw new Error('DIRECTUS_URL and DIRECTUS_TOKEN are required. Run with node --env-file=.env.');
+  throw new Error('DIRECTUS_URL and DIRECTUS_TOKEN are required. Run through scripts/directus-api.sh run.');
 }
 
 const cacheDirectory = resolve(args.cacheDirectory);
@@ -194,7 +194,7 @@ function parseArguments(values) {
     else if (value.startsWith('--source=')) options.source = value.slice(9);
     else if (value.startsWith('--verified-input=')) options.verifiedInput = value.slice(17);
     else if (value === '--help') {
-      process.stdout.write('Usage: node --env-file=.env scripts/collect-factory-audio-layouts.mjs [--make=BMW] [--max-pages=20] [--source=all|allspeaker|caraudionow] [--output=path] [--refresh] [--write --verified-input=path]\n');
+      process.stdout.write('Usage: scripts/directus-api.sh run node scripts/collect-factory-audio-layouts.mjs [--make=BMW] [--max-pages=20] [--source=all|allspeaker|caraudionow] [--output=path] [--refresh] [--write --verified-input=path]\n');
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${value}`);

@@ -34,7 +34,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "collect:factory-audio": "node --env-file=.env ./scripts/collect-factory-audio-layouts.mjs",
+    "directus:check": "./scripts/directus-api.sh GET /users/me",
+    "collect:factory-audio": "./scripts/directus-api.sh run node ./scripts/collect-factory-audio-layouts.mjs",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",

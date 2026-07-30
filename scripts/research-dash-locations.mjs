@@ -6,7 +6,7 @@
  * owner-install/forum evidence; it never changes Directus.
  *
  * Usage:
- *   node --env-file=.env scripts/research-dash-locations.mjs --make=BMW --output=/tmp/bmw-dash-research.json
+ *   scripts/directus-api.sh run node scripts/research-dash-locations.mjs --make=BMW --output=/tmp/bmw-dash-research.json
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
@@ -63,7 +63,7 @@ function parseArguments(values) {
     else if (value.startsWith('--output=')) options.output = value.slice(9);
     else if (value === '--resume') options.resume = true;
     else if (value === '--help') {
-      process.stdout.write('Usage: node --env-file=.env scripts/research-dash-locations.mjs [--make=BMW] [--limit=20] [--output=/tmp/report.json]\n');
+      process.stdout.write('Usage: scripts/directus-api.sh run node scripts/research-dash-locations.mjs [--make=BMW] [--limit=20] [--output=/tmp/report.json]\n');
       process.exit(0);
     } else throw new Error(`Unknown argument: ${value}`);
   }

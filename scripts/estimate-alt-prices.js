@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run: node --env-file=.env scripts/estimate-alt-prices.js
+// Run: scripts/directus-api.sh run node scripts/estimate-alt-prices.js
 //
 // Gives every ICE vehicle in the collection an estimated high-output-alternator
 // price = the cheapest NEW high-output unit that fits it on eBay (the same thing

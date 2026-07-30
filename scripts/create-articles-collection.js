@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run: node --env-file=.env scripts/create-articles-collection.js
+// Run: scripts/directus-api.sh run node scripts/create-articles-collection.js
 //
 // Creates the `articles` collection (blog / editorial) in Directus with the
 // common blog-post fields plus the "component set" fields that let a piece

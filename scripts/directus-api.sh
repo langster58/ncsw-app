@@ -21,6 +21,15 @@ for required_name in DIRECTUS_URL DIRECTUS_TOKEN; do
   fi
 done
 
+if [[ "${1:-}" == "run" ]]; then
+  shift
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: scripts/directus-api.sh run <command> [args...]" >&2
+    exit 1
+  fi
+  exec "$@"
+fi
+
 request_method="${1:-GET}"
 request_path="${2:-/users/me}"
 
