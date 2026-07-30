@@ -6,6 +6,16 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 
 The user has standing authorization for git commits and pushes to main. Commit and `git push` without asking for confirmation. Every push to main auto-deploys to ncsw-app.vercel.app.
 
+# Directus access
+
+Directus is the only catalog database and the source of truth. Before any database task, verify authenticated access with:
+
+```bash
+scripts/directus-api.sh GET /users/me
+```
+
+The persistent credential source is `~/.config/directus-render.env`, which must remain owner-readable only. Use `scripts/directus-api.sh` for Directus API reads and writes. Do not use the repository `.env` as the authoritative admin credential, and do not substitute a local database, JSON file, CSV, mock collection, or other datastore when authentication fails. A public Directus read is not proof of authenticated access. If the access check fails, stop the catalog task and repair this credential path first.
+
 # AI workspace strategy
 
 Codex is the default working agent for this repo. Use Codex for repo search, implementation, testing, browser/computer-use verification, data inspection, and review loops.
