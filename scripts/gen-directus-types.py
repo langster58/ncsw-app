@@ -22,7 +22,7 @@ COLLECTIONS = [
     "vehicles", "packages", "subwoofers", "enclosures", "enclosure_fitments",
     "mono_amps", "multichannel_amps", "dsp_processors", "front_subs",
     "electrical_tiers", "alternators", "batteries", "library",
-    "vehicle_editorial", "install_types",
+    "vehicle_editorial", "install_types", "factory_audio_systems",
 ]
 
 TS = {

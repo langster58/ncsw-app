@@ -1,4 +1,4 @@
-// GENERATED from the live Directus schema (2026-07-12).
+// GENERATED from the live Directus schema (2026-07-31).
 // Regenerate with scripts/gen-directus-types.py — do not hand-edit field lists.
 
 export interface Vehicles {
@@ -33,6 +33,26 @@ export interface Vehicles {
   alternator: number | null
   alternator_basis: string | null
   generation: string | null
+  boot_width_in: number | null
+  boot_depth_in: number | null
+  boot_height_in: number | null
+  dims_status: string | null
+  dims_source_url: string | null
+  dims_quote: string | null
+  dims_confidence: string | null
+  dims_config: string | null
+  dims_taper_note: string | null
+  dims_checked_at: string | null
+  cargo_body_variant: string | null
+  cab_type_name: string | null
+  behind_seat_width_in: number | null
+  behind_seat_height_in: number | null
+  behind_seat_source_url: string | null
+  under_seat_width_in: number | null
+  under_seat_depth_in: number | null
+  under_seat_height_in: number | null
+  under_seat_source_url: string | null
+  factory_audio_system: string | null
 }
 
 export interface Packages {
@@ -47,6 +67,21 @@ export interface Packages {
   dsp_id: string | null
   sku: string | null
   vehicle_category: string | null
+  display_name: string | null
+  topology: string | null
+  bass_alignment: string | null
+  summary: string | null
+  ncsw_pick: boolean
+  price_total: number | null
+  price_installed: number | null
+  price_breakdown: unknown | null
+  set_collection: string | null
+  seed_source: string | null
+  tier: string | null
+  sub_size: string | null
+  ceiling_l: number | null
+  depth_20hz_db: number | null
+  enclosure_bucket: string | null
 }
 
 export interface Subwoofers {
@@ -90,6 +125,17 @@ export interface Subwoofers {
   raw_re_ohm: number | null
   raw_re_convention: string | null
   raw_cms_mm_per_n: number | null
+  xmax_convention: string | null
+  ported_score: number | null
+  ported_design_vb_ft3: number | null
+  sealed_design_vb_ft3: number | null
+  sealed_gross_ft3: number | null
+  ported_gross_ft3: number | null
+  ported_port_type: string | null
+  ported_fb_hz: number | null
+  ported_tubes: number | null
+  ported_tube_len_in: number | null
+  ported_min_vb_ft3: number | null
 }
 
 export interface MonoAmps {
@@ -251,5 +297,29 @@ export interface InstallTypes {
   hero_image: string | null
   copy: string | null
   gallery: unknown | null
+}
+
+export interface FactoryAudioSystems {
+  id: string
+  manufacturer: string
+  system_name: string
+  anc_present: boolean | null
+  system_description: string | null
+  year_range: string | null
+  models: string | null
+  factory_driver_locations: string | null
+  system_driver_locations: string | null
+  head_unit_replacement_supported: boolean | null
+  high_level_output_present: boolean | null
+  full_range_high_level_available: boolean | null
+  tap_location: string | null
+  signal_architecture: string | null
+  external_amplifier_present: boolean | null
+  amplifier_location: string | null
+  research_status: string | null
+  source_urls: string | null
+  source_notes: string | null
+  anc_dsp_solution: string | null
+  trims: string | null
 }
 
