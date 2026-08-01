@@ -37,7 +37,19 @@ SLOT_MAX_LEN_IN = 70.0
 SLOT_MAX_DISP = 0.50
 DUCT_WOOD_FT3 = 0.10          # MDF of the duct walls, typical folded slot
 
-STAGING = "/Volumes/SSD 1TB/Database/staging/ported-port-resolver-bench.md"
+# DESIGN VOLUME RULE (founder-settled 2026-08-01, replaces the -1 dB knee):
+# grow the box in 0.25 ft3 steps while each added cubic foot still buys at
+# least PAY_RATE dB of ceiling; stop when the next cube stops paying. Then
+# grow further ONLY as far as the port needs to be physically buildable.
+# The knee measured distance-from-plateau and specced 6-8 ft3 fantasy boxes;
+# the pay rate stops where a sellable product stops (12s ~1.25-2.25,
+# 15s ~3.25-4.5, 18s ~4.5-5). Verified vs the 1.5 rate: the bigger boxes buy
+# only 0.4-2.2 dB of MAX output (nothing at listening levels, post-DSP).
+PAY_RATE_DB_FT3 = 2.0
+DESIGN_VB_START = 0.75
+DESIGN_VB_MAX = 10.0
+
+STAGING = "/Volumes/SSD 1TB/NCSW/research/packages/ported-design-bench.md"
 
 
 def slot_spec(sd_cm2, xm_mm, fb, vb_l):
@@ -76,6 +88,46 @@ def resolve(row, vb_l, fb):
     return None
 
 
+def _best_fb(row, vb_l):
+    """Best musical tune at this volume: (raw_composite, fb)."""
+    xm = row.get("effective_xmax_mm") or row["xmax_mm"]
+    best = None
+    for i in range(5):
+        fb = max(I.FB_ABS_MIN, row["fs_hz"] * (I.FB_RATIO_MIN + i * 0.05))
+        c = I.composite_from_margins(I.ported_margins(row, vb_l, fb, xm))
+        if best is None or c > best[0]:
+            best = (c, fb)
+    return best
+
+
+def design_build(row):
+    """The driver's ported DESIGN build under the pay-rate rule.
+
+    1. Grow from DESIGN_VB_START while each 0.25 ft3 step pays at a rate of
+       >= PAY_RATE_DB_FT3 (marginal productivity, NOT distance-from-plateau).
+    2. Grow further only until a port is buildable (aero-first, slot fallback).
+    Returns dict(vb_ft3, fb, raw, grown_for_port, port fields...) or None."""
+    vb = DESIGN_VB_START
+    raw, fb = _best_fb(row, vb * I.FT3_L)
+    s = 10 * math.log10(raw)
+    while vb < DESIGN_VB_MAX:
+        raw2, fb2 = _best_fb(row, (vb + 0.25) * I.FT3_L)
+        s2 = 10 * math.log10(raw2)
+        if (s2 - s) / 0.25 < PAY_RATE_DB_FT3:
+            break
+        vb, s, raw, fb = round(vb + 0.25, 2), s2, raw2, fb2
+    res = resolve(row, vb * I.FT3_L, fb)
+    grown = False
+    while res is None and vb < 12.0:
+        vb = round(vb + 0.25, 2)
+        raw, fb = _best_fb(row, vb * I.FT3_L)
+        res = resolve(row, vb * I.FT3_L, fb)
+        grown = True
+    if res is None:
+        return None
+    return dict(vb_ft3=vb, fb=fb, raw=raw, grown_for_port=grown, **res)
+
+
 def min_buildable_vb(row):
     """Smallest Vb (ft3) with any buildable port in the musical Fb window."""
     fbs = [max(I.FB_ABS_MIN, row["fs_hz"] * (I.FB_RATIO_MIN + i * 0.05)) for i in range(5)]
@@ -105,54 +157,48 @@ def main():
     scored = [r for r in rows if r.get("ported_score") and r.get("ported_design_vb_ft3")
               and all(r.get(k) for k in need.split(",") if k != "effective_xmax_mm")]
 
+    anchor = next(r for r in scored if r["slug"] == I.SUB_ANCHOR_SLUG)
+    aref = I.sub_best_composite(anchor)
+
     bench, flips, nobuild = [], [], []
     for r in scored:
-        _, spec = I.ported_knee(r)          # deterministic; recovers Fb at the knee
-        if not spec:
+        d = design_build(r)                 # pay-rate design volume + build
+        if not d:
             nobuild.append(r)
             continue
-        vb_ft3, fb = spec["vb_ft3"], spec["fb_hz"]
-        res = resolve(r, vb_ft3 * I.FT3_L, fb)
-        managed = False
-        # Knee unbuildable -> enlarge the box until the port fits (founder ruling:
-        # "make it larger and the port smaller — we can manage those"). Score-side
-        # this costs nothing: past the knee the curve is flat-to-rising.
-        while res is None and vb_ft3 < 12.0:
-            vb_ft3 = round(vb_ft3 * 1.13, 2)
-            res = resolve(r, vb_ft3 * I.FT3_L, fb)
-            managed = True
-        if not res:
-            nobuild.append(r)
-            continue
-        res.update(slug=r["slug"], name=f"{r['brand']} {r['model']}", size=r["driver_size"],
-                   vb_ft3=vb_ft3, managed=managed, fb=fb, score_p=r["ported_score"],
-                   score_s=r.get("impact_score") or 0.0,
-                   min_vb=min_buildable_vb(r), price=r.get("price"))
-        bench.append(res)
-        if r.get("impact_score") and r["impact_score"] > r["ported_score"]:
-            flips.append(res)
+        new_score = I.sub_impact(d["raw"], aref)
+        d.update(slug=r["slug"], name=f"{r['brand']} {r['model']}", size=r["driver_size"],
+                 managed=d.pop("grown_for_port"), fb=d["fb"],
+                 score_p=new_score, old_score=r.get("ported_score"),
+                 score_s=r.get("impact_score") or 0.0,
+                 min_vb=min_buildable_vb(r), price=r.get("price"))
+        bench.append(d)
+        if r.get("impact_score") and r["impact_score"] > new_score:
+            flips.append(d)
 
     bench.sort(key=lambda b: -b["score_p"])
     n_aero = sum(1 for b in bench if b["port_type"] == "aero")
     n_slot = len(bench) - n_aero
 
-    L = ["# Ported port-resolver bench (read-only)", "",
+    L = ["# Ported design bench — pay-rate rule (read-only)", "",
+         f"design rule: grow while each ft3 pays >= {PAY_RATE_DB_FT3} dB, then only as far "
+         f"as the port needs (founder-settled 2026-08-01; replaces the knee).", "",
          f"drivers resolved: **{len(bench)}** — aero **{n_aero}**, slot **{n_slot}**, "
          f"no-build **{len(nobuild)}**",
          f"sealed-beats-ported (offer sealed first): **{len(flips)}**", "",
          f"constants: aero<= {AERO_MAX_TUBE_IN}\" tube @25m/s | slot @{SLOT_VMAX_MS}m/s, "
          f"floor {SLOT_FLOOR_IN2FT3}in2/ft3, fold<= {SLOT_MAX_LEN_IN}\", "
          f"duct<= {int(SLOT_MAX_DISP*100)}% of Vb", "",
-         "| driver | size | type | spec | net ft3 | gross ft3 | min Vb | Fb | score p/s |",
+         "| driver | size | type | spec | net ft3 | gross ft3 | Fb | score new/old | vs sealed |",
          "|---|---|---|---|---|---|---|---|---|"]
     for b in bench:
         spec = (f"{b['tubes']}x4\" x {b['len_in']}\"" if b["port_type"] == "aero"
                 else f"{b['area_in2']}in2 x {b['len_in']}\" duct")
         if b.get("managed"):
-            spec += " (box enlarged over knee)"
+            spec += " (grown for port)"
         L.append(f"| {b['name']} | {b['size']} | {b['port_type']} | {spec} | {b['vb_ft3']} | "
-                 f"{b['gross_ft3']} | {b['min_vb']} | {b['fb']:.1f} | "
-                 f"{b['score_p']:.2f} / {b['score_s']:.2f} |")
+                 f"{b['gross_ft3']} | {b['fb']:.1f} | "
+                 f"{b['score_p']:.2f} / {b['old_score'] or 0:.2f} | {b['score_s']:.2f} |")
     if nobuild:
         L += ["", "## No buildable port (cat_ported -> false)", ""]
         L += [f"- {r['brand']} {r['model']} ({r['driver_size']}\")" for r in nobuild]
@@ -190,7 +236,8 @@ def write(url, tok, bench):
     n = 0
     for b in bench:
         r = api(url, tok, "PATCH", f"/items/subwoofers/{b['slug']}",
-                {"ported_port_type": b["port_type"], "ported_fb_hz": round(b["fb"], 1),
+                {"ported_score": b["score_p"], "ported_design_vb_ft3": b["vb_ft3"],
+                 "ported_port_type": b["port_type"], "ported_fb_hz": round(b["fb"], 1),
                  "ported_tubes": b["tubes"], "ported_tube_len_in": b["len_in"],
                  "ported_min_vb_ft3": b["min_vb"], "ported_gross_ft3": b["gross_ft3"]})
         if r.get("error"):
