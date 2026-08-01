@@ -122,15 +122,16 @@ def score_subs_ported(cur):
     rows = [r for r in rows if all(r.get(k) for k in need)]
     anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
     aref = I.sub_best_composite(anchor)
+    # Design volume = the pay-rate rule in port_resolver (founder 2026-08-01);
+    # the resolver is the single source for ported builds — delegate to it.
+    import port_resolver as PR
     out = {}
     for r in rows:
-        raw, spec = I.ported_knee(r)
-        if raw:
-            gross = (spec["vb_ft3"] + spec["port_disp_l"] / I.FT3_L
-                     + I.DRIVER_DISP_FT3.get(str(r["driver_size"]), 0.12))
-            out[r["slug"]] = {"ported_score": I.sub_impact(raw, aref),
-                              "ported_design_vb_ft3": spec["vb_ft3"],
-                              "ported_gross_ft3": round(gross, 2)}
+        d = PR.design_build(r)
+        if d:
+            out[r["slug"]] = {"ported_score": I.sub_impact(d["raw"], aref),
+                              "ported_design_vb_ft3": d["vb_ft3"],
+                              "ported_gross_ft3": d["gross_ft3"]}
     return out
 
 CLASSES = {
