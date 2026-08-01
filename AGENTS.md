@@ -40,3 +40,19 @@ Before any Fable call, prepare a bounded advisor packet with:
 - a per-call dollar cap
 
 If the source of truth is unclear, do one cheap inventory pass with Codex and stop. Do not escalate uncertainty to Fable and do not spawn agents to guess.
+
+## Credential file is IMMUTABLE — do not touch it
+
+`~/.config/directus-render.env` is protected with the macOS immutable flag
+(`chflags uchg`, set 2026-08-01 after repeated agent cleanups deleted it and
+stalled all database work). It cannot be deleted, rewritten, or truncated —
+`rm` and `>` will fail with "Operation not permitted", and that is intentional.
+
+- NEVER attempt to remove, rewrite, regenerate, or "clean up" this file.
+- NEVER regenerate the Directus token unless the founder explicitly asks;
+  regenerating invalidates every other consumer of the token.
+- If your task needs Directus access, use `scripts/directus-api.sh` exactly as
+  documented above. If auth fails, STOP and report — do not mint tokens.
+- To legitimately edit the file (founder-directed only):
+  `chflags nouchg ~/.config/directus-render.env`, edit, then re-lock with
+  `chflags uchg`.
