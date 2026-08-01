@@ -12,7 +12,7 @@ import { Container, Eyebrow, Section, SectionIntro, colors, fonts, type, useFlui
 function MonoText({ children }: { children: React.ReactNode }) {
   const fontSize = useFluidPx(type.small)
   return (
-    <Text style={{ fontFamily: fonts.mono, fontSize, fontWeight: '500', color: colors.ink } as any}>
+    <Text style={{ fontFamily: fonts.body, fontSize, fontWeight: '500', color: colors.ink } as any}>
       {children}
     </Text>
   )

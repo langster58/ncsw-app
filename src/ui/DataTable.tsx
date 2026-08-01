@@ -116,11 +116,9 @@ export function DataTable<T>({
                 <Text
                   style={
                     {
-                      fontFamily: fonts.mono,
+                      fontFamily: fonts.body,
                       fontSize: 11,
-                      fontWeight: '500',
-                      letterSpacing: tracking.wide,
-                      textTransform: 'uppercase',
+                      fontWeight: '600',
                       color: colors.inkFaint,
                     } as any
                   }

@@ -40,7 +40,7 @@ export function CtaBar({
           </View>
           <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center', flexWrap: 'wrap' } as any}>
             {phone ? (
-              <Text style={{ fontFamily: fonts.mono, fontSize: phoneSize as any, color: colors.ink } as any}>{phone}</Text>
+              <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: phoneSize as any, fontVariant: ['tabular-nums'], color: colors.ink } as any}>{phone}</Text>
             ) : null}
             {actions}
           </View>

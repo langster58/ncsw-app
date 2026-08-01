@@ -125,11 +125,9 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
       <Text
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.display,
             fontSize: titleSize,
-            fontWeight: '600',
-            letterSpacing: tracking.label,
-            textTransform: 'uppercase',
+            fontWeight: '700',
             color: colors.ink,
           } as any
         }

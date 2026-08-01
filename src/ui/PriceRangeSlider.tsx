@@ -28,11 +28,9 @@ export function PriceRangeSlider({ min, max, lo, hi, onChange, label = 'Price ra
       <Text
         style={
           {
-            fontFamily: fonts.mono,
-            fontSize: 10.5,
-            fontWeight: '500',
-            letterSpacing: 0.735,
-            textTransform: 'uppercase',
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: '600',
             color: colors.inkFaint,
           } as any
         }
@@ -41,10 +39,10 @@ export function PriceRangeSlider({ min, max, lo, hi, onChange, label = 'Price ra
       </Text>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ fontFamily: fonts.mono, fontSize: 13, fontWeight: '600', color: colors.ink }}>
+        <Text style={{ fontFamily: fonts.body, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] as any, color: colors.ink }}>
           {money(lo)}
         </Text>
-        <Text style={{ fontFamily: fonts.mono, fontSize: 13, fontWeight: '600', color: colors.ink }}>
+        <Text style={{ fontFamily: fonts.body, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] as any, color: colors.ink }}>
           {hi >= max ? money(hi) + '+' : money(hi)}
         </Text>
       </View>
@@ -118,7 +116,7 @@ export function PriceRangeSlider({ min, max, lo, hi, onChange, label = 'Price ra
               }
             >
               <View style={{ width: 1, height: 6, backgroundColor: colors.borderStrong, marginBottom: 4 }} />
-              <Text style={{ fontFamily: fonts.mono, fontSize: 10, color: colors.inkFaint }}>
+              <Text style={{ fontFamily: fonts.body, fontSize: 10.5, fontVariant: ['tabular-nums'] as any, color: colors.inkFaint }}>
                 {'$' + (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'k'}
               </Text>
             </View>

@@ -14,11 +14,9 @@ export function Eyebrow({ tone = 'gray', children }: { tone?: Tone; children: Re
     <Text
       style={
         {
-          fontFamily: fonts.mono,
+          fontFamily: fonts.body,
           fontSize,
-          fontWeight: '500',
-          letterSpacing: tracking.label,
-          textTransform: 'uppercase',
+          fontWeight: '600',
           color,
         } as any
       }

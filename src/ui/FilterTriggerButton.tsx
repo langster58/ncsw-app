@@ -39,11 +39,9 @@ export function FilterTriggerButton({ label = 'Sort & Filter', activeCount = 0, 
       <Text
         style={
           {
-            fontFamily: fonts.mono,
-            fontSize: 11.5,
-            fontWeight: '500',
-            letterSpacing: tracking.label,
-            textTransform: 'uppercase',
+            fontFamily: fonts.body,
+            fontSize: 12,
+            fontWeight: '600',
             color: colors.ink,
           } as any
         }
@@ -62,7 +60,7 @@ export function FilterTriggerButton({ label = 'Sort & Filter', activeCount = 0, 
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontFamily: fonts.mono, fontSize: 10, fontWeight: '600', color: colors.white }}>
+          <Text style={{ fontFamily: fonts.body, fontSize: 10.5, fontWeight: '600', fontVariant: ['tabular-nums'] as any, color: colors.white }}>
             {activeCount}
           </Text>
         </View>

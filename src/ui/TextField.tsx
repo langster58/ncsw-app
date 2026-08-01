@@ -23,12 +23,10 @@ export function TextField({ label, value, onChange, placeholder, width = 220 }: 
       <Text
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
             fontWeight: '600',
             fontSize: labelSize,
             color: colors.gray,
-            textTransform: 'uppercase',
-            letterSpacing: tracking.label,
           } as any
         }
         numberOfLines={1}
@@ -45,7 +43,8 @@ export function TextField({ label, value, onChange, placeholder, width = 220 }: 
         accessibilityLabel={label}
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
+            fontWeight: '500',
             fontSize: inputSize,
             color: colors.ink,
             backgroundColor: colors.white,

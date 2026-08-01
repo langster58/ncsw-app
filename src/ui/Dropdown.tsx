@@ -193,11 +193,9 @@ export function Dropdown({
             <Text
               style={
                 {
-                  fontFamily: fonts.mono,
-                  fontSize: 10.5,
-                  fontWeight: '500',
-                  letterSpacing: 0.735, // .07em * 10.5
-                  textTransform: 'uppercase',
+                  fontFamily: fonts.body,
+                  fontSize: 11,
+                  fontWeight: '600',
                   color: colors.inkFaint,
                   flexShrink: 0,
                 } as any
@@ -210,8 +208,8 @@ export function Dropdown({
             <Text
               numberOfLines={1}
               style={{
-                fontFamily: fonts.mono,
-                fontSize: 11,
+                fontFamily: fonts.body,
+                fontSize: 12,
                 fontWeight: '600',
                 color: colors.ink,
                 flexShrink: 1,
@@ -246,7 +244,11 @@ export function Dropdown({
                       position: 'fixed',
                       top: anchorRect.top + 4,
                       left: anchorRect.left,
-                      width: anchorRect.width,
+                      // Sized to content: never narrower than the trigger, but
+                      // free to grow so a compact trigger doesn't clip options.
+                      width: 'max-content',
+                      minWidth: anchorRect.width,
+                      maxWidth: 340,
                       zIndex: 300,
                       backgroundColor: colors.white,
                       borderWidth: 1,

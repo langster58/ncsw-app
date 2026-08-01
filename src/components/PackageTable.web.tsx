@@ -311,11 +311,9 @@ function VehicleResetLink({ disabled, onPress }: { disabled: boolean; onPress: (
       <IconClose size={11} color={color} />
       <Text
         style={{
-          fontFamily: MONO,
-          fontSize: 10.5,
-          fontWeight: '500',
-          letterSpacing: 0.735,
-          textTransform: 'uppercase',
+          fontFamily: FONT,
+          fontSize: 11,
+          fontWeight: '600',
           color,
           textDecorationLine: hovered && !disabled ? 'underline' : 'none',
         }}
@@ -436,11 +434,9 @@ export function PackageTable() {
     (priceMin > PMIN || priceMax < PMAX ? 1 : 0)
 
   const headLabel = {
-    fontFamily: MONO,
+    fontFamily: FONT,
     fontSize: 11,
-    fontWeight: '500' as const,
-    letterSpacing: 0.44, // .04em * 11
-    textTransform: 'uppercase' as const,
+    fontWeight: '600' as const,
     color: INK3,
   }
 
@@ -532,11 +528,9 @@ export function PackageTable() {
           </View>
           <Text
             style={{
-              fontFamily: MONO,
-              fontSize: 11.5,
-              fontWeight: '500',
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
+              fontFamily: FONT,
+              fontSize: 12,
+              fontWeight: '600',
               color: INK,
             }}
           >
@@ -554,7 +548,7 @@ export function PackageTable() {
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: MONO, fontSize: 10, fontWeight: '600', color: WHITE }}>{activeCount}</Text>
+              <Text style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: '600', fontVariant: ['tabular-nums'] as any, color: WHITE }}>{activeCount}</Text>
             </View>
           ) : null}
         </Pressable>

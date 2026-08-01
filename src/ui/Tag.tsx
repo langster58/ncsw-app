@@ -29,11 +29,9 @@ export function Tag({ children, tone = 'dark' }: TagProps) {
       <Text
         style={
           {
-            fontFamily: fonts.mono,
-            fontSize: 10.5,
+            fontFamily: fonts.body,
+            fontSize: 11,
             fontWeight: '600',
-            letterSpacing: tracking.label,
-            textTransform: 'uppercase',
             color: dark ? colors.white : colors.ink,
           } as any
         }

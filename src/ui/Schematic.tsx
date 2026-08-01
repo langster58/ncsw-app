@@ -71,7 +71,7 @@ export function Schematic({ diagram, legend }: { diagram: ReactNode; legend: Sch
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, fontWeight: '500', color: colors.white } as any}>
+              <Text style={{ fontFamily: fonts.body, fontSize: metaSize, fontWeight: '600', fontVariant: ['tabular-nums'] as any, color: colors.white } as any}>
                 {item.n}
               </Text>
             </View>
@@ -83,10 +83,9 @@ export function Schematic({ diagram, legend }: { diagram: ReactNode; legend: Sch
                 <Text
                   style={
                     {
-                      fontFamily: fonts.mono,
+                      fontFamily: fonts.body,
                       fontSize: metaSize,
-                      letterSpacing: tracking.wide,
-                      textTransform: 'uppercase',
+                      fontWeight: '500',
                       color: colors.gray,
                       marginTop: 2,
                     } as any

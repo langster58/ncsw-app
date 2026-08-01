@@ -63,12 +63,10 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
         <Text
           style={
             {
-              fontFamily: fonts.mono,
+              fontFamily: fonts.body,
               fontWeight: '600',
               fontSize: labelSize,
               color: colors.gray,
-              textTransform: 'uppercase',
-              letterSpacing: tracking.label,
             } as any
           }
           numberOfLines={1}
@@ -90,7 +88,9 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
         accessibilityLabel={unit ? `${label}, ${unit}` : label}
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
+            fontWeight: '500',
+            fontVariant: ['tabular-nums'],
             fontSize: inputSize,
             color: colors.ink,
             backgroundColor: colors.white,

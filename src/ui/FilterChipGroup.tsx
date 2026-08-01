@@ -42,11 +42,9 @@ export function FilterChipGroup({
       <Text
         style={
           {
-            fontFamily: fonts.mono,
-            fontSize: dense ? denseLabelSize : 10.5,
-            fontWeight: dense ? '600' : '500',
-            letterSpacing: dense ? 0.88 : 0.735, // .07em * 10.5 in the regular variant
-            textTransform: 'uppercase',
+            fontFamily: fonts.body,
+            fontSize: dense ? denseLabelSize : 11,
+            fontWeight: '600',
             color: dense ? colors.gray : colors.inkFaint,
           } as any
         }

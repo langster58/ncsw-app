@@ -23,17 +23,28 @@ type Size = 'heroLead' | 'lead' | 'body'
 
 export function Lead({ size = 'lead', children }: { size?: Size; children: ReactNode }) {
   const fontSize = useFluidPx(type[size])
-  const lh = fluidLineHeight(fontSize, lineHeight.body)
+  // The hero statement is display-scale: light weight, tight leading. Body
+  // leading (1.58) at 36px reads as gaps, not rhythm.
+  const isHero = size === 'heroLead'
+  const lh = fluidLineHeight(fontSize, isHero ? 1.3 : lineHeight.body)
   const fullWidth = useContext(FullWidthCopyContext)
+  // The hero measure is set in `ch` (character-relative), not the shared
+  // `copyMaxWidth` percentage: a % width and a fluid font-size scale on two
+  // different curves, so the line breaks (the rag) drift and reflow
+  // differently at every viewport. `ch` scales in lockstep with the font
+  // size itself, so the same ~64 characters land per line at any size —
+  // wider than the old measure, and the rag never changes shape.
+  const heroMaxWidth = '64ch'
   return (
     <Text
       style={
         {
           fontFamily: fonts.body,
+          fontWeight: isHero ? '300' : '400',
           fontSize,
           lineHeight: lh,
           color: colors.body,
-          ...(fullWidth ? null : { maxWidth: copyMaxWidth }),
+          ...(fullWidth ? null : { maxWidth: isHero ? heroMaxWidth : copyMaxWidth }),
         } as any
       }
     >

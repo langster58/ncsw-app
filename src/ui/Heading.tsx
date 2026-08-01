@@ -21,7 +21,7 @@ import {
 //   - maxWidth        → tokens.copyMaxWidth
 //   - fluid sizing    → tokens.type[level]
 
-type Level = 'h2' | 'h2sm' | 'h3' | 'h4'
+type Level = 'h2' | 'h2sm' | 'h3' | 'h4' | 'h5'
 
 export function Heading({ level = 'h2', children }: { level?: Level; children: ReactNode }) {
   const fontSize = useFluidPx(type[level])
@@ -32,7 +32,7 @@ export function Heading({ level = 'h2', children }: { level?: Level; children: R
       style={
         {
           fontFamily: fonts.display,
-          fontWeight: '800',
+          fontWeight: level === 'h2' || level === 'h2sm' ? '800' : '700',
           fontSize,
           lineHeight: lh,
           letterSpacing: tracking.display,

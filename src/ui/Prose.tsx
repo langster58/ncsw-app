@@ -68,7 +68,7 @@ export function Prose({ blocks, measure }: { blocks: ProseBlock[]; measure?: num
               <View key={i} style={{ marginTop: gap as any, gap: 10 } as any}>
                 {b.items.map((it, j) => (
                   <View key={j} style={{ flexDirection: 'row', gap: 12 } as any}>
-                    <Text style={{ fontFamily: fonts.mono, fontSize: pSize as any, color: colors.accent, lineHeight: pLine as any } as any}>—</Text>
+                    <Text style={{ fontFamily: fonts.body, fontSize: pSize as any, color: colors.accent, lineHeight: pLine as any } as any}>—</Text>
                     <Text style={{ fontFamily: fonts.body, fontSize: pSize as any, color: colors.body, lineHeight: pLine as any, flex: 1 } as any}>{it}</Text>
                   </View>
                 ))}

@@ -58,7 +58,7 @@ function Mono({
 }) {
   const color = tone === 'gray' ? colors.gray : tone === 'accent' ? colors.accent : colors.ink
   return (
-    <Text style={{ fontFamily: fonts.mono, fontSize: MONO_SIZES[size], fontWeight: '500', color }}>
+    <Text style={{ fontFamily: fonts.body, fontSize: MONO_SIZES[size], fontWeight: '500', color }}>
       {children}
     </Text>
   )
@@ -70,11 +70,9 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
     <View style={{ marginBottom: 56 }}>
       <Text
         style={{
-          fontFamily: fonts.mono,
+          fontFamily: fonts.body,
           fontSize: 11,
-          fontWeight: '500',
-          letterSpacing: 0.88,
-          textTransform: 'uppercase',
+          fontWeight: '600',
           color: colors.inkFaint,
           marginBottom: 12,
         }}
@@ -126,11 +124,9 @@ function BuildSpecs({ items }: { items: [string, string][] }) {
         <View key={label} style={{ gap: 6 }}>
           <Text
             style={{
-              fontFamily: fonts.mono,
-              fontSize: 10,
+              fontFamily: fonts.body,
+              fontSize: 10.5,
               fontWeight: '600',
-              letterSpacing: 1.2, // .12em @ 10
-              textTransform: 'uppercase',
               color: colors.inkFaint,
             }}
           >
@@ -160,7 +156,7 @@ function ScoreMeterDemo() {
             style: { width: 220, accentColor: colors.accent },
           })
         : (
-            <Text style={{ fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint }}>
+            <Text style={{ fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint }}>
               Slider available on web
             </Text>
           )}

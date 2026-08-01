@@ -87,10 +87,9 @@ export function PhotoSlot({ label }: { label: string }) {
       <Text
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
+            fontWeight: '600',
             fontSize: size,
-            letterSpacing: 0.4,
-            textTransform: 'uppercase',
             color: colors.inkFaint,
             textAlign: 'center',
             lineHeight: 18,
@@ -184,13 +183,13 @@ export function SysRow({
         <View style={{ minWidth: 96, alignItems: narrow ? 'flex-start' : 'flex-end' }}>
           <Text
             style={
-              { fontFamily: fonts.mono, fontSize: priceSize, fontWeight: '500', color: priceAccent ? colors.accent : colors.tableInk } as any
+              { fontFamily: fonts.body, fontSize: priceSize, fontWeight: '600', fontVariant: ['tabular-nums'], color: priceAccent ? colors.accent : colors.tableInk } as any
             }
           >
             {price}
           </Text>
           {priceSub ? (
-            <Text style={{ fontFamily: fonts.mono, fontSize: subSize, color: colors.gray, marginTop: 3 } as any}>{priceSub}</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: subSize, color: colors.gray, marginTop: 3 } as any}>{priceSub}</Text>
           ) : null}
         </View>
       ) : null}

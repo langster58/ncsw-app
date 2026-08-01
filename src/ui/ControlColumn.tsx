@@ -26,12 +26,10 @@ export function ControlColumn({ label, width, children }: Props) {
       <Text
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
             fontWeight: '600',
             fontSize,
             color: colors.gray,
-            textTransform: 'uppercase',
-            letterSpacing: 0.88,
           } as any
         }
         numberOfLines={1}

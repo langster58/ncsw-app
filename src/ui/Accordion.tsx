@@ -111,10 +111,10 @@ function Item({ index, title, media, children, __accordionIndex = 0 }: ItemProps
             <Text
               style={
                 {
-                  fontFamily: fonts.mono,
+                  fontFamily: fonts.body,
                   fontSize: 13,
-                  fontWeight: '500',
-                  letterSpacing: 0.52, // .04em * 13
+                  fontWeight: '600',
+                  fontVariant: ['tabular-nums'],
                   color: colors.accent,
                   minWidth: INDEX_COL,
                 } as any

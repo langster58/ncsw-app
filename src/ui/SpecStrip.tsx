@@ -45,10 +45,9 @@ export function SpecStrip({ cells }: { cells: SpecCell[] }) {
           <Text
             style={
               {
-                fontFamily: fonts.mono,
+                fontFamily: fonts.body,
+                fontWeight: '500',
                 fontSize: labelSize,
-                letterSpacing: tracking.wide,
-                textTransform: 'uppercase',
                 color: colors.gray,
               } as any
             }
@@ -58,9 +57,10 @@ export function SpecStrip({ cells }: { cells: SpecCell[] }) {
           <Text
             style={
               {
-                fontFamily: fonts.mono,
+                fontFamily: fonts.body,
                 fontSize: valueSize,
-                fontWeight: '500',
+                fontWeight: '600',
+                fontVariant: ['tabular-nums'],
                 color: c.accent ? colors.accent : colors.tableInk,
               } as any
             }
@@ -68,7 +68,7 @@ export function SpecStrip({ cells }: { cells: SpecCell[] }) {
             {c.value}
           </Text>
           {c.sub ? (
-            <Text style={{ fontFamily: fonts.mono, fontSize: subSize, color: colors.inkFaint } as any}>{c.sub}</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: subSize, color: colors.inkFaint } as any}>{c.sub}</Text>
           ) : null}
         </View>
       ))}

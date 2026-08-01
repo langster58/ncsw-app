@@ -149,8 +149,8 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
       <Card href="#">
         <Card.Body>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 } as any}>
-            <Text style={{ fontFamily: fonts.mono, fontSize: metaSize, letterSpacing: 0.5, textTransform: 'uppercase', color: colors.accent } as any}>{item.cat}</Text>
-            <Text style={{ fontFamily: fonts.body, fontSize: metaSize, letterSpacing: 0.9, textTransform: 'uppercase', fontWeight: '600', color: colors.gray } as any}>{item.read}</Text>
+            <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: metaSize, color: colors.accent } as any}>{item.cat}</Text>
+            <Text style={{ fontFamily: fonts.body, fontSize: metaSize, fontWeight: '500', color: colors.gray } as any}>{item.read}</Text>
           </View>
           <Heading level="h4">{item.title}</Heading>
           <Text style={{ fontFamily: fonts.body, fontSize: dekSize, color: colors.body, lineHeight: 22 } as any}>{item.dek}</Text>

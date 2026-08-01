@@ -90,16 +90,21 @@ export function useFluidValue(anchorPx: number, floorPx: number): number {
 // stylistic near-flat spread — plenty of room to visibly shrink above it.
 //
 //   level         anchor@1920   floor (hard minimum)
+// Modular ramp (~1.28 between steps from the 14px product body): 14 → 18 →
+// 22 → 28 → 36 → 52(display). 14px is the accessible floor for primary body
+// text in product UI (Carbon body-01 / Material body-medium territory);
+// secondary/annotation text never drops below 11.
 export const type = {
-  h2: fluidType(52, 28), //    52px          28px   — large section headings
-  h2sm: fluidType(40, 24), //  40px          24px   — medium section headings
-  h3: fluidType(32, 20), //    32px          20px   — sub-headings
-  h4: fluidType(24, 16), //    24px          16px   — card titles
-  heroLead: fluidType(22, 16), // 22px       16px   — hero statement
-  lead: fluidType(20, 15), //  20px          15px   — section lede
-  body: fluidType(16, 13), //  16px          13px   — body / card descriptions
-  small: fluidType(14, 11), // 14px          11px   — small labels / dense data text
-  meta: fluidType(12, 10), // 12px           10px   — mono uppercase eyebrows/labels
+  h2: fluidType(52, 28), //    52px          28px   — hero / display headings
+  h2sm: fluidType(36, 24), //  36px          24px   — medium section headings
+  h3: fluidType(28, 20), //    28px          20px   — sub-headings
+  h4: fluidType(22, 17), //    22px          17px   — card titles
+  h5: fluidType(18, 15), //    18px          15px   — section headings in dense surfaces
+  heroLead: fluidType(27, 19), // 27px       19px   — hero statement (display-scale, not body)
+  lead: fluidType(14, 13), //  14px          13px   — section lede (body size; one body setting)
+  body: fluidType(14, 13), //  14px          13px   — body / card descriptions
+  small: fluidType(13, 12), // 13px          12px   — annotations / dense data text
+  meta: fluidType(12, 11), // 12px           11px   — field labels, badges
 }
 
 // ── Line heights (unitless multipliers, source-accurate) ────────────────────

@@ -292,7 +292,7 @@ export default function PackageDetailScreen() {
 
                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: priceRowTop as any }}>
                     <Eyebrow>Total installed</Eyebrow>
-                    <Text style={{ fontFamily: fonts.mono, fontSize: priceSize as any, fontWeight: '500', color: colors.ink } as any}>
+                    <Text style={{ fontFamily: fonts.body, fontSize: priceSize as any, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink } as any}>
                       {money(installedN)}
                     </Text>
                   </View>
@@ -300,7 +300,7 @@ export default function PackageDetailScreen() {
 
                 {cells.length > 0 ? (
                   <View style={{ marginTop: stripTop as any }}>
-                    <Text style={{ fontFamily: fonts.mono, fontSize: metaSize as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginBottom: 12 } as any}>
+                    <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: metaSize as any, color: colors.gray, marginBottom: 12 } as any}>
                       {vehicle ? 'This car, on record' : 'This system, on record'}
                     </Text>
                     <SpecStrip cells={cells} />
@@ -392,7 +392,7 @@ export default function PackageDetailScreen() {
                       </Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <Text style={{ fontFamily: fonts.mono, fontSize: priceSize as any, color: colors.ink } as any}>{PHONE}</Text>
+                      <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: priceSize as any, fontVariant: ['tabular-nums'], color: colors.ink } as any}>{PHONE}</Text>
                       <Button variant="primary">Schedule install</Button>
                       <Button variant="secondary">Ask about this system</Button>
                     </View>

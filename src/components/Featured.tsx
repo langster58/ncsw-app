@@ -271,9 +271,9 @@ export function Featured() {
                   <Text
                     style={
                       {
-                        fontFamily: fonts.mono,
+                        fontFamily: fonts.body,
                         fontSize: specValueSize,
-                        fontWeight: '500',
+                        fontWeight: '600',
                         marginTop: 5,
                         color: colors.ink,
                         ...(IS_WEB ? { fontVariantNumeric: 'tabular-nums' } : {}),

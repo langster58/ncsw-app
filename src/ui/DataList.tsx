@@ -32,11 +32,11 @@ export function DataList({ rows }: { rows: DataRow[] }) {
           <Text
             style={
               {
-                fontFamily: fonts.mono,
+                fontFamily: fonts.body,
+                fontWeight: '500',
                 fontSize: labelSize,
-                letterSpacing: tracking.wide,
-                textTransform: 'uppercase',
                 color: colors.gray,
+                flexShrink: 0,
               } as any
             }
           >
@@ -45,11 +45,13 @@ export function DataList({ rows }: { rows: DataRow[] }) {
           <Text
             style={
               {
-                fontFamily: fonts.mono,
+                fontFamily: fonts.body,
                 fontSize: valueSize,
-                fontWeight: '500',
+                fontWeight: '600',
+                fontVariant: ['tabular-nums'],
                 color: r.accent ? colors.accent : colors.tableInk,
                 textAlign: 'right',
+                flex: 1,
               } as any
             }
           >

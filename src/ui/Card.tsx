@@ -234,11 +234,9 @@ function CardMediaTag({
       <Text
         style={
           {
-            fontFamily: fonts.mono,
+            fontFamily: fonts.body,
             fontSize,
             fontWeight: '600',
-            letterSpacing: tracking.label,
-            textTransform: 'uppercase',
             color: colors.white,
           } as any
         }

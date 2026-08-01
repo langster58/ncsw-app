@@ -69,11 +69,9 @@ export function SectionIntro({
         <Text
           style={
             {
-              fontFamily: fonts.mono,
+              fontFamily: fonts.body,
               fontSize: 12,
-              fontWeight: '500',
-              letterSpacing: tracking.wide,
-              textTransform: 'uppercase',
+              fontWeight: '600',
               color: colors.gray,
             } as any
           }

@@ -17,11 +17,9 @@ function toneColor(tone: Tone) {
 export function Metaline({ items }: { items: Item[] }) {
   const fontSize = useFluidPx(type.meta)
   const base = {
-    fontFamily: fonts.mono,
+    fontFamily: fonts.body,
     fontSize,
     fontWeight: '500',
-    letterSpacing: tracking.wide,
-    textTransform: 'uppercase',
   } as const
 
   const norm = items.map((it) => (typeof it === 'string' ? { text: it, tone: 'default' as Tone } : it))

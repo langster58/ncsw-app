@@ -87,7 +87,7 @@ function RelatedCard({ item }: { item: (typeof RELATED)[number] }) {
         <Card.Body>
           <Heading level="h4">{item.title}</Heading>
           <Text style={{ fontFamily: fonts.body, fontSize: summarySize, color: colors.body } as any}>{item.sum}</Text>
-          <Text style={{ fontFamily: fonts.mono, fontSize: priceSize, fontWeight: '500', color: colors.ink } as any}>{item.price}</Text>
+          <Text style={{ fontFamily: fonts.body, fontSize: priceSize, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink } as any}>{item.price}</Text>
         </Card.Body>
         <Card.Footer>
           <Link variant="door" icon={<IconArrow size={15} />}>
@@ -179,7 +179,7 @@ export default function PdpScreen() {
 
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: useVal(24, 20) as any }}>
                   <Eyebrow>Total installed</Eyebrow>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.h4) as any, fontWeight: '500', color: colors.ink } as any}>
+                  <Text style={{ fontFamily: fonts.body, fontSize: useFluidPx(type.h4) as any, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink } as any}>
                     $4,270
                   </Text>
                 </View>
@@ -199,7 +199,7 @@ export default function PdpScreen() {
                 boot_families). Boot dims shown are the measured Mk7 sample —
                 the Mk8 measurement lands with the derived-envelope fill. */}
             <View style={{ marginTop: useVal(40, 30) as any }}>
-              <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.meta) as any, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.gray, marginBottom: 12 } as any}>
+              <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: useFluidPx(type.meta) as any, color: colors.gray, marginBottom: 12 } as any}>
                 This car, on record
               </Text>
               <SpecStrip
@@ -422,7 +422,7 @@ export default function PdpScreen() {
                       {desc}
                     </Text>
                   </View>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: smallSize, fontWeight: '500', color: colors.tableInk } as any}>
+                  <Text style={{ fontFamily: fonts.body, fontSize: smallSize, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.tableInk } as any}>
                     {price}
                   </Text>
                 </View>
@@ -463,7 +463,7 @@ export default function PdpScreen() {
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Text style={{ fontFamily: fonts.mono, fontSize: useFluidPx(type.h4) as any, color: colors.ink } as any}>{PHONE}</Text>
+                  <Text style={{ fontFamily: fonts.body, fontWeight: '600', fontSize: useFluidPx(type.h4) as any, fontVariant: ['tabular-nums'], color: colors.ink } as any}>{PHONE}</Text>
                   <Button variant="primary">Schedule install</Button>
                   <Button variant="secondary">Ask about this system</Button>
                 </View>

@@ -33,7 +33,7 @@ export function PriceSummary({
       {lines.map((l, i) => (
         <View key={i} style={row as any}>
           <Text style={{ fontFamily: fonts.body, fontSize: smallSize, color: colors.body } as any}>{l.label}</Text>
-          <Text style={{ fontFamily: fonts.mono, fontSize: smallSize, fontWeight: '500', color: colors.tableInk } as any}>
+          <Text style={{ fontFamily: fonts.body, fontSize: smallSize, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.tableInk } as any}>
             {l.value}
           </Text>
         </View>
@@ -43,7 +43,7 @@ export function PriceSummary({
         <Text style={{ fontFamily: fonts.body, fontSize: totalLabelSize, fontWeight: '600', color: colors.ink } as any}>
           {total.label}
         </Text>
-        <Text style={{ fontFamily: fonts.mono, fontSize: totalValueSize, fontWeight: '500', color: colors.ink } as any}>
+        <Text style={{ fontFamily: fonts.body, fontSize: totalValueSize, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink } as any}>
           {total.value}
         </Text>
       </View>
