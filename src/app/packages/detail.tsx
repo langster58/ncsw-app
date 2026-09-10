@@ -30,6 +30,8 @@ import {
   type PackageDetail,
   type ResolvedComponent,
   type VehicleDetail,
+  vehicleName as formatVehicleName,
+  vehicleVariant,
 } from '@/lib/packages'
 
 // The WIRED product-detail page: /packages/detail?sku=...&vid=...
@@ -161,7 +163,7 @@ export default function PackageDetailScreen() {
   const ctaPadTop = useVal(40, 34)
   const ctaPadBottom = useVal(48, 40)
 
-  const vehicleName = vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : ''
+  const vehicleName = vehicle ? formatVehicleName(vehicle) : ''
   const title = pkg?.display_name ?? sku
 
   const installedN = pkg?.price_installed != null ? Number(pkg.price_installed) : null
@@ -274,7 +276,8 @@ export default function PackageDetailScreen() {
                   <Heading level="h2">NCSW System</Heading>
                   <Heading level="h2">{`SKU ${pkg.sku}`}</Heading>
                   {vehicle ? <Heading level="h2">{`${vehicle.year} ${vehicle.make}`}</Heading> : null}
-                  {vehicle ? <Heading level="h2">{[vehicle.model, vehicle.trim].filter(Boolean).join(' ')}</Heading> : null}
+                  {vehicle ? <Heading level="h2">{[vehicle.model, vehicle.series].filter(Boolean).join(' ')}</Heading> : null}
+                  {vehicle && vehicleVariant(vehicle) ? <Heading level="h2">{vehicleVariant(vehicle)}</Heading> : null}
                 </View>
               </Container>
 

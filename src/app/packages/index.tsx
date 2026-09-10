@@ -20,21 +20,31 @@ import {
 import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 import {
+  cabOptions,
   fetchMakes,
   fetchModels,
   fetchPackagesForVehicle,
   fetchVehicleRows,
   fetchYears,
+  narrowVehicleRows,
+  seriesOptions,
+  trimOptions,
+  vehicleName,
+  vehicleVariant,
   type PackageSummary,
   type Vehicle,
 } from '@/lib/packages'
 
 // PLP — the package listing experience. Vehicle-first: year -> make -> model
-// resolves the vehicle, then the packages that fit it, filtered. The NCSW
-// Picks filter defaults ON: the curated offering is large by design, and the
-// picks filter is what narrows it to a browsable set (two-round model).
-// While the packages collection is being curated the list renders its honest
-// empty state — the picker and wiring are live against Directus either way.
+// -> series -> cab -> trim resolves the vehicle, then the packages that fit
+// it, filtered. Series and cab appear only when the model has them (trucks:
+// Silverado 1500/2500HD, Ram 1500, F-250 Super Duty; SuperCab/Crew Cab), so a
+// car still walks year -> make -> model -> trim. Trims are listed per cab
+// because a cab is sold in only some of a model's trims. The NCSW Picks filter
+// defaults ON: the curated offering is large by design, and the picks filter
+// is what narrows it to a browsable set (two-round model). While the packages
+// collection is being curated the list renders its honest empty state — the
+// picker and wiring are live against Directus either way.
 
 const NAV_LINKS: NavLinkItem[] = [
   ['Packages', '/packages'],
@@ -63,6 +73,10 @@ export default function PackagesScreen() {
   const [year, setYear] = useState('')
   const [make, setMake] = useState('')
   const [model, setModel] = useState('')
+  const [rows, setRows] = useState<Vehicle[]>([])
+  const [series, setSeries] = useState('')
+  const [cab, setCab] = useState('')
+  const [trim, setTrim] = useState('')
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [show, setShow] = useState('NCSW Picks')
   const [topology, setTopology] = useState('all')
@@ -76,23 +90,55 @@ export default function PackagesScreen() {
   }, [])
 
   useEffect(() => {
-    setMake(''); setModel(''); setVehicle(null); setItems(null); setMakes([]); setModels([])
+    setMake(''); setModel(''); setRows([]); setMakes([]); setModels([])
     if (year) fetchMakes(year).then(setMakes).catch(() => setError('Could not load makes.'))
   }, [year])
 
   useEffect(() => {
-    setModel(''); setVehicle(null); setItems(null); setModels([])
+    setModel(''); setRows([]); setModels([])
     if (year && make) fetchModels(year, make).then(setModels).catch(() => setError('Could not load models.'))
   }, [make])
 
   useEffect(() => {
-    setVehicle(null); setItems(null)
+    setRows([])
     if (year && make && model) {
       fetchVehicleRows(year, make, model)
-        .then((rows) => setVehicle(rows[0] ?? null))
+        .then(setRows)
         .catch(() => setError('Could not resolve that vehicle.'))
     }
   }, [model])
+
+  // The steps after model are derived from the rows: a step is shown only when
+  // the rows offer a choice there, and a single-option trim is taken as read.
+  const seriesOpts = useMemo(() => seriesOptions(rows), [rows])
+  const needSeries = seriesOpts.length > 0
+  const cabOpts = useMemo(
+    () => (needSeries && !series ? [] : cabOptions(rows, { series: series || undefined })),
+    [rows, needSeries, series],
+  )
+  const needCab = cabOpts.length > 0
+  const trimOpts = useMemo(
+    () => (needSeries && !series) || (needCab && !cab)
+      ? []
+      : trimOptions(rows, { series: series || undefined, cab: cab || undefined }),
+    [rows, needSeries, series, needCab, cab],
+  )
+  const needTrim = trimOpts.length > 1
+
+  useEffect(() => { setSeries(''); setCab(''); setTrim('') }, [rows])
+  useEffect(() => { setCab(''); setTrim('') }, [series])
+  useEffect(() => { setTrim('') }, [cab])
+
+  useEffect(() => {
+    setVehicle(null); setItems(null)
+    if (!rows.length) return
+    if (needSeries && !series) return
+    if (needCab && !cab) return
+    if (needTrim && !trim) return
+    const picked = trim || trimOpts[0]
+    const match = narrowVehicleRows(rows, { series: series || undefined, cab: cab || undefined, trim: picked })
+    setVehicle(match[0] ?? null)
+  }, [rows, series, cab, trim, needSeries, needCab, needTrim, trimOpts])
 
   useEffect(() => {
     if (!vehicle) return
@@ -110,7 +156,8 @@ export default function PackagesScreen() {
   const gap = useFluidPx(fluid(20, 14))
   const padY = useFluidPx(fluid(56, 32))
 
-  const vehicleName = vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : ''
+  const vehicleLabel = vehicle ? vehicleName(vehicle) : ''
+  const variantLabel = vehicle ? vehicleVariant(vehicle) : ''
 
   return (
     <>
@@ -143,13 +190,29 @@ export default function PackagesScreen() {
                 <View style={{ minWidth: 200, flexGrow: 2 }}>
                   <Dropdown label="Model" value={model} options={models} onChange={setModel} placeholder="Select model" disabled={!make} />
                 </View>
+                {needSeries ? (
+                  <View style={{ minWidth: 140, flexGrow: 1 }}>
+                    <Dropdown label="Series" value={series} options={seriesOpts} onChange={setSeries} placeholder="Select series" />
+                  </View>
+                ) : null}
+                {needCab ? (
+                  <View style={{ minWidth: 160, flexGrow: 1 }}>
+                    <Dropdown label="Cab" value={cab} options={cabOpts} onChange={setCab} placeholder="Select cab" disabled={needSeries && !series} />
+                  </View>
+                ) : null}
+                {needTrim ? (
+                  <View style={{ minWidth: 160, flexGrow: 1 }}>
+                    <Dropdown label="Trim" value={trim} options={trimOpts} onChange={setTrim} placeholder="Select trim" disabled={needCab && !cab} />
+                  </View>
+                ) : null}
               </View>
 
               {vehicle ? (
                 <View style={{ gap }}>
                   <Metaline
                     items={[
-                      { text: vehicleName, tone: 'ink' },
+                      { text: vehicleLabel, tone: 'ink' },
+                      ...(variantLabel ? [variantLabel] : []),
                       ...(vehicle.body_style ? [vehicle.body_style] : []),
                       ...(vehicle.luggage_volume_cuft ? [`${vehicle.luggage_volume_cuft} ft³ cargo`] : []),
                     ]}
@@ -200,7 +263,7 @@ export default function PackagesScreen() {
                     <Card>
                       <View style={{ gap: 8 }}>
                         <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
-                          Packages for the {vehicleName} are being engineered.
+                          Packages for the {vehicleLabel} are being engineered.
                         </Text>
                         <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
                           Our catalog is curated car by car — every package is designed against this

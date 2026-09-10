@@ -49,34 +49,85 @@ export async function fetchModels(year: string, make: string): Promise<string[]>
   return rows.map((r) => r.model)
 }
 
+// A vehicle row is identified by year · make · model · series · cab · trim.
+// `model` is the nameplate only (Silverado, Ram, F-250); `series` is the duty
+// designation sold under it (1500, 2500HD, Super Duty, XD) and is null for
+// vehicles that have none. `cab_type` is the four-value install class
+// (regular/extended/crew/mega); `cab_type_name` is the brand name the picker
+// shows (SuperCab, Quad Cab, CrewMax) — two brand cabs can share a class in the
+// same year, so the picker filters on the name.
 export type Vehicle = {
   vehicle_id: string
   year: number
   make: string
   model: string
+  series: string | null
   trim: string | null
   body_style: string | null
   vehicle_category: string | null
   segment: string | null
   cab_type: string | null
+  cab_type_name: string | null
   luggage_volume_cuft: number | null
   acoustic_volume_cuft: number | null
 }
 
 const VEHICLE_FIELDS = [
-  'vehicle_id', 'year', 'make', 'model', 'trim', 'body_style',
-  'vehicle_category', 'segment', 'cab_type',
+  'vehicle_id', 'year', 'make', 'model', 'series', 'trim', 'body_style',
+  'vehicle_category', 'segment', 'cab_type', 'cab_type_name',
   'luggage_volume_cuft', 'acoustic_volume_cuft',
 ]
 
-/** All trims/rows for a year+make+model; the picker offers trim disambiguation
- * only when the rows differ in a way that changes package fit. */
+/** Every row for a year+make+model. The picker derives its remaining steps
+ * (series, cab, trim) from this one result instead of a request per step. */
 export async function fetchVehicleRows(year: string, make: string, model: string): Promise<Vehicle[]> {
   return getItems<Vehicle>('vehicles', {
     filter: { year: { _eq: year }, make: { _eq: make }, model: { _eq: model } },
     fields: VEHICLE_FIELDS,
-    limit: 50,
+    sort: ['series', 'cab_type_name', 'trim'],
+    limit: 500,
   })
+}
+
+/** "2019 Chevrolet Silverado 2500HD" — series joins the name when present. */
+export function vehicleName(v: Pick<Vehicle, 'year' | 'make' | 'model' | 'series'>): string {
+  return [v.year, v.make, v.model, v.series].filter(Boolean).join(' ')
+}
+
+/** "Crew Cab LTZ" — the cab (trucks) and trim that pin down the exact row. */
+export function vehicleVariant(v: Pick<Vehicle, 'cab_type_name' | 'trim'>): string {
+  return [v.cab_type_name, v.trim].filter(Boolean).join(' ')
+}
+
+export type VehiclePick = { series?: string; cab?: string; trim?: string }
+
+function distinct(values: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(values.filter((x): x is string => !!x)))
+}
+
+/** Rows still in play after the picks made so far. */
+export function narrowVehicleRows(rows: Vehicle[], pick: VehiclePick): Vehicle[] {
+  return rows.filter(
+    (r) =>
+      (!pick.series || r.series === pick.series) &&
+      (!pick.cab || r.cab_type_name === pick.cab) &&
+      (!pick.trim || r.trim === pick.trim),
+  )
+}
+
+/** Series offered under this model-year (empty when the model has none). */
+export function seriesOptions(rows: Vehicle[]): string[] {
+  return distinct(rows.map((r) => r.series))
+}
+
+/** Brand cab names offered for the chosen series (empty for cars). */
+export function cabOptions(rows: Vehicle[], pick: VehiclePick): string[] {
+  return distinct(narrowVehicleRows(rows, { series: pick.series }).map((r) => r.cab_type_name))
+}
+
+/** Trims offered for the chosen series and cab. */
+export function trimOptions(rows: Vehicle[], pick: VehiclePick): string[] {
+  return distinct(narrowVehicleRows(rows, { series: pick.series, cab: pick.cab }).map((r) => r.trim))
 }
 
 // --------------------------------------------------------------- package list
