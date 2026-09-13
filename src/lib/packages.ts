@@ -73,12 +73,17 @@ export type Vehicle = {
   cab_type_name: string | null
   luggage_volume_cuft: number | null
   acoustic_volume_cuft: number | null
+  // True when NCSW does not install a substage in this vehicle at all; the
+  // page shows `substage_not_offered_reason` instead of a package list.
+  substage_not_offered?: boolean | null
+  substage_not_offered_reason?: string | null
 }
 
 const VEHICLE_FIELDS = [
   'vehicle_id', 'year', 'make', 'model', 'series', 'trim', 'powertrain', 'body_style',
   'vehicle_category', 'segment', 'cab_type', 'cab_type_name',
   'luggage_volume_cuft', 'acoustic_volume_cuft',
+  'substage_not_offered', 'substage_not_offered_reason',
 ]
 
 /** Customer-facing names for the powertrain codes stored on vehicles. */

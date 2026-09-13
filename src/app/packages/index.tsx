@@ -163,6 +163,7 @@ export default function PackagesScreen() {
 
   useEffect(() => {
     if (!vehicle) return
+    if (vehicle.substage_not_offered) { setItems([]); setLoading(false); return }
     setLoading(true); setError('')
     fetchPackagesForVehicle(vehicle, {
       ncswPicksOnly: show === 'NCSW Picks',
@@ -262,7 +263,19 @@ export default function PackagesScreen() {
                   <FilterChipGroup label="Bass" value={alignment} options={ALIGNMENTS} onChange={setAlignment}
                     renderOption={(o) => ALIGNMENT_LABEL[o] ?? o} />
 
-                  {loading ? (
+                  {vehicle.substage_not_offered ? (
+                    <Card>
+                      <View style={{ gap: 8 }}>
+                        <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
+                          We don't install substages in the {vehicleLabel}.
+                        </Text>
+                        <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
+                          {vehicle.substage_not_offered_reason ??
+                            'There is no space in this truck for a full-frame subwoofer enclosure, and we do not sell shallow-driver stages.'}
+                        </Text>
+                      </View>
+                    </Card>
+                  ) : loading ? (
                     <ActivityIndicator color={colors.ink} />
                   ) : items && items.length > 0 ? (
                     <View style={{ gap }}>
