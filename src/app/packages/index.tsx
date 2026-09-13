@@ -27,6 +27,8 @@ import {
   fetchVehicleRows,
   fetchYears,
   narrowVehicleRows,
+  powertrainLabel,
+  powertrainOptions,
   seriesOptions,
   trimOptions,
   vehicleName,
@@ -36,11 +38,13 @@ import {
 } from '@/lib/packages'
 
 // PLP — the package listing experience. Vehicle-first: year -> make -> model
-// -> series -> cab -> trim resolves the vehicle, then the packages that fit
-// it, filtered. Series and cab appear only when the model has them (trucks:
-// Silverado 1500/2500HD, Ram 1500, F-250 Super Duty; SuperCab/Crew Cab), so a
-// car still walks year -> make -> model -> trim. Trims are listed per cab
-// because a cab is sold in only some of a model's trims. The NCSW Picks filter
+// -> series -> cab -> trim -> engine resolves the vehicle, then the packages
+// that fit it, filtered. Series and cab appear only when the model has them
+// (trucks: Silverado 1500/2500HD, Ram 1500, F-250 Super Duty; SuperCab/Crew
+// Cab), so a car still walks year -> make -> model -> trim. Trims are listed
+// per cab because a cab is sold in only some of a model's trims. Engine
+// appears only when the same trim is sold with more than one powertrain
+// (Maverick hybrid vs EcoBoost, a PHEV twin of a gas trim). The NCSW Picks filter
 // defaults ON: the curated offering is large by design, and the picks filter
 // is what narrows it to a browsable set (two-round model). While the packages
 // collection is being curated the list renders its honest empty state — the
@@ -77,6 +81,7 @@ export default function PackagesScreen() {
   const [series, setSeries] = useState('')
   const [cab, setCab] = useState('')
   const [trim, setTrim] = useState('')
+  const [powertrain, setPowertrain] = useState('')
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [show, setShow] = useState('NCSW Picks')
   const [topology, setTopology] = useState('all')
@@ -124,10 +129,19 @@ export default function PackagesScreen() {
     [rows, needSeries, series, needCab, cab],
   )
   const needTrim = trimOpts.length > 1
+  const pickedTrim = needTrim ? trim : trimOpts[0] ?? ''
+  const powertrainOpts = useMemo(
+    () => (!pickedTrim
+      ? []
+      : powertrainOptions(rows, { series: series || undefined, cab: cab || undefined, trim: pickedTrim })),
+    [rows, series, cab, pickedTrim],
+  )
+  const needPowertrain = powertrainOpts.length > 1
 
-  useEffect(() => { setSeries(''); setCab(''); setTrim('') }, [rows])
-  useEffect(() => { setCab(''); setTrim('') }, [series])
-  useEffect(() => { setTrim('') }, [cab])
+  useEffect(() => { setSeries(''); setCab(''); setTrim(''); setPowertrain('') }, [rows])
+  useEffect(() => { setCab(''); setTrim(''); setPowertrain('') }, [series])
+  useEffect(() => { setTrim(''); setPowertrain('') }, [cab])
+  useEffect(() => { setPowertrain('') }, [trim])
 
   useEffect(() => {
     setVehicle(null); setItems(null)
@@ -135,10 +149,15 @@ export default function PackagesScreen() {
     if (needSeries && !series) return
     if (needCab && !cab) return
     if (needTrim && !trim) return
-    const picked = trim || trimOpts[0]
-    const match = narrowVehicleRows(rows, { series: series || undefined, cab: cab || undefined, trim: picked })
+    if (needPowertrain && !powertrain) return
+    const match = narrowVehicleRows(rows, {
+      series: series || undefined,
+      cab: cab || undefined,
+      trim: pickedTrim,
+      powertrain: powertrain || undefined,
+    })
     setVehicle(match[0] ?? null)
-  }, [rows, series, cab, trim, needSeries, needCab, needTrim, trimOpts])
+  }, [rows, series, cab, trim, powertrain, needSeries, needCab, needTrim, needPowertrain, pickedTrim])
 
   useEffect(() => {
     if (!vehicle) return
@@ -205,6 +224,17 @@ export default function PackagesScreen() {
                     <Dropdown label="Trim" value={trim} options={trimOpts} onChange={setTrim} placeholder="Select trim" disabled={needCab && !cab} />
                   </View>
                 ) : null}
+                {needPowertrain ? (
+                  <View style={{ minWidth: 160, flexGrow: 1 }}>
+                    <Dropdown
+                      label="Engine"
+                      value={powertrain}
+                      options={powertrainOpts.map((p) => ({ label: powertrainLabel(p), value: p }))}
+                      onChange={setPowertrain}
+                      placeholder="Select engine"
+                    />
+                  </View>
+                ) : null}
               </View>
 
               {vehicle ? (
@@ -213,6 +243,7 @@ export default function PackagesScreen() {
                     items={[
                       { text: vehicleLabel, tone: 'ink' },
                       ...(variantLabel ? [variantLabel] : []),
+                      ...(vehicle.powertrain && vehicle.powertrain !== 'ICE' ? [powertrainLabel(vehicle.powertrain)] : []),
                       ...(vehicle.body_style ? [vehicle.body_style] : []),
                       ...(vehicle.luggage_volume_cuft ? [`${vehicle.luggage_volume_cuft} ft³ cargo`] : []),
                     ]}

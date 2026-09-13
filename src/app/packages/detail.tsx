@@ -30,6 +30,7 @@ import {
   type PackageDetail,
   type ResolvedComponent,
   type VehicleDetail,
+  powertrainLabel,
   vehicleName as formatVehicleName,
   vehicleVariant,
 } from '@/lib/packages'
@@ -278,6 +279,9 @@ export default function PackageDetailScreen() {
                   {vehicle ? <Heading level="h2">{`${vehicle.year} ${vehicle.make}`}</Heading> : null}
                   {vehicle ? <Heading level="h2">{[vehicle.model, vehicle.series].filter(Boolean).join(' ')}</Heading> : null}
                   {vehicle && vehicleVariant(vehicle) ? <Heading level="h2">{vehicleVariant(vehicle)}</Heading> : null}
+                  {vehicle && vehicle.powertrain && vehicle.powertrain !== 'ICE'
+                    ? <Heading level="h2">{powertrainLabel(vehicle.powertrain)}</Heading>
+                    : null}
                 </View>
               </Container>
 

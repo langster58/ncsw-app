@@ -49,13 +49,15 @@ export async function fetchModels(year: string, make: string): Promise<string[]>
   return rows.map((r) => r.model)
 }
 
-// A vehicle row is identified by year · make · model · series · cab · trim.
-// `model` is the nameplate only (Silverado, Ram, F-250); `series` is the duty
-// designation sold under it (1500, 2500HD, Super Duty, XD) and is null for
-// vehicles that have none. `cab_type` is the four-value install class
+// A vehicle row is identified by year · make · model · series · cab · trim ·
+// powertrain. `model` is the nameplate only (Silverado, Ram, F-250); `series`
+// is the duty designation sold under it (1500, 2500HD, Super Duty, XD) and is
+// null for vehicles that have none. `cab_type` is the four-value install class
 // (regular/extended/crew/mega); `cab_type_name` is the brand name the picker
 // shows (SuperCab, Quad Cab, CrewMax) — two brand cabs can share a class in the
-// same year, so the picker filters on the name.
+// same year, so the picker filters on the name. `powertrain` separates rows
+// whose install envelope differs by engine (Maverick hybrid vs EcoBoost: the
+// hybrid battery takes one under-seat pocket) and the PHEV/EV twins of a trim.
 export type Vehicle = {
   vehicle_id: string
   year: number
@@ -63,6 +65,7 @@ export type Vehicle = {
   model: string
   series: string | null
   trim: string | null
+  powertrain: string | null
   body_style: string | null
   vehicle_category: string | null
   segment: string | null
@@ -73,10 +76,23 @@ export type Vehicle = {
 }
 
 const VEHICLE_FIELDS = [
-  'vehicle_id', 'year', 'make', 'model', 'series', 'trim', 'body_style',
+  'vehicle_id', 'year', 'make', 'model', 'series', 'trim', 'powertrain', 'body_style',
   'vehicle_category', 'segment', 'cab_type', 'cab_type_name',
   'luggage_volume_cuft', 'acoustic_volume_cuft',
 ]
+
+/** Customer-facing names for the powertrain codes stored on vehicles. */
+export const POWERTRAIN_LABEL: Record<string, string> = {
+  ICE: 'Gas',
+  'Full Hybrid': 'Hybrid',
+  'Mild Hybrid': 'Mild hybrid',
+  PHEV: 'Plug-in hybrid',
+  EV: 'Electric',
+}
+
+export function powertrainLabel(code: string | null | undefined): string {
+  return code ? POWERTRAIN_LABEL[code] ?? code : ''
+}
 
 /** Every row for a year+make+model. The picker derives its remaining steps
  * (series, cab, trim) from this one result instead of a request per step. */
@@ -84,7 +100,7 @@ export async function fetchVehicleRows(year: string, make: string, model: string
   return getItems<Vehicle>('vehicles', {
     filter: { year: { _eq: year }, make: { _eq: make }, model: { _eq: model } },
     fields: VEHICLE_FIELDS,
-    sort: ['series', 'cab_type_name', 'trim'],
+    sort: ['series', 'cab_type_name', 'trim', 'powertrain'],
     limit: 500,
   })
 }
@@ -99,7 +115,7 @@ export function vehicleVariant(v: Pick<Vehicle, 'cab_type_name' | 'trim'>): stri
   return [v.cab_type_name, v.trim].filter(Boolean).join(' ')
 }
 
-export type VehiclePick = { series?: string; cab?: string; trim?: string }
+export type VehiclePick = { series?: string; cab?: string; trim?: string; powertrain?: string }
 
 function distinct(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((x): x is string => !!x)))
@@ -111,7 +127,16 @@ export function narrowVehicleRows(rows: Vehicle[], pick: VehiclePick): Vehicle[]
     (r) =>
       (!pick.series || r.series === pick.series) &&
       (!pick.cab || r.cab_type_name === pick.cab) &&
-      (!pick.trim || r.trim === pick.trim),
+      (!pick.trim || r.trim === pick.trim) &&
+      (!pick.powertrain || r.powertrain === pick.powertrain),
+  )
+}
+
+/** Powertrains offered for the chosen series, cab and trim. More than one means
+ * the picker needs an Engine step; one means it's taken as read. */
+export function powertrainOptions(rows: Vehicle[], pick: VehiclePick): string[] {
+  return distinct(
+    narrowVehicleRows(rows, { series: pick.series, cab: pick.cab, trim: pick.trim }).map((r) => r.powertrain),
   )
 }
 
