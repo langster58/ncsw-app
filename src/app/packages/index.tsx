@@ -121,7 +121,9 @@ export default function PackagesScreen() {
     () => (needSeries && !series ? [] : cabOptions(rows, { series: series || undefined })),
     [rows, needSeries, series],
   )
-  const needCab = cabOpts.length > 0
+  // A model sold in one cab (Maverick, Ridgeline) skips the Cab step; the
+  // single cab is taken as read the way a single trim is.
+  const needCab = cabOpts.length > 1
   const trimOpts = useMemo(
     () => (needSeries && !series) || (needCab && !cab)
       ? []
