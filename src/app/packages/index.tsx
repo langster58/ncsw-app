@@ -251,17 +251,21 @@ export default function PackagesScreen() {
                       ...(vehicle.luggage_volume_cuft ? [`${vehicle.luggage_volume_cuft} ft³ cargo`] : []),
                     ]}
                   />
-                  <FilterChipGroup
-                    label="Show"
-                    value={show}
-                    options={['NCSW Picks', 'All packages']}
-                    pick="NCSW Picks"
-                    onChange={setShow}
-                  />
-                  <FilterChipGroup label="Topology" value={topology} options={TOPOLOGIES} onChange={setTopology}
-                    renderOption={(o) => (o === 'all' ? 'All' : o)} />
-                  <FilterChipGroup label="Bass" value={alignment} options={ALIGNMENTS} onChange={setAlignment}
-                    renderOption={(o) => ALIGNMENT_LABEL[o] ?? o} />
+                  {vehicle.substage_not_offered ? null : (
+                    <>
+                      <FilterChipGroup
+                        label="Show"
+                        value={show}
+                        options={['NCSW Picks', 'All packages']}
+                        pick="NCSW Picks"
+                        onChange={setShow}
+                      />
+                      <FilterChipGroup label="Topology" value={topology} options={TOPOLOGIES} onChange={setTopology}
+                        renderOption={(o) => (o === 'all' ? 'All' : o)} />
+                      <FilterChipGroup label="Bass" value={alignment} options={ALIGNMENTS} onChange={setAlignment}
+                        renderOption={(o) => ALIGNMENT_LABEL[o] ?? o} />
+                    </>
+                  )}
 
                   {vehicle.substage_not_offered ? (
                     <Card>
