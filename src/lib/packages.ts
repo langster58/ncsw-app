@@ -457,6 +457,38 @@ export async function fetchVehicleById(vehicleId: string): Promise<VehicleDetail
   return rows[0] ?? null
 }
 
+// ------------------------------------------------ factory audio (picker step)
+
+/** One choice in the factory-audio question for a vehicle, as materialised by
+ * `gen_vehicle_options.py` from `vehicles.branded_system_name`.
+ *
+ * `picker_help` is the owner-facing text for telling whether their own car has
+ * this system — badges on the speaker grilles, a name on the radio, a subwoofer
+ * in the trunk. It is copied onto every option row from `audio_choice_help` on
+ * each rebuild, so it is read here rather than joined at request time. */
+export type AudioOption = {
+  position: number
+  label: string
+  system_name: string | null
+  brand_key: string
+  has_fullrange: string | null
+  picker_help: string | null
+}
+
+/** The factory systems this exact vehicle could have been ordered with.
+ *
+ * ONE row means there was never a choice — the picker asks nothing. Two or more
+ * means only the owner can say which was ticked at the factory: it is not in the
+ * VIN and no data vendor sells it, which is why the question is asked at all. */
+export async function fetchAudioOptions(vehicleId: string): Promise<AudioOption[]> {
+  return getItems<AudioOption>('vehicle_audio_options', {
+    filter: { vehicle_id: { _eq: vehicleId } },
+    fields: ['position', 'label', 'system_name', 'brand_key', 'has_fullrange', 'picker_help'],
+    sort: ['position'],
+    limit: 10,
+  })
+}
+
 export type ProductRow = {
   slug: string
   brand?: string | null

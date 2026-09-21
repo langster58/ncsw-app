@@ -11,6 +11,7 @@ import {
   Heading,
   Lead,
   Metaline,
+  Modal,
   colors,
   fonts,
   fluid,
@@ -24,6 +25,7 @@ import {
   cabOptions,
   engineLabel,
   engineOptions,
+  fetchAudioOptions,
   fetchMakes,
   fetchModels,
   fetchPackagesForVehicle,
@@ -35,6 +37,7 @@ import {
   trimOptions,
   vehicleName,
   vehicleVariant,
+  type AudioOption,
   type PackageSummary,
   type Vehicle,
 } from '@/lib/packages'
@@ -228,6 +231,34 @@ export default function PackagesScreen() {
     return () => { live = false }
   }, [reqKey, vehicle, show, topology, alignment])
 
+  // ---- factory audio -------------------------------------------------------
+  // Not an identity step: by the time it is asked the vehicle is already
+  // resolved, so it narrows nothing. It asks how THIS owner's car was equipped,
+  // which is not in the VIN and is not sold by any data vendor — the owner is
+  // the only source. Same request-key pattern as the package fetch above.
+  const audioKey = vehicle ? vehicle.vehicle_id : ''
+  const [audio, setAudio] = useState<{ key: string; list: AudioOption[] } | null>(null)
+  // The pick and the open help both carry the vehicle they belong to, so they
+  // fall away on their own when the vehicle changes. No reset effect.
+  const [audioPick, setAudioPick] = useState({ key: '', label: '' })
+  const [helpFor, setHelpFor] = useState('')
+  useEffect(() => {
+    if (!audioKey) return
+    let live = true
+    fetchAudioOptions(audioKey)
+      .then((list) => { if (live) setAudio({ key: audioKey, list }) })
+      .catch(() => { if (live) setAudio({ key: audioKey, list: [] }) })
+    return () => { live = false }
+  }, [audioKey])
+  const audioOpts = audio && audio.key === audioKey ? audio.list : []
+  // Hidden, not greyed, when the car only ever had one system: the condition is
+  // permanent for this vehicle, and a disabled control would imply the customer
+  // has something left to do. (Nielsen: disable when temporary, hide when not.)
+  const needAudio = audioOpts.length > 1
+  const picked = audioPick.key === audioKey ? audioPick.label : ''
+  const chosenAudio = audioOpts.find((o) => o.label === picked) ?? null
+  const helpOpen = helpFor === audioKey && audioKey !== ''
+
   const gap = useFluidPx(fluid(20, 14))
   const padY = useFluidPx(fluid(56, 32))
 
@@ -299,6 +330,57 @@ export default function PackagesScreen() {
                 ) : null}
               </View>
 
+              {/* Factory audio. Not an identity step — the vehicle is already
+                  resolved by the row above; this asks how THIS car was equipped,
+                  which only its owner can answer. Sits on its own line with the
+                  help trigger beside it, because it is the one question that
+                  needs instructions. */}
+              {needAudio ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', gap, zIndex: 25 }}>
+                  <View style={{ minWidth: 240, flexGrow: 1, maxWidth: 420 }}>
+                    <Dropdown
+                      label="Factory sound system"
+                      value={picked}
+                      options={audioOpts.map((o) => ({ label: o.label, value: o.label }))}
+                      onChange={(v) => setAudioPick({ key: audioKey, label: v })}
+                      placeholder="Select system"
+                    />
+                  </View>
+                  <Pressable
+                    onPress={() => setHelpFor(audioKey)}
+                    accessibilityRole="button"
+                    accessibilityLabel="How do I tell which sound system I have?"
+                    // 44px minimum touch target, and the label carries the icon:
+                    // a bare glyph is discoverable only to someone already looking
+                    // for it, and this is the one control the answer depends on.
+                    style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10 }}
+                  >
+                    <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.accent }}>?</Text>
+                    <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.accent, textDecorationLine: 'underline' }}>
+                      How do I tell?
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <Modal open={helpOpen} onClose={() => setHelpFor('')} title="Which sound system is in your car?">
+                <Modal.Body>
+                  <Text style={{ fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.gray, marginBottom: 18 }}>
+                    {vehicleLabel ? `A ${vehicleLabel} could be ordered with more than one factory system, and they are not interchangeable. Find yours below, then choose it above.` : ''}
+                  </Text>
+                  {audioOpts.map((o) => (
+                    <View key={o.label} style={{ marginBottom: 20 }}>
+                      <Text style={{ fontFamily: fonts.display, fontSize: 16, color: colors.ink, marginBottom: 6 }}>
+                        {o.label}
+                      </Text>
+                      <Text style={{ fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.gray }}>
+                        {o.picker_help ?? 'Look for the system name on the speaker grilles, and on the face of the radio. If there is no name anywhere, the car has the standard system.'}
+                      </Text>
+                    </View>
+                  ))}
+                </Modal.Body>
+              </Modal>
+
               {vehicle ? (
                 <View style={{ gap }}>
                   <Metaline
@@ -308,6 +390,14 @@ export default function PackagesScreen() {
                       ...(vehicle.powertrain && vehicle.powertrain !== 'ICE' ? [powertrainLabel(vehicle.powertrain)] : []),
                       ...(vehicle.body_style ? [vehicle.body_style] : []),
                       ...(vehicle.luggage_volume_cuft ? [`${vehicle.luggage_volume_cuft} ft³ cargo`] : []),
+                      // Once the owner has answered, say what their answer means
+                      // for the install. Until then the vehicle rolls up to
+                      // `option` and we say nothing rather than guess.
+                      ...(chosenAudio
+                        ? [chosenAudio.has_fullrange === 'false'
+                            ? `${chosenAudio.label} · signal reconstructed ahead of the DSP`
+                            : `${chosenAudio.label} · full-range output, tapped directly`]
+                        : []),
                     ]}
                   />
                   {vehicle.substage_not_offered ? null : (
