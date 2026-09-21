@@ -20,7 +20,10 @@ import {
 import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 import {
+  bodyOptions,
   cabOptions,
+  engineLabel,
+  engineOptions,
   fetchMakes,
   fetchModels,
   fetchPackagesForVehicle,
@@ -28,7 +31,6 @@ import {
   fetchYears,
   narrowVehicleRows,
   powertrainLabel,
-  powertrainOptions,
   seriesOptions,
   trimOptions,
   vehicleName,
@@ -38,11 +40,15 @@ import {
 } from '@/lib/packages'
 
 // PLP — the package listing experience. Vehicle-first: year -> make -> model
-// -> series -> cab -> trim -> engine resolves the vehicle, then the packages
-// that fit it, filtered. Series and cab appear only when the model has them
-// (trucks: Silverado 1500/2500HD, Ram 1500, F-250 Super Duty; SuperCab/Crew
-// Cab), so a car still walks year -> make -> model -> trim. Trims are listed
-// per cab because a cab is sold in only some of a model's trims. Engine
+// -> series -> body -> cab -> trim -> engine resolves the vehicle, then the
+// packages that fit it, filtered. Series and cab appear only when the model has
+// them (trucks: Silverado 1500/2500HD, Ram 1500, F-250 Super Duty; SuperCab/Crew
+// Cab), so a car still walks year -> make -> model -> body -> trim. Body appears
+// when a model was sold in more than one shape, because a sedan and a wagon have
+// different cargo dimensions — and on the pre-1990 cars, whose European engine
+// variants were collapsed away, body is the only thing left separating the rows.
+// Body and cab never both appear: cars have bodies, trucks have cabs. Trims are
+// listed per cab because a cab is sold in only some of a model's trims. Engine
 // appears only when the same trim is sold with more than one powertrain
 // (Maverick hybrid vs EcoBoost, a PHEV twin of a gas trim). The NCSW Picks filter
 // defaults ON: the curated offering is large by design, and the picks filter
@@ -79,101 +85,148 @@ export default function PackagesScreen() {
   const [model, setModel] = useState('')
   const [rows, setRows] = useState<Vehicle[]>([])
   const [series, setSeries] = useState('')
+  const [body, setBody] = useState('')
   const [cab, setCab] = useState('')
   const [trim, setTrim] = useState('')
-  const [powertrain, setPowertrain] = useState('')
-  const [vehicle, setVehicle] = useState<Vehicle | null>(null)
+  const [engine, setEngine] = useState('')
   const [show, setShow] = useState('NCSW Picks')
   const [topology, setTopology] = useState('all')
   const [alignment, setAlignment] = useState('all')
-  const [loading, setLoading] = useState(false)
-  const [items, setItems] = useState<PackageSummary[] | null>(null)
+  const [result, setResult] = useState<{ key: string; list: PackageSummary[] | 'error' } | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     fetchYears().then(setYears).catch(() => setError('Could not reach the catalog.'))
   }, [])
 
+  // Choosing a step clears every step below it. This lives in the handlers rather
+  // than in effects because a selection is the only thing that changes these —
+  // there is no external state to synchronise with, and doing it here means the
+  // cleared steps are gone in the same commit as the new selection.
+  function pickYear(v: string) {
+    setYear(v); setMakes([]); setModels([]); setRows([])
+    setMake(''); setModel(''); setSeries(''); setBody(''); setCab(''); setTrim(''); setEngine('')
+  }
+  function pickMake(v: string) {
+    setMake(v); setModels([]); setRows([])
+    setModel(''); setSeries(''); setBody(''); setCab(''); setTrim(''); setEngine('')
+  }
+  function pickModel(v: string) {
+    setModel(v); setRows([])
+    setSeries(''); setBody(''); setCab(''); setTrim(''); setEngine('')
+  }
+  function pickSeries(v: string) { setSeries(v); setBody(''); setCab(''); setTrim(''); setEngine('') }
+  function pickBody(v: string) { setBody(v); setCab(''); setTrim(''); setEngine('') }
+  function pickCab(v: string) { setCab(v); setTrim(''); setEngine('') }
+  function pickTrim(v: string) { setTrim(v); setEngine('') }
+
   useEffect(() => {
-    setMake(''); setModel(''); setRows([]); setMakes([]); setModels([])
     if (year) fetchMakes(year).then(setMakes).catch(() => setError('Could not load makes.'))
   }, [year])
 
   useEffect(() => {
-    setModel(''); setRows([]); setModels([])
     if (year && make) fetchModels(year, make).then(setModels).catch(() => setError('Could not load models.'))
-  }, [make])
+  }, [year, make])
 
   useEffect(() => {
-    setRows([])
     if (year && make && model) {
       fetchVehicleRows(year, make, model)
         .then(setRows)
         .catch(() => setError('Could not resolve that vehicle.'))
     }
-  }, [model])
+  }, [year, make, model])
 
   // The steps after model are derived from the rows: a step is shown only when
   // the rows offer a choice there, and a single-option trim is taken as read.
   const seriesOpts = useMemo(() => seriesOptions(rows), [rows])
   const needSeries = seriesOpts.length > 0
-  const cabOpts = useMemo(
-    () => (needSeries && !series ? [] : cabOptions(rows, { series: series || undefined })),
+  // Body style — sedan vs wagon vs coupe carry different cargo dimensions, and on
+  // the pre-1990 rows body is the ONLY thing separating them now that their
+  // European engine variants have been collapsed away. Measured across 9,870
+  // model-years: body and cab never both offer a choice, so these two steps never
+  // compete (cars have bodies, trucks have cabs).
+  const bodyOpts = useMemo(
+    () => (needSeries && !series ? [] : bodyOptions(rows, { series: series || undefined })),
     [rows, needSeries, series],
+  )
+  const needBody = bodyOpts.length > 1
+  const cabOpts = useMemo(
+    () => (needSeries && !series) || (needBody && !body)
+      ? []
+      : cabOptions(rows, { series: series || undefined, body: body || undefined }),
+    [rows, needSeries, series, needBody, body],
   )
   // A model sold in one cab (Maverick, Ridgeline) skips the Cab step; the
   // single cab is taken as read the way a single trim is.
   const needCab = cabOpts.length > 1
   const trimOpts = useMemo(
-    () => (needSeries && !series) || (needCab && !cab)
+    () => (needSeries && !series) || (needBody && !body) || (needCab && !cab)
       ? []
-      : trimOptions(rows, { series: series || undefined, cab: cab || undefined }),
-    [rows, needSeries, series, needCab, cab],
+      : trimOptions(rows, { series: series || undefined, body: body || undefined, cab: cab || undefined }),
+    [rows, needSeries, series, needBody, body, needCab, cab],
   )
   const needTrim = trimOpts.length > 1
   const pickedTrim = needTrim ? trim : trimOpts[0] ?? ''
-  const powertrainOpts = useMemo(
-    () => (!pickedTrim
+  // The Engine step waits on the steps before it, not on a trim being present:
+  // the pre-1990 rows have no trim to offer and are told apart by engine alone,
+  // and a modern vehicle with one trim still needs its hybrid/EcoBoost choice.
+  const engineOpts = useMemo(
+    () => (needSeries && !series) || (needBody && !body) || (needCab && !cab) || (needTrim && !trim)
       ? []
-      : powertrainOptions(rows, { series: series || undefined, cab: cab || undefined, trim: pickedTrim })),
-    [rows, series, cab, pickedTrim],
+      : engineOptions(rows, {
+          series: series || undefined,
+          body: body || undefined,
+          cab: cab || undefined,
+          trim: pickedTrim || undefined,
+        }),
+    [rows, needSeries, series, needBody, body, needCab, cab, needTrim, trim, pickedTrim],
   )
-  const needPowertrain = powertrainOpts.length > 1
+  const needEngine = engineOpts.length > 1
 
-  useEffect(() => { setSeries(''); setCab(''); setTrim(''); setPowertrain('') }, [rows])
-  useEffect(() => { setCab(''); setTrim(''); setPowertrain('') }, [series])
-  useEffect(() => { setTrim(''); setPowertrain('') }, [cab])
-  useEffect(() => { setPowertrain('') }, [trim])
-
-  useEffect(() => {
-    setVehicle(null); setItems(null)
-    if (!rows.length) return
-    if (needSeries && !series) return
-    if (needCab && !cab) return
-    if (needTrim && !trim) return
-    if (needPowertrain && !powertrain) return
-    const match = narrowVehicleRows(rows, {
+  // The chosen row is not state — it is whatever the picks narrow the rows down
+  // to, so it is derived. Null until every step the vehicle needs is answered.
+  const vehicle = useMemo<Vehicle | null>(() => {
+    if (!rows.length) return null
+    if (needSeries && !series) return null
+    if (needBody && !body) return null
+    if (needCab && !cab) return null
+    if (needTrim && !trim) return null
+    if (needEngine && !engine) return null
+    return narrowVehicleRows(rows, {
       series: series || undefined,
+      body: body || undefined,
       cab: cab || undefined,
-      trim: pickedTrim,
-      powertrain: powertrain || undefined,
-    })
-    setVehicle(match[0] ?? null)
-  }, [rows, series, cab, trim, powertrain, needSeries, needCab, needTrim, needPowertrain, pickedTrim])
+      trim: pickedTrim || undefined,
+      engine: engine || undefined,
+    })[0] ?? null
+  }, [rows, series, body, cab, trim, engine, needSeries, needBody, needCab, needTrim, needEngine, pickedTrim])
+
+  // One request is one key. Holding the answer against the key it was asked for
+  // makes `items` and `loading` derived rather than flags an effect has to keep
+  // in step — and it makes a slow reply for a vehicle you have already moved on
+  // from inert, instead of letting it overwrite the list you are looking at.
+  // A vehicle we do not build for asks nothing: the render branches on
+  // substage_not_offered before it reads either of these.
+  const reqKey = vehicle && !vehicle.substage_not_offered
+    ? [vehicle.vehicle_id, show, topology, alignment].join('|')
+    : ''
+  const answered = result && result.key === reqKey ? result : null
+  const items = answered && answered.list !== 'error' ? answered.list : null
+  const listError = answered && answered.list === 'error' ? 'Could not load packages.' : ''
+  const loading = !!reqKey && !answered
 
   useEffect(() => {
-    if (!vehicle) return
-    if (vehicle.substage_not_offered) { setItems([]); setLoading(false); return }
-    setLoading(true); setError('')
+    if (!reqKey || !vehicle) return
+    let live = true
     fetchPackagesForVehicle(vehicle, {
       ncswPicksOnly: show === 'NCSW Picks',
       topology: topology === 'all' ? undefined : topology,
       bassAlignment: alignment === 'all' ? undefined : alignment,
     })
-      .then(setItems)
-      .catch(() => setError('Could not load packages.'))
-      .finally(() => setLoading(false))
-  }, [vehicle, show, topology, alignment])
+      .then((list) => { if (live) setResult({ key: reqKey, list }) })
+      .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
+    return () => { live = false }
+  }, [reqKey, vehicle, show, topology, alignment])
 
   const gap = useFluidPx(fluid(20, 14))
   const padY = useFluidPx(fluid(56, 32))
@@ -196,7 +249,7 @@ export default function PackagesScreen() {
               <Heading level="h2">Built for your exact car.</Heading>
               <Lead>
                 Every package is a complete, engineered system — front stage, substage,
-                amplification, and processing matched to your vehicle's real installation
+                amplification, and processing matched to your vehicle’s real installation
                 locations and cargo space. Pick your car; the systems that belong in it are
                 already designed.
               </Lead>
@@ -204,37 +257,43 @@ export default function PackagesScreen() {
               {/* vehicle picker */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, zIndex: 30 }}>
                 <View style={{ minWidth: 140, flexGrow: 1 }}>
-                  <Dropdown label="Year" value={year} options={years} onChange={setYear} placeholder="Select year" />
+                  <Dropdown label="Year" value={year} options={years} onChange={pickYear} placeholder="Select year" />
                 </View>
                 <View style={{ minWidth: 180, flexGrow: 2 }}>
-                  <Dropdown label="Make" value={make} options={makes} onChange={setMake} placeholder="Select make" disabled={!year} />
+                  <Dropdown label="Make" value={make} options={makes} onChange={pickMake} placeholder="Select make" disabled={!year} />
                 </View>
                 <View style={{ minWidth: 200, flexGrow: 2 }}>
-                  <Dropdown label="Model" value={model} options={models} onChange={setModel} placeholder="Select model" disabled={!make} />
+                  <Dropdown label="Model" value={model} options={models} onChange={pickModel} placeholder="Select model" disabled={!make} />
                 </View>
                 {needSeries ? (
                   <View style={{ minWidth: 140, flexGrow: 1 }}>
-                    <Dropdown label="Series" value={series} options={seriesOpts} onChange={setSeries} placeholder="Select series" />
+                    <Dropdown label="Series" value={series} options={seriesOpts} onChange={pickSeries} placeholder="Select series" />
+                  </View>
+                ) : null}
+                {needBody ? (
+                  <View style={{ minWidth: 160, flexGrow: 1 }}>
+                    <Dropdown label="Body" value={body} options={bodyOpts} onChange={pickBody} placeholder="Select body" disabled={needSeries && !series} />
                   </View>
                 ) : null}
                 {needCab ? (
                   <View style={{ minWidth: 160, flexGrow: 1 }}>
-                    <Dropdown label="Cab" value={cab} options={cabOpts} onChange={setCab} placeholder="Select cab" disabled={needSeries && !series} />
+                    <Dropdown label="Cab" value={cab} options={cabOpts} onChange={pickCab} placeholder="Select cab" disabled={needBody && !body} />
                   </View>
                 ) : null}
                 {needTrim ? (
                   <View style={{ minWidth: 160, flexGrow: 1 }}>
-                    <Dropdown label="Trim" value={trim} options={trimOpts} onChange={setTrim} placeholder="Select trim" disabled={needCab && !cab} />
+                    <Dropdown label="Trim" value={trim} options={trimOpts} onChange={pickTrim} placeholder="Select trim" disabled={needCab && !cab} />
                   </View>
                 ) : null}
-                {needPowertrain ? (
+                {needEngine ? (
                   <View style={{ minWidth: 160, flexGrow: 1 }}>
                     <Dropdown
                       label="Engine"
-                      value={powertrain}
-                      options={powertrainOpts.map((p) => ({ label: powertrainLabel(p), value: p }))}
-                      onChange={setPowertrain}
+                      value={engine}
+                      options={engineOpts.map((e) => ({ label: engineLabel(e), value: e }))}
+                      onChange={setEngine}
                       placeholder="Select engine"
+                      disabled={needTrim && !trim}
                     />
                   </View>
                 ) : null}
@@ -271,7 +330,7 @@ export default function PackagesScreen() {
                     <Card>
                       <View style={{ gap: 8 }}>
                         <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
-                          We don't install substages in the {vehicleLabel}.
+                          We don’t install substages in the {vehicleLabel}.
                         </Text>
                         <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
                           {vehicle.substage_not_offered_reason ??
@@ -317,8 +376,8 @@ export default function PackagesScreen() {
                         </Text>
                         <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
                           Our catalog is curated car by car — every package is designed against this
-                          vehicle's factory speaker locations and cargo dimensions, not adapted from a
-                          generic kit. Check back soon, or call us and we'll spec yours first.
+                          vehicle’s factory speaker locations and cargo dimensions, not adapted from a
+                          generic kit. Check back soon, or call us and we’ll spec yours first.
                         </Text>
                       </View>
                     </Card>
@@ -328,8 +387,8 @@ export default function PackagesScreen() {
                 <Metaline items={['Select your vehicle to see the systems designed for it.']} />
               )}
 
-              {error ? (
-                <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.accent }}>{error}</Text>
+              {error || listError ? (
+                <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.accent }}>{error || listError}</Text>
               ) : null}
             </View>
           </Container>
