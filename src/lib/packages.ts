@@ -102,7 +102,8 @@ export type Vehicle = {
   truck_floor_ib_height_in?: number | null
   // Where the box goes and the space there: for `under-seat-lifted` the width,
   // depth and height under the rear seat, the height including the seat lift;
-  // for `behind-front-seat` / `behind-rear-seat` the space behind that seat.
+  // for `behind-front-seat` / `behind-rear-seat` the space behind that seat;
+  // for `jump-seats-deleted` / `rear-seat-deleted` the space the seats leave.
   // `substage_pockets` = 2 when the space is split in two. `cab_format` gives
   // the cab size the truck's packages are balanced for (truckCabSize).
   substage_lane?: string | null
@@ -352,8 +353,9 @@ export function dashFitFilter(v: Vehicle): Record<string, unknown> {
 
 /** Which truck packages this truck takes. Every truck row stores what it
  * needs and is compared with the truck's own figures.
- * Box under the rear seat (`install_lane` under-seat) or behind the seat
- * (behind-seat), sealed or ported: the row's cab size, the net air (`fit_volume_cuft`, against the space less 1.5 in
+ * Box under the rear seat (`install_lane` under-seat), behind the seat
+ * (behind-seat), or where an extended cab's jump seats or small rear seat
+ * were (seat-removed), sealed or ported: the row's cab size, the net air (`fit_volume_cuft`, against the space less 1.5 in
  * each way), and two ways the box can be laid out, each a height, depth and
  * width (`fit_flange_in`, `fit_depth_in`, `fit_face_width_in` and the `_alt_`
  * three) - either one will do. Sealed: drivers firing forward or up. Ported:
@@ -379,7 +381,9 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
       ? 'under-seat'
       : v.substage_lane === 'behind-front-seat' || v.substage_lane === 'behind-rear-seat'
         ? 'behind-seat'
-        : null
+        : v.substage_lane === 'jump-seats-deleted' || v.substage_lane === 'rear-seat-deleted'
+          ? 'seat-removed'
+          : null
   if (boxLane && boxes.length && uw != null && ud != null && uh != null) {
     const pockets = v.substage_pockets || 1
     const net = (pockets * Math.max(uw / pockets - 1.5, 0) * Math.max(ud - 1.5, 0) * Math.max(uh - 1.5, 0)) / 1728
