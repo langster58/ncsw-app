@@ -363,11 +363,12 @@ export function dashFitFilter(v: Vehicle): Record<string, unknown> {
  * the seat there is one layout (firing forward into the seat back), stored twice.
  * The cut-the-body rows (infinite baffle on the wall with the motor in the cab
  * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
- * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
+ * `fit_face_width_in`, `fit_flange_in`, and the cab size. The rules and their constants live in
  * A front stage with a dash driver (wideband, three-way) also carries the dash
  * size class it needs (`fit_dash_class`), compared with vehicleDashClass.
  * research/scripts/analysis/gen_truck_underseat_packages.py and
  * gen_truck_underseat_ported_packages.py, gen_truck_behindseat_packages.py,
+ * gen_truck_behindseat_ported_packages.py, gen_truck_ib_packages.py,
  * research/scripts/vehicles/lanefit.py and fitrules.py. */
 export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   const topo = (v.substage_topologies ?? '').split(',').map((t) => t.trim())
@@ -404,8 +405,10 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   }
   const W = v.truck_wall_width_in
   const H = v.truck_wall_height_in
+  // the cut-the-body rows are balanced per cab size too
+  const cab = { cab_size: { _eq: truckCabSize(v) } }
   if (W != null && H != null) {
-    const onWall = [{ fit_face_width_in: { _lte: W } }, { fit_flange_in: { _lte: H } }]
+    const onWall = [cab, { fit_face_width_in: { _lte: W } }, { fit_flange_in: { _lte: H } }]
     if (v.truck_ib_wall_depth_in != null) {
       or.push({ _and: [{ install_lane: { _eq: 'ib-wall' } }, { fit_depth_in: { _lte: v.truck_ib_wall_depth_in } }, ...onWall] })
     }
@@ -413,7 +416,7 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
     if (v.substage_blowthrough_option) or.push({ _and: [{ install_lane: { _eq: 'blow-through' } }, ...onWall] })
   }
   if (v.truck_floor_ib_height_in != null) {
-    or.push({ _and: [{ install_lane: { _eq: 'ib-floor' } }, { fit_depth_in: { _lte: v.truck_floor_ib_height_in } }] })
+    or.push({ _and: [{ install_lane: { _eq: 'ib-floor' } }, cab, { fit_depth_in: { _lte: v.truck_floor_ib_height_in } }] })
   }
   // nothing fits: match no row rather than every row
   if (!or.length) return { install_lane: { _eq: 'none' } }
