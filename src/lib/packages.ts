@@ -101,7 +101,8 @@ export type Vehicle = {
   truck_ib_wall_depth_in?: number | null
   truck_floor_ib_height_in?: number | null
   // Where the box goes and the space there: for `under-seat-lifted` the width,
-  // depth and height under the rear seat, the height including the seat lift.
+  // depth and height under the rear seat, the height including the seat lift;
+  // for `behind-front-seat` / `behind-rear-seat` the space behind that seat.
   // `substage_pockets` = 2 when the space is split in two. `cab_format` gives
   // the cab size the truck's packages are balanced for (truckCabSize).
   substage_lane?: string | null
@@ -316,17 +317,18 @@ export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
 
 /** Which truck packages this truck takes. Every truck row stores what it
  * needs and is compared with the truck's own figures.
- * Box under the rear seat (`install_lane` under-seat), sealed or ported: the
- * row's cab size, the net air (`fit_volume_cuft`, against the space less 1.5 in
+ * Box under the rear seat (`install_lane` under-seat) or behind the seat
+ * (behind-seat), sealed or ported: the row's cab size, the net air (`fit_volume_cuft`, against the space less 1.5 in
  * each way), and two ways the box can be laid out, each a height, depth and
  * width (`fit_flange_in`, `fit_depth_in`, `fit_face_width_in` and the `_alt_`
  * three) - either one will do. Sealed: drivers firing forward or up. Ported:
- * the two layouts of drivers and port tubes that reach the most trucks.
+ * the two layouts of drivers and port tubes that reach the most trucks. Behind
+ * the seat there is one layout (firing forward into the seat back), stored twice.
  * The cut-the-body rows (infinite baffle on the wall with the motor in the cab
  * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
  * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
  * research/scripts/analysis/gen_truck_underseat_packages.py and
- * gen_truck_underseat_ported_packages.py,
+ * gen_truck_underseat_ported_packages.py, gen_truck_behindseat_packages.py,
  * research/scripts/vehicles/lanefit.py and fitrules.py. */
 export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   const topo = (v.substage_topologies ?? '').split(',').map((t) => t.trim())
@@ -335,12 +337,18 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   const uw = v.substage_width_in
   const ud = v.substage_depth_in
   const uh = v.substage_height_in
-  if (v.substage_lane === 'under-seat-lifted' && boxes.length && uw != null && ud != null && uh != null) {
+  const boxLane =
+    v.substage_lane === 'under-seat-lifted'
+      ? 'under-seat'
+      : v.substage_lane === 'behind-front-seat' || v.substage_lane === 'behind-rear-seat'
+        ? 'behind-seat'
+        : null
+  if (boxLane && boxes.length && uw != null && ud != null && uh != null) {
     const pockets = v.substage_pockets || 1
     const net = (pockets * Math.max(uw / pockets - 1.5, 0) * Math.max(ud - 1.5, 0) * Math.max(uh - 1.5, 0)) / 1728
     or.push({
       _and: [
-        { install_lane: { _eq: 'under-seat' } },
+        { install_lane: { _eq: boxLane } },
         { cab_size: { _eq: truckCabSize(v) } },
         { bass_alignment: { _in: boxes } },
         { fit_volume_cuft: { _lte: Math.round(net * 100) / 100 } },
