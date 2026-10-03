@@ -316,15 +316,17 @@ export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
 
 /** Which truck packages this truck takes. Every truck row stores what it
  * needs and is compared with the truck's own figures.
- * Box under the rear seat (`install_lane` under-seat): the row's cab size, the
- * width for all flanges side by side (`fit_face_width_in`), the net air
- * (`fit_volume_cuft`, against the space less 1.5 in each way), and the height
- * and depth for the drivers firing forward (`fit_flange_in`, `fit_depth_in`)
- * or firing up (`fit_flange_alt_in`, `fit_depth_alt_in`) - either one will do.
+ * Box under the rear seat (`install_lane` under-seat), sealed or ported: the
+ * row's cab size, the net air (`fit_volume_cuft`, against the space less 1.5 in
+ * each way), and two ways the box can be laid out, each a height, depth and
+ * width (`fit_flange_in`, `fit_depth_in`, `fit_face_width_in` and the `_alt_`
+ * three) - either one will do. Sealed: drivers firing forward or up. Ported:
+ * the two layouts of drivers and port tubes that reach the most trucks.
  * The cut-the-body rows (infinite baffle on the wall with the motor in the cab
  * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
  * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
- * research/scripts/analysis/gen_truck_underseat_packages.py,
+ * research/scripts/analysis/gen_truck_underseat_packages.py and
+ * gen_truck_underseat_ported_packages.py,
  * research/scripts/vehicles/lanefit.py and fitrules.py. */
 export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   const topo = (v.substage_topologies ?? '').split(',').map((t) => t.trim())
@@ -341,12 +343,11 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
         { install_lane: { _eq: 'under-seat' } },
         { cab_size: { _eq: truckCabSize(v) } },
         { bass_alignment: { _in: boxes } },
-        { fit_face_width_in: { _lte: uw } },
         { fit_volume_cuft: { _lte: Math.round(net * 100) / 100 } },
         {
           _or: [
-            { _and: [{ fit_flange_in: { _lte: uh } }, { fit_depth_in: { _lte: ud } }] },
-            { _and: [{ fit_flange_alt_in: { _lte: uh } }, { fit_depth_alt_in: { _lte: ud } }] },
+            { _and: [{ fit_flange_in: { _lte: uh } }, { fit_depth_in: { _lte: ud } }, { fit_face_width_in: { _lte: uw } }] },
+            { _and: [{ fit_flange_alt_in: { _lte: uh } }, { fit_depth_alt_in: { _lte: ud } }, { fit_face_width_alt_in: { _lte: uw } }] },
           ],
         },
       ],
