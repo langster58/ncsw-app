@@ -339,12 +339,12 @@ export function vehicleDashClass(v: Vehicle): '2.0' | '2.5' | '3.0' | '3.5+' | n
 }
 
 /** Front stages with a wideband or a three-way midrange say where that driver
- * goes in `fit_dash_class`: a dash size class, or 'custom' for a three-way
- * whose midrange goes in custom pillars or pods. Rows without such a driver
+ * goes in `fit_dash_class`: a dash size class, or 'custom' when it goes in
+ * custom pillars or pods. Rows without such a driver
  * leave it empty. A vehicle takes the rows with nothing there, plus the rows for
- * its own dash size class - or, with no dash location, the 'custom' rows, so a
- * three-way is offered to every vehicle and a wideband only where the dash
- * takes one. */
+ * its own dash size class - or, with no dash location, the 'custom' rows: the
+ * three-way with its midrange in custom pillars or pods, and the wideband sets
+ * whose driver is marked for pods (wideband_drivers.pods_ok). */
 export function dashFitFilter(v: Vehicle): Record<string, unknown> {
   const dash = vehicleDashClass(v) ?? 'custom'
   return { _or: [{ fit_dash_class: { _null: true } }, { fit_dash_class: { _eq: dash } }] }
