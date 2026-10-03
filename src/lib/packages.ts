@@ -100,6 +100,16 @@ export type Vehicle = {
   truck_wall_height_in?: number | null
   truck_ib_wall_depth_in?: number | null
   truck_floor_ib_height_in?: number | null
+  // Where the box goes and the space there: for `under-seat-lifted` the width,
+  // depth and height under the rear seat, the height including the seat lift.
+  // `substage_pockets` = 2 when the space is split in two. `cab_format` gives
+  // the cab size the truck's packages are balanced for (truckCabSize).
+  substage_lane?: string | null
+  substage_width_in?: number | null
+  substage_depth_in?: number | null
+  substage_height_in?: number | null
+  substage_pockets?: number | null
+  cab_format?: string | null
 }
 
 const VEHICLE_FIELDS = [
@@ -111,6 +121,7 @@ const VEHICLE_FIELDS = [
   'substage_not_offered', 'substage_not_offered_reason',
   'substage_topologies', 'substage_blowthrough_option', 'substage_ib_bed_option',
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
+  'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
 ]
 
 /** Customer-facing names for the powertrain codes stored on vehicles. */
@@ -294,19 +305,52 @@ export type PackageFilters = {
   maxPrice?: number
 }
 
-/** Which truck packages this truck takes. Under-seat / behind-seat box rows
- * carry no `install_lane` and follow `substage_topologies`. The cut-the-body
- * rows (infinite baffle on the wall with the motor in the cab or out in the
- * bed, infinite baffle in the floor, blow-through) each store what they need
- * - `fit_depth_in`, `fit_face_width_in` (all flanges side by side),
- * `fit_flange_in` - and are compared with the truck's own figures. The rule and
- * its constants live in research/scripts/vehicles/lanefit.py and fitrules.py. */
+/** The cab size a truck's packages are balanced for. A sub plays louder in a
+ * smaller cab, so each truck package row is written for one cab size
+ * (`packages.cab_size`) and a truck takes the rows for its own. */
+export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
+  if (v.cab_format === 'front-only') return 'regular'
+  if (v.cab_format === 'front+jump') return 'extended'
+  return 'crew'
+}
+
+/** Which truck packages this truck takes. Every truck row stores what it
+ * needs and is compared with the truck's own figures.
+ * Box under the rear seat (`install_lane` under-seat): the row's cab size, the
+ * width for all flanges side by side (`fit_face_width_in`), the net air
+ * (`fit_volume_cuft`, against the space less 1.5 in each way), and the height
+ * and depth for the drivers firing forward (`fit_flange_in`, `fit_depth_in`)
+ * or firing up (`fit_flange_alt_in`, `fit_depth_alt_in`) - either one will do.
+ * The cut-the-body rows (infinite baffle on the wall with the motor in the cab
+ * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
+ * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
+ * research/scripts/analysis/gen_truck_underseat_packages.py,
+ * research/scripts/vehicles/lanefit.py and fitrules.py. */
 export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   const topo = (v.substage_topologies ?? '').split(',').map((t) => t.trim())
   const boxes = ['sealed', 'ported'].filter((a) => topo.includes(a))
   const or: Record<string, unknown>[] = []
-  if (boxes.length) {
-    or.push({ _and: [{ install_lane: { _null: true } }, { bass_alignment: { _in: boxes } }] })
+  const uw = v.substage_width_in
+  const ud = v.substage_depth_in
+  const uh = v.substage_height_in
+  if (v.substage_lane === 'under-seat-lifted' && boxes.length && uw != null && ud != null && uh != null) {
+    const pockets = v.substage_pockets || 1
+    const net = (pockets * Math.max(uw / pockets - 1.5, 0) * Math.max(ud - 1.5, 0) * Math.max(uh - 1.5, 0)) / 1728
+    or.push({
+      _and: [
+        { install_lane: { _eq: 'under-seat' } },
+        { cab_size: { _eq: truckCabSize(v) } },
+        { bass_alignment: { _in: boxes } },
+        { fit_face_width_in: { _lte: uw } },
+        { fit_volume_cuft: { _lte: Math.round(net * 100) / 100 } },
+        {
+          _or: [
+            { _and: [{ fit_flange_in: { _lte: uh } }, { fit_depth_in: { _lte: ud } }] },
+            { _and: [{ fit_flange_alt_in: { _lte: uh } }, { fit_depth_alt_in: { _lte: ud } }] },
+          ],
+        },
+      ],
+    })
   }
   const W = v.truck_wall_width_in
   const H = v.truck_wall_height_in
