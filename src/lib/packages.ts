@@ -112,6 +112,9 @@ export type Vehicle = {
   substage_height_in?: number | null
   substage_pockets?: number | null
   cab_format?: string | null
+  // Floor infinite baffle under the lifted rear seat, motor in the cab: offered
+  // only on trucks that take no full-frame driver in the cab any other way.
+  truck_rear_floor_ib_option?: boolean | null
   // Factory dash speaker position and its size (empty = none). Decides whether
   // a front stage with a dash driver - a wideband or a three-way midrange - can
   // be offered (vehicleDashClass).
@@ -128,7 +131,7 @@ const VEHICLE_FIELDS = [
   'substage_topologies', 'substage_blowthrough_option', 'substage_ib_bed_option',
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
-  'dash',
+  'dash', 'truck_rear_floor_ib_option',
 ]
 
 /** Customer-facing names for the powertrain codes stored on vehicles. */
@@ -417,6 +420,14 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   }
   if (v.truck_floor_ib_height_in != null) {
     or.push({ _and: [{ install_lane: { _eq: 'ib-floor' } }, cab, { fit_depth_in: { _lte: v.truck_floor_ib_height_in } }] })
+  }
+  // floor infinite baffle under the rear seat: the driver's frame has to sit on
+  // the floor under the seat; its depth is assumed to be solvable
+  if (v.truck_rear_floor_ib_option && uw != null && ud != null) {
+    const pocket = uw / (v.substage_pockets || 1)
+    or.push({
+      _and: [{ install_lane: { _eq: 'ib-floor-rear' } }, cab, { fit_flange_in: { _lte: Math.min(ud, pocket) } }],
+    })
   }
   // nothing fits: match no row rather than every row
   if (!or.length) return { install_lane: { _eq: 'none' } }
