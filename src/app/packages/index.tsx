@@ -73,7 +73,8 @@ const outerStyle: any = IS_WEB
   ? { height: '100dvh', flexDirection: 'column' }
   : { flex: 1, flexDirection: 'column' }
 
-const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way+', 'wideband', 'wideband+']
+// the values stored in packages.topology
+const TOPOLOGIES = ['all', 'two-way', 'two-way+front-sub', 'three-way', 'three-way+front-sub', 'wideband', 'wideband+front-sub']
 const ALIGNMENTS = ['all', 'sealed', 'ported', 'trunk_ib', 'true_ib']
 const ALIGNMENT_LABEL: Record<string, string> = {
   all: 'All', sealed: 'Sealed', ported: 'Ported', trunk_ib: 'Trunk IB', true_ib: 'True IB',

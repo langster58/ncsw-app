@@ -111,6 +111,10 @@ export type Vehicle = {
   substage_height_in?: number | null
   substage_pockets?: number | null
   cab_format?: string | null
+  // Factory dash speaker position and its size (empty = none). Decides whether
+  // a front stage with a dash driver - a wideband or a three-way midrange - can
+  // be offered (truckDashClass).
+  dash?: string | null
 }
 
 const VEHICLE_FIELDS = [
@@ -123,6 +127,7 @@ const VEHICLE_FIELDS = [
   'substage_topologies', 'substage_blowthrough_option', 'substage_ib_bed_option',
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
+  'dash',
 ]
 
 /** Customer-facing names for the powertrain codes stored on vehicles. */
@@ -315,6 +320,30 @@ export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
   return 'crew'
 }
 
+/** The dash size class a truck's dash speaker location gives a wideband or a
+ * three-way midrange, as the front-stage sets name them (2.0, 2.5, 3.0, 3.5+),
+ * or null when the truck has no dash location big enough (tweeter-size
+ * positions, 'present' with no size, or none). */
+export function truckDashClass(v: Vehicle): '2.0' | '2.5' | '3.0' | '3.5+' | null {
+  switch ((v.dash ?? '').trim()) {
+    case '3.5':
+    case '4':
+    case '4.5':
+    case '4x6':
+    case '5x8':
+      return '3.5+'
+    case '3':
+      return '3.0'
+    case '2.75':
+    case '2.5':
+      return '2.5'
+    case '2':
+      return '2.0'
+    default:
+      return null
+  }
+}
+
 /** Which truck packages this truck takes. Every truck row stores what it
  * needs and is compared with the truck's own figures.
  * Box under the rear seat (`install_lane` under-seat) or behind the seat
@@ -327,6 +356,8 @@ export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
  * The cut-the-body rows (infinite baffle on the wall with the motor in the cab
  * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
  * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
+ * A front stage with a dash driver (wideband, three-way) also carries the dash
+ * size class it needs (`fit_dash_class`), compared with truckDashClass.
  * research/scripts/analysis/gen_truck_underseat_packages.py and
  * gen_truck_underseat_ported_packages.py, gen_truck_behindseat_packages.py,
  * research/scripts/vehicles/lanefit.py and fitrules.py. */
@@ -375,7 +406,13 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
     or.push({ _and: [{ install_lane: { _eq: 'ib-floor' } }, { fit_depth_in: { _lte: v.truck_floor_ib_height_in } }] })
   }
   // nothing fits: match no row rather than every row
-  return or.length ? { _or: or } : { install_lane: { _eq: 'none' } }
+  if (!or.length) return { install_lane: { _eq: 'none' } }
+  // front stages with a dash driver carry the dash size class they need
+  const dash = truckDashClass(v)
+  const dashOk = dash
+    ? { _or: [{ fit_dash_class: { _null: true } }, { fit_dash_class: { _eq: dash } }] }
+    : { fit_dash_class: { _null: true } }
+  return { _and: [{ _or: or }, dashOk] }
 }
 
 /** Which trunk / cargo packages this car takes. The space is the car's own
