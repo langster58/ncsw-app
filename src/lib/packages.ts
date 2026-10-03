@@ -113,7 +113,7 @@ export type Vehicle = {
   cab_format?: string | null
   // Factory dash speaker position and its size (empty = none). Decides whether
   // a front stage with a dash driver - a wideband or a three-way midrange - can
-  // be offered (truckDashClass).
+  // be offered (vehicleDashClass).
   dash?: string | null
 }
 
@@ -320,28 +320,33 @@ export function truckCabSize(v: Vehicle): 'regular' | 'extended' | 'crew' {
   return 'crew'
 }
 
-/** The dash size class a truck's dash speaker location gives a wideband or a
+/** The dash size class a vehicle's dash speaker location gives a wideband or a
  * three-way midrange, as the front-stage sets name them (2.0, 2.5, 3.0, 3.5+),
- * or null when the truck has no dash location big enough (tweeter-size
- * positions, 'present' with no size, or none). */
-export function truckDashClass(v: Vehicle): '2.0' | '2.5' | '3.0' | '3.5+' | null {
-  switch ((v.dash ?? '').trim()) {
-    case '3.5':
-    case '4':
-    case '4.5':
-    case '4x6':
-    case '5x8':
-      return '3.5+'
-    case '3':
-      return '3.0'
-    case '2.75':
-    case '2.5':
-      return '2.5'
-    case '2':
-      return '2.0'
-    default:
-      return null
-  }
+ * or null when there is no dash location big enough (tweeter-size positions,
+ * 'present' with no size, or none). `vehicles.dash` is the largest driver the
+ * position takes; an oval takes a round driver no wider than its short side. */
+export function vehicleDashClass(v: Vehicle): '2.0' | '2.5' | '3.0' | '3.5+' | null {
+  const raw = (v.dash ?? '').trim().toLowerCase()
+  if (!raw) return null
+  const sides = raw.split('x').map(Number)
+  if (sides.some((n) => !Number.isFinite(n))) return null
+  const size = Math.min(...sides)
+  if (size >= 3.5) return '3.5+'
+  if (size >= 3) return '3.0'
+  if (size >= 2.5) return '2.5'
+  if (size >= 2) return '2.0'
+  return null
+}
+
+/** Front stages with a dash driver (wideband, three-way) carry the dash size
+ * class they need in `fit_dash_class`; rows without a dash driver leave it
+ * empty. A vehicle takes the rows with no dash need and the rows for its own
+ * dash size class. */
+export function dashFitFilter(v: Vehicle): Record<string, unknown> {
+  const dash = vehicleDashClass(v)
+  return dash
+    ? { _or: [{ fit_dash_class: { _null: true } }, { fit_dash_class: { _eq: dash } }] }
+    : { fit_dash_class: { _null: true } }
 }
 
 /** Which truck packages this truck takes. Every truck row stores what it
@@ -357,7 +362,7 @@ export function truckDashClass(v: Vehicle): '2.0' | '2.5' | '3.0' | '3.5+' | nul
  * or out in the bed, infinite baffle in the floor, blow-through): `fit_depth_in`,
  * `fit_face_width_in`, `fit_flange_in`. The rules and their constants live in
  * A front stage with a dash driver (wideband, three-way) also carries the dash
- * size class it needs (`fit_dash_class`), compared with truckDashClass.
+ * size class it needs (`fit_dash_class`), compared with vehicleDashClass.
  * research/scripts/analysis/gen_truck_underseat_packages.py and
  * gen_truck_underseat_ported_packages.py, gen_truck_behindseat_packages.py,
  * research/scripts/vehicles/lanefit.py and fitrules.py. */
@@ -407,12 +412,7 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
   }
   // nothing fits: match no row rather than every row
   if (!or.length) return { install_lane: { _eq: 'none' } }
-  // front stages with a dash driver carry the dash size class they need
-  const dash = truckDashClass(v)
-  const dashOk = dash
-    ? { _or: [{ fit_dash_class: { _null: true } }, { fit_dash_class: { _eq: dash } }] }
-    : { fit_dash_class: { _null: true } }
-  return { _and: [{ _or: or }, dashOk] }
+  return { _and: [{ _or: or }, dashFitFilter(v)] }
 }
 
 /** Which trunk / cargo packages this car takes. The space is the car's own
@@ -453,7 +453,11 @@ export async function fetchPackagesForVehicle(
     vehicle_category: { _eq: vehicle.vehicle_category },
   }
   if (vehicle.vehicle_category === 'truck') Object.assign(filter, truckFitFilter(vehicle))
-  else Object.assign(filter, carFitFilter(vehicle) ?? {})
+  else {
+    // the box has to fit the trunk / cargo area, and a dash driver needs a dash location
+    const fit = carFitFilter(vehicle)
+    filter._and = [...((fit?._and as unknown[] | undefined) ?? []), dashFitFilter(vehicle)]
+  }
   if (filters.ncswPicksOnly) filter.ncsw_pick = { _eq: true }
   if (filters.topology) filter.topology = { _eq: filters.topology }
   if (filters.bassAlignment) filter.bass_alignment = { _eq: filters.bassAlignment }
