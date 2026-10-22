@@ -119,6 +119,12 @@ export type Vehicle = {
   // a front stage with a dash driver - a wideband or a three-way midrange - can
   // be offered (vehicleDashClass).
   dash?: string | null
+  // The factory sound system this car was most likely built with, and the
+  // picker label(s) it could be ordered with ('Base: … | Bose: …'). A single
+  // label means there was never a choice, so `factory_audio_system` IS the car's
+  // system - used when the per-choice rows cannot be read.
+  factory_audio_system?: string | null
+  branded_system_name?: string | null
 }
 
 const VEHICLE_FIELDS = [
@@ -132,6 +138,7 @@ const VEHICLE_FIELDS = [
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
   'dash', 'truck_rear_floor_ib_option',
+  'factory_audio_system', 'branded_system_name',
 ]
 
 /** Customer-facing names for the powertrain codes stored on vehicles. */
@@ -313,7 +320,18 @@ export type PackageFilters = {
   topology?: string
   bassAlignment?: string
   maxPrice?: number
+  // True only when the car's factory system keeps its front speakers
+  // (factory_audio_systems.keep_factory_drivers). Unknown counts as no.
+  factoryDriversKept?: boolean
 }
+
+/** Packages that keep the factory front speakers and add the front sub,
+ * substage, amplification and DSP (gen_factory_retained_packages.py). Offered
+ * only to a car whose factory system has a separate amplifier powering its
+ * front speakers - Brett's line, 2026-10-22. */
+export const RETAINED_TOPOLOGY = 'factory+front-sub'
+
+const NOT_RETAINED = { topology: { _neq: RETAINED_TOPOLOGY } }
 
 /** The cab size a truck's packages are balanced for. A sub plays louder in a
  * smaller cab, so each truck package row is written for one cab size
@@ -481,6 +499,10 @@ export async function fetchPackagesForVehicle(
   if (filters.topology) filter.topology = { _eq: filters.topology }
   if (filters.bassAlignment) filter.bass_alignment = { _eq: filters.bassAlignment }
   if (filters.maxPrice) filter.price_installed = { _lte: filters.maxPrice }
+  if (!filters.factoryDriversKept) {
+    if (filters.topology === RETAINED_TOPOLOGY) return []
+    filter._and = [...((filter._and as unknown[] | undefined) ?? []), NOT_RETAINED]
+  }
   try {
     return await getItems<PackageSummary>('packages', {
       filter,
@@ -491,7 +513,10 @@ export async function fetchPackagesForVehicle(
     // pending columns in the filter 400 until the curation pass adds them —
     // fall back to the bare fit key so the page keeps working mid-migration
     return getItems<PackageSummary>('packages', {
-      filter: { vehicle_category: { _eq: vehicle.vehicle_category } },
+      filter: {
+        vehicle_category: { _eq: vehicle.vehicle_category },
+        ...(filters.factoryDriversKept ? {} : NOT_RETAINED),
+      },
       limit: 200,
     })
   }
@@ -586,6 +611,8 @@ export type AudioOption = {
   brand_key: string
   has_fullrange: string | null
   picker_help: string | null
+  // From the choice's factory system: whether its front speakers are kept.
+  keep_factory_drivers: boolean | null
 }
 
 /** The factory systems this exact vehicle could have been ordered with.
@@ -594,12 +621,30 @@ export type AudioOption = {
  * means only the owner can say which was ticked at the factory: it is not in the
  * VIN and no data vendor sells it, which is why the question is asked at all. */
 export async function fetchAudioOptions(vehicleId: string): Promise<AudioOption[]> {
-  return getItems<AudioOption>('vehicle_audio_options', {
+  type Row = Omit<AudioOption, 'keep_factory_drivers'> & {
+    factory_audio_system?: { keep_factory_drivers?: boolean | null } | null
+  }
+  const rows = await getItems<Row>('vehicle_audio_options', {
     filter: { vehicle_id: { _eq: vehicleId } },
-    fields: ['position', 'label', 'system_name', 'brand_key', 'has_fullrange', 'picker_help'],
+    fields: ['position', 'label', 'system_name', 'brand_key', 'has_fullrange', 'picker_help',
+      'factory_audio_system.keep_factory_drivers'],
     sort: ['position'],
     limit: 10,
   })
+  return rows.map(({ factory_audio_system, ...o }) => ({
+    ...o,
+    keep_factory_drivers: factory_audio_system?.keep_factory_drivers ?? null,
+  }))
+}
+
+/** Whether one factory system keeps its front speakers (null = not answered). */
+export async function fetchSystemKeep(systemId: string): Promise<boolean | null> {
+  const rows = await getItems<{ keep_factory_drivers: boolean | null }>('factory_audio_systems', {
+    filter: { id: { _eq: systemId } },
+    fields: ['keep_factory_drivers'],
+    limit: 1,
+  })
+  return rows[0]?.keep_factory_drivers ?? null
 }
 
 export type ProductRow = {

@@ -29,6 +29,7 @@ import {
   fetchMakes,
   fetchModels,
   fetchPackagesForVehicle,
+  fetchSystemKeep,
   fetchVehicleRows,
   fetchYears,
   narrowVehicleRows,
@@ -37,6 +38,7 @@ import {
   trimOptions,
   vehicleName,
   vehicleVariant,
+  RETAINED_TOPOLOGY,
   type AudioOption,
   type PackageSummary,
   type Vehicle,
@@ -73,7 +75,13 @@ const outerStyle: any = IS_WEB
   ? { height: '100dvh', flexDirection: 'column' }
   : { flex: 1, flexDirection: 'column' }
 
-const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way+', 'wideband', 'wideband+']
+const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way', '3-way+', 'wideband', 'wideband+', 'factory+']
+// Chip label -> packages.topology. 'factory+' keeps the factory front speakers
+// and adds the front sub; it lists only for cars whose factory system keeps them.
+const TOPOLOGY_VALUE: Record<string, string> = {
+  '2-way': 'two-way', '2-way+': 'two-way+front-sub', '3-way': 'three-way', '3-way+': 'three-way+front-sub',
+  wideband: 'wideband', 'wideband+': 'wideband+front-sub', 'factory+': RETAINED_TOPOLOGY,
+}
 const ALIGNMENTS = ['all', 'sealed', 'ported', 'trunk_ib', 'true_ib']
 const ALIGNMENT_LABEL: Record<string, string> = {
   all: 'All', sealed: 'Sealed', ported: 'Ported', trunk_ib: 'Trunk IB', true_ib: 'True IB',
@@ -204,33 +212,6 @@ export default function PackagesScreen() {
     })[0] ?? null
   }, [rows, series, body, cab, trim, engine, needSeries, needBody, needCab, needTrim, needEngine, pickedTrim])
 
-  // One request is one key. Holding the answer against the key it was asked for
-  // makes `items` and `loading` derived rather than flags an effect has to keep
-  // in step — and it makes a slow reply for a vehicle you have already moved on
-  // from inert, instead of letting it overwrite the list you are looking at.
-  // A vehicle we do not build for asks nothing: the render branches on
-  // substage_not_offered before it reads either of these.
-  const reqKey = vehicle && !vehicle.substage_not_offered
-    ? [vehicle.vehicle_id, show, topology, alignment].join('|')
-    : ''
-  const answered = result && result.key === reqKey ? result : null
-  const items = answered && answered.list !== 'error' ? answered.list : null
-  const listError = answered && answered.list === 'error' ? 'Could not load packages.' : ''
-  const loading = !!reqKey && !answered
-
-  useEffect(() => {
-    if (!reqKey || !vehicle) return
-    let live = true
-    fetchPackagesForVehicle(vehicle, {
-      ncswPicksOnly: show === 'NCSW Picks',
-      topology: topology === 'all' ? undefined : topology,
-      bassAlignment: alignment === 'all' ? undefined : alignment,
-    })
-      .then((list) => { if (live) setResult({ key: reqKey, list }) })
-      .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
-    return () => { live = false }
-  }, [reqKey, vehicle, show, topology, alignment])
-
   // ---- factory audio -------------------------------------------------------
   // Not an identity step: by the time it is asked the vehicle is already
   // resolved, so it narrows nothing. It asks how THIS owner's car was equipped,
@@ -258,6 +239,58 @@ export default function PackagesScreen() {
   const picked = audioPick.key === audioKey ? audioPick.label : ''
   const chosenAudio = audioOpts.find((o) => o.label === picked) ?? null
   const helpOpen = helpFor === audioKey && audioKey !== ''
+
+  // Keep-the-factory-speakers packages list only when the car's factory system
+  // keeps its front speakers (factory_audio_systems.keep_factory_drivers). The
+  // owner's choice decides; before they answer, only when every system the car
+  // could have had keeps them. When the choices cannot be read, a car that only
+  // ever had one system (one picker label) answers from that system.
+  const singleSystemId = vehicle && vehicle.factory_audio_system && !(vehicle.branded_system_name ?? '').includes('|')
+    ? vehicle.factory_audio_system
+    : ''
+  const [sysKeep, setSysKeep] = useState<{ key: string; keep: boolean | null } | null>(null)
+  useEffect(() => {
+    if (!singleSystemId) return
+    let live = true
+    fetchSystemKeep(singleSystemId)
+      .then((keep) => { if (live) setSysKeep({ key: singleSystemId, keep }) })
+      .catch(() => { if (live) setSysKeep({ key: singleSystemId, keep: null }) })
+    return () => { live = false }
+  }, [singleSystemId])
+  const factoryDriversKept = chosenAudio
+    ? chosenAudio.keep_factory_drivers === true
+    : audioOpts.length
+      ? audioOpts.every((o) => o.keep_factory_drivers === true)
+      : !!singleSystemId && sysKeep?.key === singleSystemId && sysKeep.keep === true
+
+  // One request is one key. Holding the answer against the key it was asked for
+  // makes `items` and `loading` derived rather than flags an effect has to keep
+  // in step — and it makes a slow reply for a vehicle you have already moved on
+  // from inert, instead of letting it overwrite the list you are looking at.
+  // A vehicle we do not build for asks nothing: the render branches on
+  // substage_not_offered before it reads either of these.
+  const reqKey = vehicle && !vehicle.substage_not_offered
+    ? [vehicle.vehicle_id, show, topology, alignment, factoryDriversKept].join('|')
+    : ''
+  const answered = result && result.key === reqKey ? result : null
+  const items = answered && answered.list !== 'error' ? answered.list : null
+  const listError = answered && answered.list === 'error' ? 'Could not load packages.' : ''
+  const loading = !!reqKey && !answered
+
+  useEffect(() => {
+    if (!reqKey || !vehicle) return
+    let live = true
+    fetchPackagesForVehicle(vehicle, {
+      ncswPicksOnly: show === 'NCSW Picks',
+      topology: topology === 'all' ? undefined : TOPOLOGY_VALUE[topology] ?? topology,
+      bassAlignment: alignment === 'all' ? undefined : alignment,
+      factoryDriversKept,
+    })
+      .then((list) => { if (live) setResult({ key: reqKey, list }) })
+      .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
+    return () => { live = false }
+  }, [reqKey, vehicle, show, topology, alignment, factoryDriversKept])
+
 
   const gap = useFluidPx(fluid(20, 14))
   const padY = useFluidPx(fluid(56, 32))
