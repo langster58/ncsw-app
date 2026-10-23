@@ -72,8 +72,11 @@ def score_midranges(cur):
 
 def score_subs_sealed(cur):
     need = ("fs_hz", "qts", "vas_l", "sd_cm2", "xmax_mm", "rms_watts", "sensitivity_db_1w_1m")
+    # cat_sealed is NOT a gate (2026-08-21, completing the ported/IB rulings): every driver
+    # with full T/S gets its best-sealed-box realization. The truck behind-seat class needs
+    # sealed scores on drivers that were catalogued ported/IB-only (SDv4-12, TW3-12).
     cur.execute("select slug,driver_size,effective_xmax_mm,impact_score," + ",".join(need)
-                + " from subwoofers where cat_sealed")
+                + " from subwoofers")
     names = [d[0] for d in cur.description]
     rows = [dict(zip(names, r)) for r in cur.fetchall() if all(dict(zip(names, r)).get(k) for k in need)]
     anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
@@ -96,8 +99,14 @@ def _not_ported(name):
 
 def score_subs_ib(cur):
     # IB = sealed model, box removed (fc=Fs, Qtc=Qts); same HC-12 sealed anchor.
+    # cat_ib is NOT a gate (founder ruling 2026-08-19, mirroring the ported ruling):
+    # IB qualification is mechanical survival (subsonic HPF is standard in every
+    # NCSW DSP) plus the per-vehicle cavity test (trunk >= 4x Vas, in
+    # vehicle_sub_fit) — not a driver type. Every driver with full T/S gets an
+    # ib_composite; the old Qts/EBP folklore was a passive-era response-shape
+    # proxy that DSP dissolves.
     need = ("fs_hz", "qts", "vas_l", "sd_cm2", "xmax_mm", "rms_watts", "sensitivity_db_1w_1m")
-    cur.execute("select slug,driver_size,effective_xmax_mm,cat_ib," + ",".join(need)
+    cur.execute("select slug,driver_size,effective_xmax_mm," + ",".join(need)
                 + " from subwoofers")
     names = [d[0] for d in cur.description]
     rows = [dict(zip(names, r)) for r in cur.fetchall()]
@@ -105,7 +114,7 @@ def score_subs_ib(cur):
     anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
     aref = I.sub_best_composite(anchor)
     return {r["slug"]: {"ib_composite": I.sub_impact(I.sub_ib_composite(r), aref)}
-            for r in rows if r.get("cat_ib")}
+            for r in rows}
 
 def score_subs_ported(cur):
     # Ported bench = the driver's -1 dB KNEE build (founder ruling 2026-07-28):

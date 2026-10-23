@@ -38,7 +38,7 @@ sub AS (
   SELECT slug, brand, model, driver_size, price,
          impact_score, sealed_design_vb_ft3, sealed_gross_ft3,
          ported_score, ported_design_vb_ft3, ported_gross_ft3,
-         ib_composite,
+         ib_composite, vas_l / 28.3168 AS vas_ft3,
          CASE driver_size WHEN '6.5' THEN 7.2  WHEN '8'  THEN 8.7
                           WHEN '10'  THEN 10.9 WHEN '12' THEN 12.8
                           WHEN '13.5' THEN 14.2 WHEN '15' THEN 15.8
@@ -85,8 +85,12 @@ WHERE d.vehicle_category = 'cargo'
   AND CASE a.n WHEN 1 THEN s.sealed_gross_ft3 ELSE s.ported_gross_ft3 END <= 6.5
 
 UNION ALL
--- IB: baffle-mount only, no volume test. trunk = trunk-IB (rear deck /
--- seatback); cargo + truck = true IB. 10"+ allowed here.
+-- IB: baffle-mount, 10"+ allowed. trunk = trunk-IB (rear deck / seatback);
+-- cargo + truck = true IB (cabin is the cavity — effectively infinite, no test).
+-- trunk-IB carries the CAVITY TEST (founder ruling 2026-08-19): the trunk is the
+-- rear air volume, and the infinite-baffle assumption only holds when it is
+-- large against the driver's own compliance — trunk ft3 >= 4 x Vas. Below that
+-- the air spring returns and the install is an accidental sealed box, not IB.
 SELECT d.vehicle_id, d.vehicle_category, s.slug, s.brand, s.model, s.driver_size,
        s.price,
        CASE d.vehicle_category WHEN 'trunk' THEN 'trunk_ib' ELSE 'ib' END,
@@ -94,4 +98,5 @@ SELECT d.vehicle_id, d.vehicle_category, s.slug, s.brand, s.model, s.driver_size
 FROM dims d CROSS JOIN sub s
 WHERE s.driver_size <> '6.5'
   AND s.ib_composite IS NOT NULL
-  AND d.face2_in >= s.flange_in;
+  AND d.face2_in >= s.flange_in
+  AND (d.vehicle_category <> 'trunk' OR d.env_ft3 >= 4 * s.vas_ft3);

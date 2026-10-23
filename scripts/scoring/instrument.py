@@ -79,9 +79,20 @@ def shape(f_hz):
     """House target curve, dB above midrange reference level at f (0 at 200 Hz+)."""
     return max(0.0, 22.0 - 7.33 * math.log2(f_hz / 25.0))
 
-def gain(f_hz):
-    """Cabin gain below the ~55 Hz transfer transition, dB."""
-    return max(0.0, 12 * math.log2(_FT / f_hz))
+REF_CABIN_CUFT = 120.0   # the cabin the 55 Hz transition stands for (Brett 2026-10-03)
+
+def transition_hz(cabin_cuft=None):
+    """Cabin-gain transition frequency for a cabin of the given volume.
+    Below the transition the cabin is a pressure vessel: for the same cone displacement the
+    level rises 6 dB for each halving of cabin volume. With gain = 12 dB/oct below f_t that
+    means f_t scales with 1/sqrt(volume); 55 Hz at the 120 cu ft reference cabin."""
+    if not cabin_cuft:
+        return _FT
+    return _FT * math.sqrt(REF_CABIN_CUFT / float(cabin_cuft))
+
+def gain(f_hz, ft=_FT):
+    """Cabin gain below the transfer transition (55 Hz in the reference cabin), dB."""
+    return max(0.0, 12 * math.log2(ft / f_hz))
 
 _SHAPE = [shape(f) for f in _BAND]
 FT3_L = 28.3168
@@ -97,13 +108,13 @@ def composite_from_margins(marg):
     core = marg[1:]                      # 25, 31.5, 40, 50, 63
     return 10 ** (min(core) / 10) * 10 ** ((sum(core) / len(core)) / 10)
 
-def _sub_margins(fs, qts, vas, sd, rms, sens, vb_l, xm):
+def _sub_margins(fs, qts, vas, sd, rms, sens, vb_l, xm, ft=_FT):
     fc = fs * math.sqrt(1 + vas / vb_l)
     qtc = qts * math.sqrt(1 + vas / vb_l)
     vd = sd * 1e-4 * xm * 1e-3
     marg = []
     for f, sh in zip(_BAND, _SHAPE):
-        g = gain(f)
+        g = gain(f, ft)
         hdb = 20 * math.log10(H(f, fc, qtc))
         marg.append(min(108.4 + 20 * math.log10(f * f * vd),
                         sens + 10 * math.log10(rms) + hdb) + g - sh)
@@ -262,7 +273,7 @@ def aero_port_spec(sd_cm2, xm_mm, fb_hz, vb_l, vmax=VMAX_AERO):
     area = n * tube_cm2
     return n, port_length_cm(area, fb_hz, vb_l, a_cm=a1_cm), area
 
-def ported_margins(row, vb_l, fb, xm):
+def ported_margins(row, vb_l, fb, xm, ft=_FT):
     """Clean margins vs the house shape at each band frequency (in-seat), or
     None if the port is not buildable. Same currency as the sealed composite."""
     fs, qts, vas = row["fs_hz"], row["qts"], row["vas_l"]
@@ -279,7 +290,7 @@ def ported_margins(row, vb_l, fb, xm):
         ss = subsonic_bw2(f, fb)
         disp = K + 20 * math.log10((G / X) / (Ghi / Xhi)) + 20 * math.log10(ss)
         therm = sens + 10 * math.log10(rms) + 20 * math.log10(G * ss)
-        marg.append(min(disp, therm) + gain(f) - shape(f))
+        marg.append(min(disp, therm) + gain(f, ft) - shape(f))
     return marg
 
 def ported_best(row, vb_cap_l, max_port_run_cm, vb_floor_l=None):
