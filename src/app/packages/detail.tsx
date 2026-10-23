@@ -129,10 +129,22 @@ export default function PackageDetailScreen() {
   const [install, setInstall] = useState<InstallationRow[]>([])
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
+  // Navigating from one package to another restarts the load. Adjusted during
+  // render rather than set inside the effect, so the previous package's content
+  // is never committed under the new URL. The first render deliberately does not
+  // fire: it has to match the statically rendered HTML, which has no query string.
+  const reqKey = `${sku}|${vid}|${sys}`
+  const [seenKey, setSeenKey] = useState(reqKey)
+  if (seenKey !== reqKey) {
+    setSeenKey(reqKey)
+    setState(sku ? 'loading' : 'missing')
+  }
+
   useEffect(() => {
-    if (!sku) { setState('missing'); return }
+    // That first render is also why "no sku" cannot simply be derived: the server
+    // would paint "missing" for every URL. On mount it is deferred instead.
+    if (!sku) { const t = setTimeout(() => setState('missing'), 0); return () => clearTimeout(t) }
     let live = true
-    setState('loading')
     Promise.all([
       fetchPackageBySku(sku),
       vid ? fetchVehicleById(vid) : Promise.resolve(null),
@@ -216,7 +228,7 @@ export default function PackageDetailScreen() {
       p2 = `The ${vehicleName} carries the ${sys} factory system, which offers no full-range output — integration reconstructs the signal ahead of the DSP, and your chimes, prompts, and warnings survive. The factory unit stays in the dash.`
     } else if (sys && fr === 'option') {
       p2 = `The ${vehicleName} carries the ${sys} factory system on some trims; whether its output is full-range depends on the trim, and we verify yours at intake before a single panel comes off.`
-    } else if (sys) {
+    } else if (sys && (fr === 'true' || fr === '1')) {
       p2 = `The ${vehicleName} carries the ${sys} factory system with a usable full-range output — integration taps it directly, and the factory unit stays in the dash.`
     } else {
       p2 = `Integration works from the factory head unit — it stays in the dash, and your chimes and prompts survive.`
@@ -238,7 +250,8 @@ export default function PackageDetailScreen() {
     if (vehicle.branded_system_name) {
       const fr = String(vehicle.has_fullrange_output ?? '')
       cells.push({ label: 'Factory system', value: vehicle.branded_system_name, sub: fr === 'false' ? 'DSP-managed · factory amp' : undefined })
-      cells.push({
+      // A blank answer means the system has not been answered yet: say nothing rather than guess.
+      if (fr === 'true' || fr === 'false' || fr === 'option') cells.push({
         label: 'Factory signal',
         value: fr === 'false' ? 'No full-range output' : fr === 'option' ? 'Trim-dependent' : 'Full-range output',
         sub: fr === 'false' ? 'reconstruction included' : fr === 'option' ? 'verified at intake' : 'direct integration',

@@ -439,7 +439,7 @@ export default function PackagesScreen() {
                       // Once the owner has answered, say what their answer means
                       // for the install. Until then the vehicle rolls up to
                       // `option` and we say nothing rather than guess.
-                      ...(chosenAudio
+                      ...(chosenAudio && (chosenAudio.has_fullrange === 'true' || chosenAudio.has_fullrange === 'false')
                         ? [chosenAudio.has_fullrange === 'false'
                             ? `${chosenAudio.label} · signal reconstructed ahead of the DSP`
                             : `${chosenAudio.label} · full-range output, tapped directly`]
