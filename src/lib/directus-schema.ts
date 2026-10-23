@@ -1,4 +1,4 @@
-// GENERATED from the live Directus schema (2026-07-31).
+// GENERATED from the live Directus schema (2026-10-23).
 // Regenerate with scripts/gen-directus-types.py — do not hand-edit field lists.
 
 export interface Vehicles {
@@ -19,7 +19,6 @@ export interface Vehicles {
   segment: string | null
   image: string | null
   head_unit_replacement_supported: boolean | null
-  behind_seat_install_supported: boolean | null
   behind_seat_depth_in: number | null
   powertrain: string | null
   branded_system_name: string | null
@@ -32,17 +31,14 @@ export interface Vehicles {
   install_notes: string | null
   alternator: number | null
   alternator_basis: string | null
-  generation: string | null
   boot_width_in: number | null
   boot_depth_in: number | null
   boot_height_in: number | null
   dims_status: string | null
   dims_source_url: string | null
   dims_quote: string | null
-  dims_confidence: string | null
   dims_config: string | null
   dims_taper_note: string | null
-  dims_checked_at: string | null
   cargo_body_variant: string | null
   cab_type_name: string | null
   behind_seat_width_in: number | null
@@ -53,6 +49,62 @@ export interface Vehicles {
   under_seat_height_in: number | null
   under_seat_source_url: string | null
   factory_audio_system: string | null
+  front_door: string | null
+  rear_door: string | null
+  dash: string | null
+  pillar: string | null
+  sail: string | null
+  kick: string | null
+  center: string | null
+  deck: string | null
+  wideband: boolean | null
+  twelve_volt_source: string | null
+  anc_solution: string | null
+  anc_install_note: string | null
+  cab_format: string | null
+  rear_seat_mechanism: string | null
+  under_seat_basis: string | null
+  behind_seat_basis: string | null
+  behind_seat_depth_bottom_in: number | null
+  install_obstructions: string | null
+  rear_seat_lift_feasible: string | null
+  dims_confidence: string | null
+  underseat: string | null
+  amp_location: string | null
+  front_stage_architecture: boolean | null
+  series: string | null
+  rear_seat_lift_pattern: string | null
+  rear_seat_lift_in: number | null
+  rear_seat_lift_basis: string | null
+  substage_lane: string | null
+  substage_pockets: number
+  substage_ib_option: string | null
+  substage_blowthrough_option: boolean | null
+  substage_floor_option: string | null
+  substage_not_offered: boolean
+  substage_not_offered_reason: string | null
+  substage_width_in: number | null
+  substage_depth_in: number | null
+  substage_height_in: number | null
+  substage_cuft: number | null
+  substage_fit_margin_in: number | null
+  substage_fit_confidence: string | null
+  substage_topologies: string | null
+  behind_seat_height_basis: string | null
+  front_seat_under_height_in: number | null
+  front_seat_under_height_basis: string | null
+  front_seat_ib_drivers: string | null
+  substage_ib_bed_option: boolean | null
+  truck_wall_width_in: number | null
+  truck_wall_height_in: number | null
+  truck_ib_wall_depth_in: number | null
+  truck_floor_ib_height_in: number | null
+  engine_displacement_l: number | null
+  engine_hp: number | null
+  transmission: string | null
+  drivetrain: string | null
+  truck_rear_floor_ib_option: boolean | null
+  space_evidence: unknown | null
 }
 
 export interface Packages {
@@ -82,6 +134,20 @@ export interface Packages {
   ceiling_l: number | null
   depth_20hz_db: number | null
   enclosure_bucket: string | null
+  rung_key: string | null
+  is_default_variant: boolean | null
+  install_lane: string | null
+  fit_depth_in: number | null
+  fit_face_width_in: number | null
+  fit_flange_in: number | null
+  fit_volume_cuft: number | null
+  fit_face_width_alt_in: number | null
+  fit_flange_alt_in: number | null
+  cab_size: string | null
+  fit_depth_alt_in: number | null
+  fit_dash_class: string | null
+  front_sub_enclosure_id: string | null
+  dash_driver_integration_id: string | null
 }
 
 export interface Subwoofers {
@@ -136,6 +202,21 @@ export interface Subwoofers {
   ported_tubes: number | null
   ported_tube_len_in: number | null
   ported_min_vb_ft3: number | null
+  ported_pick: boolean | null
+  sealed_pick: boolean | null
+  ib_pick: boolean | null
+  mounting_depth_in: number | null
+  pole_vent: string | null
+  truck_sealed_pick: boolean | null
+  truck_sealed_counts: string[] | null
+  truck_ported_pick: boolean | null
+  truck_ported_counts: string[] | null
+  truck_pick_notes: string | null
+  underseat_ported_vb_ft3: number | null
+  underseat_ported_fb_hz: number | null
+  underseat_ported_tubes: number | null
+  underseat_ported_tube_len_in: number | null
+  underseat_ported_gross_ft3: number | null
 }
 
 export interface MonoAmps {
@@ -161,6 +242,7 @@ export interface MonoAmps {
   requires_battery_upgrade: boolean | null
   watts_rms: number | null
   amp_class: string | null
+  ncsw_pick: boolean | null
 }
 
 export interface MultichannelAmps {
@@ -183,6 +265,7 @@ export interface MultichannelAmps {
   coming_soon: boolean | null
   watts_rms: number | null
   amp_class: string | null
+  ncsw_pick: boolean | null
 }
 
 export interface DspProcessors {
@@ -212,6 +295,7 @@ export interface DspProcessors {
   coming_soon: boolean | null
   dsp_resolution: string | null
   requires_fullrange_input: boolean | null
+  remote: string | null
 }
 
 export interface FrontSubs {
@@ -252,6 +336,9 @@ export interface FrontSubs {
   cone_material: string | null
   motor_type: string | null
   re_ohm: number | null
+  ncsw_pick: boolean | null
+  pick_build: string | null
+  pick_install: string | null
 }
 
 export interface Batteries {
@@ -286,6 +373,7 @@ export interface VehicleEditorial {
   editorial_text: string | null
   source_url: string | null
   wikipedia_title: string | null
+  series: string | null
 }
 
 export interface InstallTypes {
@@ -307,19 +395,28 @@ export interface FactoryAudioSystems {
   system_description: string | null
   year_range: string | null
   models: string | null
-  factory_driver_locations: string | null
   system_driver_locations: string | null
-  head_unit_replacement_supported: boolean | null
-  high_level_output_present: boolean | null
-  full_range_high_level_available: boolean | null
-  tap_location: string | null
-  signal_architecture: string | null
   external_amplifier_present: boolean | null
-  amplifier_location: string | null
   research_status: string | null
   source_urls: string | null
   source_notes: string | null
   anc_dsp_solution: string | null
   trims: string | null
+  signal_state: string | null
+  signal_state_evidence: string | null
+  picker_label: string | null
+  picker_help: string | null
+  has_subwoofer: boolean | null
+  subwoofer_evidence: string | null
+  dsp: string | null
+  helix_dsp: string | null
+  keep_factory_drivers: boolean | null
+  keep_factory_drivers_evidence: string | null
+  factory_path: string | null
+  factory_path_evidence: string | null
+  tap_point: string | null
+  tap_note: string | null
+  factory_processing: string | null
+  factory_processing_detail: string | null
 }
 
