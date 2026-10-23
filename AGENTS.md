@@ -18,7 +18,7 @@ scripts/directus-api.sh GET /users/me
 
 The sole local credential source is `~/.config/directus-render.env`, containing only `DIRECTUS_URL` and `DIRECTUS_TOKEN` and remaining owner-readable only. Use `scripts/directus-api.sh` for direct requests and `scripts/directus-api.sh run <command>` for repository programs that call Directus. The repository `.env` must not contain `DIRECTUS_TOKEN`.
 
-Do not connect directly to PostgreSQL, use `DATABASE_URL`, `psql`, or `psycopg` for catalog work. Historical scripts containing those mechanisms are unsupported migration history, not an available workflow. Do not substitute a local database, JSON file, CSV, mock collection, Vercel proxy, or another datastore when Directus authentication fails. A public Directus read is not proof of authenticated access. If the authenticated check fails, stop the catalog task and repair the single credential path first.
+Bulk catalog changes may go straight to the database when that is the sensible tool: the Directus API is slow on this server and stops after 100 rows per update. Do not substitute a local database, JSON file, CSV, mock collection, Vercel proxy, or another datastore when Directus authentication fails. A public Directus read is not proof of authenticated access. If the authenticated check fails, stop the catalog task and repair the single credential path first.
 
 The Vercel Directus token exists only for the deployed application's server-side proxy. It is deployment infrastructure, not the workspace database-access path. See `WORKSPACE.md` for setup and rotation.
 

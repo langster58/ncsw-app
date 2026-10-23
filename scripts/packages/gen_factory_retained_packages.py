@@ -14,6 +14,8 @@ component set removed. The two-way + front sub build is the one whose job the
 factory woofer and tweeter take over; the front sub still bridges 80-100 Hz,
 and the factory drivers are high-passed above it, so the amplifier and DSP
 choices carry over unchanged. Price = the source build minus the component set.
+Value and branded builds only - no reference build for this front stage (Brett,
+2026-10-22). Run after apply_value_dsp.py so value rows carry the budget DSP.
 
 Idempotent: deletes this seed's rows, then rewrites them from the current
 two-way+front-sub rows. Re-run after the two-way+front-sub rows change.
@@ -32,6 +34,7 @@ SEED = 'gen-factory-retained-2026-10'
 SRC_TOPOLOGY = 'two-way+front-sub'
 TOPOLOGY = 'factory+front-sub'
 SET_COLLECTION = 'factory'
+TIERS = ('value', 'branded')
 
 
 def all_items(collection, params):
@@ -112,6 +115,9 @@ def main():
     prices = set_prices(src)
     out, skipped, seen = [], 0, set()
     for s in src:
+        if s.get('tier') not in TIERS:
+            skipped += 1
+            continue
         r = retained(s, prices)
         if r is None or r['sku'] in seen:
             skipped += 1
