@@ -40,10 +40,10 @@ TIERS = ('value', 'branded')
 def all_items(collection, params):
     out, page = [], 1
     while True:
-        p = dict(params, limit=1000, page=page)
+        p = dict(params, limit=200, page=page, sort='id')  # small pages: the server is slow
         rows = dc.get(f'/items/{collection}', p).get('data', [])
         out += rows
-        if len(rows) < 1000:
+        if len(rows) < 200:
             return out
         page += 1
 

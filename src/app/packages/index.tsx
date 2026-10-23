@@ -29,7 +29,9 @@ import {
   fetchMakes,
   fetchModels,
   fetchPackagesForVehicle,
-  fetchSystemKeep,
+  fetchDspPrices,
+  fetchSystemFit,
+  installedForSystem,
   fetchVehicleRows,
   fetchYears,
   narrowVehicleRows,
@@ -40,6 +42,7 @@ import {
   vehicleVariant,
   RETAINED_TOPOLOGY,
   type AudioOption,
+  type SystemFit,
   type PackageSummary,
   type Vehicle,
 } from '@/lib/packages'
@@ -248,20 +251,30 @@ export default function PackagesScreen() {
   const singleSystemId = vehicle && vehicle.factory_audio_system && !(vehicle.branded_system_name ?? '').includes('|')
     ? vehicle.factory_audio_system
     : ''
-  const [sysKeep, setSysKeep] = useState<{ key: string; keep: boolean | null } | null>(null)
+  const [sysFit, setSysFit] = useState<{ key: string; fit: SystemFit | null } | null>(null)
   useEffect(() => {
     if (!singleSystemId) return
     let live = true
-    fetchSystemKeep(singleSystemId)
-      .then((keep) => { if (live) setSysKeep({ key: singleSystemId, keep }) })
-      .catch(() => { if (live) setSysKeep({ key: singleSystemId, keep: null }) })
+    fetchSystemFit(singleSystemId)
+      .then((fit) => { if (live) setSysFit({ key: singleSystemId, fit }) })
+      .catch(() => { if (live) setSysFit({ key: singleSystemId, fit: null }) })
     return () => { live = false }
   }, [singleSystemId])
+  const singleFit = singleSystemId && sysFit?.key === singleSystemId ? sysFit.fit : null
   const factoryDriversKept = chosenAudio
     ? chosenAudio.keep_factory_drivers === true
     : audioOpts.length
       ? audioOpts.every((o) => o.keep_factory_drivers === true)
-      : !!singleSystemId && sysKeep?.key === singleSystemId && sysKeep.keep === true
+      : singleFit?.keep === true
+  // The system that decides each build's DSP: the owner's choice, the car's only
+  // system, or none yet (then every build shows its own DSP and price).
+  const fit: SystemFit | null = chosenAudio?.fit ?? (audioOpts.length === 1 ? audioOpts[0].fit : audioOpts.length ? null : singleFit)
+  const [dspPrices, setDspPrices] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let live = true
+    fetchDspPrices().then((p) => { if (live) setDspPrices(p) }).catch(() => {})
+    return () => { live = false }
+  }, [])
 
   // One request is one key. Holding the answer against the key it was asked for
   // makes `items` and `loading` derived rather than flags an effect has to keep
@@ -468,7 +481,7 @@ export default function PackagesScreen() {
                       {items.map((p) => (
                         <Link
                           key={p.sku ?? p.id}
-                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}` as any}
+                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}${fit?.id ? `&sys=${encodeURIComponent(fit.id)}` : ''}` as any}
                           asChild
                         >
                           <Pressable>
@@ -479,7 +492,7 @@ export default function PackagesScreen() {
                                 </Text>
                                 <Metaline
                                   items={[p.topology, p.bass_alignment ? ALIGNMENT_LABEL[p.bass_alignment] : null,
-                                    p.price_installed != null ? `$${Number(p.price_installed).toLocaleString()} installed` : null]
+                                    p.price_installed != null ? `$${Number(installedForSystem(p, fit, dspPrices)).toLocaleString()} installed` : null]
                                     .filter(Boolean) as string[]}
                                 />
                                 {p.summary ? (

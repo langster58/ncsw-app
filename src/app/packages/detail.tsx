@@ -22,8 +22,11 @@ import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 import { Band, PdpSection, PhotoSlot, SysRow, useVal } from '@/components/PdpBlocks'
 import {
+  dspForSystem,
+  fetchDspPrices,
   fetchInstallationRows,
   fetchPackageBySku,
+  fetchSystemFit,
   fetchPackageComponents,
   fetchVehicleById,
   type InstallationRow,
@@ -114,9 +117,11 @@ function componentMeta(c: ResolvedComponent): string[] {
 }
 
 export default function PackageDetailScreen() {
-  const params = useLocalSearchParams<{ sku?: string; vid?: string }>()
+  const params = useLocalSearchParams<{ sku?: string; vid?: string; sys?: string }>()
   const sku = typeof params.sku === 'string' ? params.sku : ''
   const vid = typeof params.vid === 'string' ? params.vid : ''
+  // The car's factory system, when the owner has said which: it decides the DSP.
+  const sys = typeof params.sys === 'string' ? params.sys : ''
 
   const [pkg, setPkg] = useState<PackageDetail | null>(null)
   const [components, setComponents] = useState<ResolvedComponent[]>([])
@@ -132,10 +137,29 @@ export default function PackageDetailScreen() {
       fetchPackageBySku(sku),
       vid ? fetchVehicleById(vid) : Promise.resolve(null),
       fetchInstallationRows().catch(() => []),
+      sys ? fetchSystemFit(sys).catch(() => null) : Promise.resolve(null),
     ])
-      .then(async ([p, v, inst]) => {
+      .then(async ([found, v, inst, fit]) => {
         if (!live) return
-        if (!p) { setState('missing'); return }
+        if (!found) { setState('missing'); return }
+        // A build takes the DSP its car's factory system needs (dspForSystem);
+        // the price moves by the difference.
+        let p = found
+        const swap = dspForSystem(found.tier, fit)
+        if (swap && swap !== found.dsp_id) {
+          const prices = await fetchDspPrices().catch(() => ({} as Record<string, number>))
+          if (!live) return
+          const was = found.dsp_id ? prices[found.dsp_id] : undefined
+          if (prices[swap] != null && was != null) {
+            const d = prices[swap] - was
+            p = {
+              ...found,
+              dsp_id: swap,
+              price_installed: found.price_installed != null ? Number(found.price_installed) + d : null,
+              price_total: found.price_total != null ? Number(found.price_total) + d : null,
+            }
+          }
+        }
         setPkg(p); setVehicle(v); setInstall(inst)
         const comps = await fetchPackageComponents(p)
         if (!live) return
@@ -144,7 +168,7 @@ export default function PackageDetailScreen() {
       })
       .catch(() => live && setState('error'))
     return () => { live = false }
-  }, [sku, vid])
+  }, [sku, vid, sys])
 
   // All fluid values hoisted here — hooks must never sit inside the
   // conditional branches below (loading/ready changes the hook count).
@@ -180,7 +204,7 @@ export default function PackageDetailScreen() {
   const p1 = pkg
     ? `The ${title} is a complete, engineered ${pkg.topology ?? ''} system${vehicleName ? ` for the ${vehicleName}` : ''}: ` +
       `${sub ? componentTitle(sub) + (sub.qty > 1 ? ` ×${sub.qty}` : '') : 'the sub stage'} in a ${alignmentLabel.toLowerCase()} enclosure, ` +
-      `${fstage ? `the ${componentTitle(fstage)} front stage` : 'a matched front stage'}, amplification sized to both, ` +
+      `${fstage ? `the ${componentTitle(fstage)} front stage` : pkg.set_collection === 'factory' ? 'the factory front speakers, kept and high-passed above a front sub' : 'a matched front stage'}, amplification sized to both, ` +
       `and ${dsp ? `the ${componentTitle(dsp)}` : 'DSP'} tuned in the car.`
     : ''
 
