@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { Container, Dropdown, IconClose, colors, fluid, useFluidPx } from '@/ui'
 import { PackageTableModal } from './PackageTableModal.web'
@@ -415,9 +415,13 @@ export function PackageTable() {
     return set
   }, [allPicks, tier, topo, count, size, signal, cset, camp, sub, samp, priceMin, priceMax, sortKey, sortDir])
 
-  useEffect(() => {
+  // A new filtered set restarts the row window. Adjusted during render rather
+  // than in an effect so the table never commits a frame of the previous set.
+  const [lastRows, setLastRows] = useState(rows)
+  if (lastRows !== rows) {
+    setLastRows(rows)
     setVisible(40)
-  }, [rows])
+  }
 
   const onScroll = useCallback(() => {
     const el = regionRef.current

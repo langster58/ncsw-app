@@ -16,16 +16,20 @@ type Phase = 'init' | 'visible' | 'hidden' | 'gone'
 function PreloaderWeb() {
   const [phase, setPhase] = useState<Phase>('init')
 
+  // Whether to skip cannot be decided during render: the page is statically
+  // rendered and then hydrated, so reading sessionStorage or matchMedia at render
+  // time would disagree with the server HTML. The skip is therefore scheduled a
+  // frame out rather than set synchronously here — invisible either way, because
+  // the overlay is fully transparent while the phase is still 'init'.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const seen = window.sessionStorage.getItem('ncsw_preloaded')
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (seen || reduce) {
-      if (!seen) window.sessionStorage.setItem('ncsw_preloaded', '1')
-      setPhase('gone')
-      return
-    }
     window.sessionStorage.setItem('ncsw_preloaded', '1')
+    if (seen || reduce) {
+      const skip = requestAnimationFrame(() => setPhase('gone'))
+      return () => cancelAnimationFrame(skip)
+    }
     const r = requestAnimationFrame(() => setPhase('visible'))
     const t1 = setTimeout(() => setPhase('hidden'), 900)
     const t2 = setTimeout(() => setPhase('gone'), 1500)

@@ -117,23 +117,32 @@ function WebChart() {
   const legendSize = useFluidPx(type.meta)
 
   // Pull the global dataset (<script defer> populates window.NCSW_SUBWOOFER_FRONTIER).
+  // This cannot be read during render: the page is statically rendered and then
+  // hydrated, and the global does not exist on the server. So the first look is a
+  // deferred one rather than a synchronous set in the effect body — same tick in
+  // practice, and the poll below covers the script not having run yet.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.NCSW_SUBWOOFER_FRONTIER && window.NCSW_SUBWOOFER_FRONTIER.length) {
-      setRows(window.NCSW_SUBWOOFER_FRONTIER)
-      return
-    }
     let n = 0
-    const id = window.setInterval(() => {
-      n++
-      if (window.NCSW_SUBWOOFER_FRONTIER && window.NCSW_SUBWOOFER_FRONTIER.length) {
-        setRows(window.NCSW_SUBWOOFER_FRONTIER)
-        window.clearInterval(id)
-      } else if (n > 40) {
-        window.clearInterval(id)
-      }
-    }, 100)
-    return () => window.clearInterval(id)
+    let id = 0
+    const take = () => {
+      if (!window.NCSW_SUBWOOFER_FRONTIER || !window.NCSW_SUBWOOFER_FRONTIER.length) return false
+      setRows(window.NCSW_SUBWOOFER_FRONTIER)
+      window.clearInterval(id)
+      return true
+    }
+    const first = window.setTimeout(() => {
+      if (take()) return
+      id = window.setInterval(() => {
+        n++
+        if (take()) return
+        if (n > 40) window.clearInterval(id)
+      }, 100)
+    }, 0)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(id)
+    }
   }, [])
 
   const filtered = useMemo(
@@ -636,7 +645,7 @@ function Tooltip({ tooltip }: { tooltip: TooltipState }) {
       }
     >
       <Text style={{ fontFamily: FONT_BODY, fontSize: titleSize, fontWeight: '600', color: INK, marginBottom: titleMarginBottom } as any}>
-        {r.name} ({r.sz}")
+        {r.name} ({r.sz}{'"'})
         {r.tier !== 'untiered' ? ' · ' + r.tier : ''}
       </Text>
       <Text style={{ fontFamily: FONT_BODY, fontSize: bodySize, color: FG_2, lineHeight: bodyLineHeight } as any}>

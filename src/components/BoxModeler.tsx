@@ -310,10 +310,10 @@ function WebModeler() {
   const familyKey = row ? `${row.brand} ${row.model}` : ''
   const familyRows = families.get(familyKey) ?? []
 
-  // Seed the input set once the catalog resolves the first driver.
-  useEffect(() => {
-    if (row && !inputs) setInputs(defaultInputsFor(row))
-  }, [row, inputs])
+  // Seed the input set once the catalog resolves the first driver. Done during
+  // render rather than in an effect: the guard makes it run at most once, and it
+  // means the first painted frame already has the driver's defaults in it.
+  if (row && !inputs) setInputs(defaultInputsFor(row))
 
   // Driver switches re-seed the box defaults, scaled to the current driver
   // count so the per-driver alignment carries over.
@@ -1244,7 +1244,7 @@ function WebModeler() {
       >
         Lumped-element Thiele/Small model computed live from catalog parameters. Box leakage QL = 7; port
         compression and voice-coil inductance losses not modeled. Port length uses the free-end correction
-        (0.732 D, WinISD's convention) for round and slot ports — a slot sharing box walls builds slightly
+        (0.732 D, WinISD’s convention) for round and slot ports — a slot sharing box walls builds slightly
         shorter in practice.
       </Text>
 

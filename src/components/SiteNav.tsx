@@ -137,7 +137,7 @@ function MobileNavMenu({
   open: boolean
   onClose: () => void
   navBarHeight: number
-  links: ReadonlyArray<NavLinkItem>
+  links: readonly NavLinkItem[]
 }) {
   const gap = useFluidPx(fluid(22, 16))
 
@@ -188,7 +188,7 @@ export function SiteNav({
   phone,
   brandHref = '/',
 }: {
-  links: ReadonlyArray<NavLinkItem>
+  links: readonly NavLinkItem[]
   phone?: string
   brandHref?: string
 }) {
@@ -201,9 +201,10 @@ export function SiteNav({
   const [navBarHeight, setNavBarHeight] = useState(0)
   const navBarRef = useRef<any>(null)
 
-  useEffect(() => {
-    if (!narrow) setMobileNavOpen(false)
-  }, [narrow])
+  // Leaving the narrow breakpoint closes the mobile menu. Adjusted during render
+  // rather than in an effect: React re-runs this render before committing, so the
+  // open menu is never painted at desktop width.
+  if (!narrow && mobileNavOpen) setMobileNavOpen(false)
 
   useEffect(() => {
     if (!mobileNavOpen || !navBarRef.current || typeof navBarRef.current.getBoundingClientRect !== 'function') {

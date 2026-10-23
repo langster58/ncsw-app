@@ -381,7 +381,7 @@ export default function ComponentsPage() {
               ]}
             />
             <Mono size="sm" tone="gray">
-              Label → value rows with hairlines for a single record's data. <Text style={{ fontFamily: fonts.mono }}>accent</Text> tints a positive value.
+              Label → value rows with hairlines for a single record’s data. <Text style={{ fontFamily: fonts.mono }}>accent</Text> tints a positive value.
             </Mono>
           </Block>
 
@@ -394,7 +394,7 @@ export default function ComponentsPage() {
               total={{ label: 'Total, installed & tuned', value: '$4,270' }}
             />
             <Mono size="sm" tone="gray">
-              Subtotal lines, short rule, total. Right-aligned by default (<Text style={{ fontFamily: fonts.mono }}>align="left"</Text> to flip).
+              Subtotal lines, short rule, total. Right-aligned by default (<Text style={{ fontFamily: fonts.mono }}>{'align="left"'}</Text> to flip).
             </Mono>
           </Block>
 
@@ -557,7 +557,7 @@ export default function ComponentsPage() {
                 index="01"
                 title="Expert Installation Technician"
               >
-                MECP's installation track runs Skilled, Advanced, Expert, Master. The Expert tier
+                MECP’s installation track runs Skilled, Advanced, Expert, Master. The Expert tier
                 tests advanced wiring and fabrication, OEM interface work, and diagnosing the faults
                 other installs leave behind.
               </Accordion.Item>
@@ -621,7 +621,7 @@ export default function ComponentsPage() {
               rowHeight={48}
             />
             <Mono size="sm" tone="gray">
-              Sortable header · sticky left column ("Price") · per-row hover state. Pass <Text style={{ fontFamily: fonts.mono }}>maxVisible</Text> to cap height and enable lazy-load scrolling for thousands of rows.
+              Sortable header · sticky left column (“Price”) · per-row hover state. Pass <Text style={{ fontFamily: fonts.mono }}>maxVisible</Text> to cap height and enable lazy-load scrolling for thousands of rows.
             </Mono>
           </Block>
 

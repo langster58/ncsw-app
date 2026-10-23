@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Platform, Text, TextInput, View } from 'react-native'
 import { colors, fonts, radius, tracking, type as typeScale, useFluidPx } from './tokens'
 
@@ -34,9 +34,13 @@ export function NumberField({ label, value, onChange, unit, min, max, width = 96
   const [focused, setFocused] = useState(false)
 
   // Reflect external value changes while not editing (driver swap, reset).
-  useEffect(() => {
+  // Adjusted during render against the last inputs we saw, so the field never
+  // commits a frame still showing the previous driver's number.
+  const [lastInputs, setLastInputs] = useState({ value, decimals, editing })
+  if (lastInputs.value !== value || lastInputs.decimals !== decimals || lastInputs.editing !== editing) {
+    setLastInputs({ value, decimals, editing })
     if (!editing) setText(format(value, decimals))
-  }, [value, editing, decimals])
+  }
 
   const labelSize = useFluidPx(typeScale.meta)
   const inputSize = useFluidPx(typeScale.small)

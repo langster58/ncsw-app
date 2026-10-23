@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 import { IconChevron, IconChevronUp } from './Icon'
 import { colors, fonts, tracking } from './tokens'
@@ -69,9 +69,14 @@ export function DataTable<T>({
   const regionRef = useRef<any>(null)
   const [visible, setVisible] = useState(scrollable ? pageSize : rows.length)
 
-  useEffect(() => {
+  // A new row set (or a change of paging mode) restarts the window. Adjusted
+  // during render against the last inputs we saw, so the table never commits a
+  // frame showing the previous set's scroll position.
+  const [lastInputs, setLastInputs] = useState({ rows, pageSize, scrollable })
+  if (lastInputs.rows !== rows || lastInputs.pageSize !== pageSize || lastInputs.scrollable !== scrollable) {
+    setLastInputs({ rows, pageSize, scrollable })
     setVisible(scrollable ? pageSize : rows.length)
-  }, [rows, pageSize, scrollable])
+  }
 
   const onScroll = useCallback(() => {
     if (!scrollable) return

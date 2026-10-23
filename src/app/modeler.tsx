@@ -78,7 +78,7 @@ export default function ModelerScreen() {
                 <Lead>
                   Pick a driver, set a box, and read the same curves we read: modeled SPL response for ported,
                   sealed, and infinite-baffle alignments, cone excursion against Xmax at rated power, and the
-                  numbers that decide a build — computed live from each driver's measured Thiele/Small parameters.
+                  numbers that decide a build — computed live from each driver’s measured Thiele/Small parameters.
                 </Lead>
               </View>
               <BoxModeler />

@@ -172,8 +172,8 @@ export default function PdpScreen() {
                 </Lead>
                 <View style={{ height: 14 }} />
                 <Lead>
-                  Every number below is this car's, not a category average. The enclosure is drawn against the measured cargo bay.
-                  The charging verdict is computed from this system's draw against the stock alternator, and if a heavier build
+                  Every number below is this car’s, not a category average. The enclosure is drawn against the measured cargo bay.
+                  The charging verdict is computed from this system’s draw against the stock alternator, and if a heavier build
                   ever outruns it, the high-output alternator for this chassis is a known part, quoted at $245.
                 </Lead>
 
@@ -363,7 +363,7 @@ export default function PdpScreen() {
               </Card.Media>
               <Card.Body>
                 <Metaline items={['2024 Golf GTI', 'Cargo Infinite Baffle build']} />
-                <Heading level="h3">The system we'd build in this GTI</Heading>
+                <Heading level="h3">The system we’d build in this GTI</Heading>
                 <Lead>
                   Our value calculation ranks the Cargo Infinite Baffle above every boxed build in this chassis. There is no
                   enclosure to fabricate: a single reference 15 mounts to a baffle in the cargo floor and fires through it, using the
