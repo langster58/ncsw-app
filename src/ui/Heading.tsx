@@ -1,5 +1,5 @@
 import { useContext, type ReactNode } from 'react'
-import { Text } from 'react-native'
+import { Text, useWindowDimensions } from 'react-native'
 import { FullWidthCopyContext } from './CopyContext'
 import {
   colors,
@@ -40,7 +40,10 @@ export function Heading({
 }) {
   const fontSize = useFluidPx(type[level])
   const lh = fluidLineHeight(fontSize, lineHeight.tight)
-  const fullWidth = useContext(FullWidthCopyContext)
+  // The shared 60% measure is for wide screens; on a phone it would squeeze
+  // copy into a narrow column, so narrow screens use the full width.
+  const { width } = useWindowDimensions()
+  const fullWidth = useContext(FullWidthCopyContext) || width <= 760
   const rank = as ?? DEFAULT_RANK[level]
   return (
     <Text

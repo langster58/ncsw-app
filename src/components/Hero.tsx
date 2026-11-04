@@ -1,6 +1,6 @@
 import React from 'react'
 import { Linking, Platform, View, useWindowDimensions } from 'react-native'
-import { Button, Container, Eyebrow, Heading, Lead, Section, colors } from '@/ui'
+import { Button, Container, Eyebrow, FullWidthCopyContext, Heading, Lead, Section, colors } from '@/ui'
 import { VehicleFinder } from '@/components/VehicleFinder'
 import { SITE, callLabel, telHref } from '@/lib/site'
 
@@ -97,13 +97,17 @@ export function Hero() {
     // .hero { padding: 64px 0 0 } — Section primitive owns the top spacing.
     <Section top={64}>
       <Container>
-        <View style={{ gap: 20 } as any}>
-          <Eyebrow>Car audio specialist · Ohio</Eyebrow>
-          <Heading level="h2" as={1}>
-            {HEADING}
-          </Heading>
-          <Lead size="heroLead">{STATEMENT}</Lead>
-        </View>
+        {/* On a phone the heading and statement use the full width; the shared
+            60% measure is for wide screens. */}
+        <FullWidthCopyContext.Provider value={narrow}>
+          <View style={{ gap: 20 } as any}>
+            <Eyebrow>Car audio specialist · Ohio</Eyebrow>
+            <Heading level="h2" as={1}>
+              {HEADING}
+            </Heading>
+            <Lead size="heroLead">{STATEMENT}</Lead>
+          </View>
+        </FullWidthCopyContext.Provider>
         <View style={{ marginTop: 36, gap: 18 } as any}>
           <VehicleFinder nativeID="find" />
           {SITE.phone ? (

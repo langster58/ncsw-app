@@ -1,5 +1,5 @@
 import { useContext, type ReactNode } from 'react'
-import { Text } from 'react-native'
+import { Text, useWindowDimensions } from 'react-native'
 import { FullWidthCopyContext } from './CopyContext'
 import {
   colors,
@@ -27,7 +27,10 @@ export function Lead({ size = 'lead', children }: { size?: Size; children: React
   // leading (1.58) at 36px reads as gaps, not rhythm.
   const isHero = size === 'heroLead'
   const lh = fluidLineHeight(fontSize, isHero ? 1.3 : lineHeight.body)
-  const fullWidth = useContext(FullWidthCopyContext)
+  // The shared 60% measure is for wide screens; on a phone it would squeeze
+  // copy into a narrow column, so narrow screens use the full width.
+  const { width } = useWindowDimensions()
+  const fullWidth = useContext(FullWidthCopyContext) || width <= 760
   // The hero measure is set in `ch` (character-relative), not the shared
   // `copyMaxWidth` percentage: a % width and a fluid font-size scale on two
   // different curves, so the line breaks (the rag) drift and reflow
