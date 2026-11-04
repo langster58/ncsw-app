@@ -1,11 +1,11 @@
 import React from 'react'
 import { Linking, Platform, View, useWindowDimensions } from 'react-native'
-import { Button, Container, Eyebrow, FullWidthCopyContext, Heading, Lead, Section, colors } from '@/ui'
+import { Button, Container, FullWidthCopyContext, Heading, Lead, Section, colors } from '@/ui'
 import { VehicleFinder } from '@/components/VehicleFinder'
 import { SITE, callLabel, telHref } from '@/lib/site'
 
 // Hero — the homepage's first screen. Order, top to bottom:
-//   small line (specialty + place) -> the page's one main heading (h1) ->
+//   the page's one main heading (h1) ->
 //   the trust sentence and the method sentence -> the vehicle finder ->
 //   Call or text (only once the shop has a number, see src/lib/site.ts) ->
 //   the install montage.
@@ -101,7 +101,6 @@ export function Hero() {
             60% measure is for wide screens. */}
         <FullWidthCopyContext.Provider value={narrow}>
           <View style={{ gap: 20 } as any}>
-            <Eyebrow>Car audio specialist · Ohio</Eyebrow>
             <Heading level="h2" as={1}>
               {HEADING}
             </Heading>

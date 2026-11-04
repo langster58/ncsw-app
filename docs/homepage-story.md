@@ -11,8 +11,6 @@ Nothing here is in the site code yet.
 
 ## 1. First screen — approved 2026-11-04
 
-*Car audio specialist · Ohio*
-
 **Car audio systems pre-engineered for your make and model.**
 
 North Coast Soundworks is Cleveland's MECP-certified car audio specialist. We score every speaker, subwoofer and amplifier we could build with on what it can actually play, then design each system so every part is matched to the others and to the vehicle.
