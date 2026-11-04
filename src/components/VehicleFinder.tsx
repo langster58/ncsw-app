@@ -76,6 +76,16 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
     fetchModels(year, v).then(setModels).catch(() => setError('Could not load models.'))
   }
 
+  // On a phone the row is too narrow for three labels and "See systems", so the
+  // button reads "Go" there. Decided after the first paint, since the page is
+  // rendered ahead of time without knowing the screen width.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(r)
+  }, [])
+  const shortButton = mounted && narrow
+
   const ready = !!(year && make && model)
   function go() {
     if (!ready) return
@@ -105,7 +115,7 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
           <Dropdown label="Model" value={model} options={models} onChange={setModel} disabled={!make} labelOnly nativeOnTouch />
         </View>
         <Button variant="primary" size="control" disabled={!ready} onPress={go}>
-          See systems
+          {shortButton ? 'Go' : 'See systems'}
         </Button>
       </View>
       {error ? (
