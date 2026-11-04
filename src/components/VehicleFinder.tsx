@@ -94,14 +94,15 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
       {/* One row that fills the width at every screen size: year, make, model,
           then the button. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
-        <View style={{ flex: 1, minWidth: 0 } as any}>
-          <Dropdown label="Year" value={year} options={years} onChange={pickYear} placeholder="Year" />
+        {/* Three equal widths, whatever the label length. */}
+        <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
+          <Dropdown label="Year" value={year} options={years} onChange={pickYear} labelOnly nativeOnTouch />
         </View>
-        <View style={{ flex: 1.3, minWidth: 0 } as any}>
-          <Dropdown label="Make" value={make} options={makes} onChange={pickMake} placeholder="Make" disabled={!year} />
+        <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
+          <Dropdown label="Make" value={make} options={makes} onChange={pickMake} disabled={!year} labelOnly nativeOnTouch />
         </View>
-        <View style={{ flex: 1.5, minWidth: 0 } as any}>
-          <Dropdown label="Model" value={model} options={models} onChange={setModel} placeholder="Model" disabled={!make} />
+        <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
+          <Dropdown label="Model" value={model} options={models} onChange={setModel} disabled={!make} labelOnly nativeOnTouch />
         </View>
         <Button variant="primary" size="control" disabled={!ready} onPress={go}>
           See systems

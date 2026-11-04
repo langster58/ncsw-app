@@ -32,6 +32,7 @@ import { colors, fonts, radius } from './tokens'
 
 const PAD_X = 12 // identical left and right
 const ROW_GAP = 6 // label ↔ value
+const LABEL_ONLY_GAP = 8 // label ↔ arrow, the same in every labelOnly trigger
 
 type Option = string | { label: string; value: string }
 
@@ -43,6 +44,14 @@ type DropdownProps = {
   placeholder?: string
   disabled?: boolean
   hideLabel?: boolean // trigger shows only the value; label still voices via accessibility (for external labels)
+  // Trigger shows only the label, never the chosen value, with the arrow a fixed
+  // distance after the label and the pair flush left. To see the choice, open it.
+  labelOnly?: boolean
+  // On phones and other touch screens, open the device's own picker (a native
+  // <select>) instead of the popover: the full-width list on Android, the wheel
+  // on iPhone. That is the standard select on a phone, and it marks the current
+  // choice when opened.
+  nativeOnTouch?: boolean
 }
 
 function normalize(o: Option): { label: string; value: string } {
@@ -57,6 +66,8 @@ export function Dropdown({
   placeholder,
   disabled = false,
   hideLabel = false,
+  labelOnly = false,
+  nativeOnTouch = false,
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
   const [open, setOpen] = useState(false)
@@ -66,6 +77,18 @@ export function Dropdown({
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
   const isWeb = Platform.OS === 'web'
+
+  // Touch screen or not is known only in the browser, after the first paint (the
+  // page is rendered ahead of time without it).
+  const [touch, setTouch] = useState(false)
+  useEffect(() => {
+    if (!isWeb || !nativeOnTouch || typeof window === 'undefined' || !window.matchMedia) return
+    const r = requestAnimationFrame(() =>
+      setTouch(window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 760),
+    )
+    return () => cancelAnimationFrame(r)
+  }, [isWeb, nativeOnTouch])
+  const useNativeSelect = isWeb && nativeOnTouch && touch
 
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
   const borderColor = disabled ? colors.borderStrong : hovered ? colors.inkSoft : colors.borderStrong
@@ -161,7 +184,7 @@ export function Dropdown({
       <Pressable
         ref={triggerRef}
         disabled={disabled}
-        onPress={() => setOpen(true)}
+        onPress={() => (useNativeSelect ? null : setOpen(true))}
         accessibilityRole="button"
         accessibilityLabel={`${label}${current ? `: ${current.label}` : ''}`}
         accessibilityHint={!current && placeholder ? placeholder : undefined}
@@ -170,7 +193,8 @@ export function Dropdown({
           {
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: labelOnly ? 'flex-start' : 'space-between',
+            gap: labelOnly ? LABEL_ONLY_GAP : undefined,
             paddingHorizontal: PAD_X,
             paddingVertical: 8,
             borderRadius: radius.sm,
@@ -183,7 +207,14 @@ export function Dropdown({
           } as any
         }
       >
-        {/* label + value group */}
+        {labelOnly ? (
+          <Text
+            numberOfLines={1}
+            style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: '600', color: colors.ink, flexShrink: 1 }}
+          >
+            {label}
+          </Text>
+        ) : (
         <View
           style={
             { flexDirection: 'row', alignItems: 'center', gap: ROW_GAP, minWidth: 0, flexShrink: 1 } as any
@@ -219,12 +250,42 @@ export function Dropdown({
             </Text>
           ) : null}
         </View>
+        )}
 
         {/* chevron — vertically centered; right padding === left padding via paddingHorizontal */}
         <View style={{ alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <IconChevron size={14} color={colors.inkFaint} />
         </View>
       </Pressable>
+
+      {useNativeSelect
+        ? // The device's own picker: an invisible <select> laid over the trigger,
+          // so the tap opens the phone's list while the trigger keeps its look.
+          // 16px text stops iPhone Safari zooming the page when it opens.
+          React.createElement(
+            'select',
+            {
+              'aria-label': label,
+              disabled,
+              value: value || '',
+              onChange: (e: any) => {
+                if (e.target.value) onChange(e.target.value)
+              },
+              style: {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0,
+                fontSize: 16,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+              },
+            },
+            React.createElement('option', { value: '', disabled: true }, label),
+            ...norm.map((o) => React.createElement('option', { key: o.value, value: o.value }, o.label)),
+          )
+        : null}
 
       {isWeb
         ? // Compact popover, anchored directly under the trigger — standard
