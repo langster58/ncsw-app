@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Button, Dropdown, Link, colors, fonts, type, useFluidPx } from '@/ui'
+import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
+import { Button, Dropdown, IconClose, Link, colors, fonts, type, useFluidPx } from '@/ui'
 import { fetchMakes, fetchModels, fetchYears } from '@/lib/packages'
 
 // VehicleFinder — year, make, model, then straight to the systems for that
@@ -87,6 +87,10 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
   const shortButton = mounted && narrow
 
   const ready = !!(year && make && model)
+  const anyPicked = !!(year || make || model)
+  function reset() {
+    setYear(''); setMake(''); setModel(''); setMakes([]); setModels([])
+  }
   function go() {
     if (!ready) return
     const v = { year, make, model }
@@ -120,9 +124,52 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
           </Button>
         </View>
       </View>
+      {/* Reset, flush right under the row: clears the three fields. Faded and
+          inert until something is chosen (same as the packages table's Reset). */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' } as any}>
+        <ResetLink disabled={!anyPicked} onPress={reset} />
+      </View>
       {error ? (
         <Text style={{ fontFamily: fonts.body, fontSize: noteSize, color: colors.gray } as any}>{error}</Text>
       ) : null}
     </View>
+  )
+}
+
+function ResetLink({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const color = disabled ? colors.inkFaint : colors.accent
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      accessibilityRole="button"
+      accessibilityLabel="Reset vehicle"
+      hitSlop={8}
+      style={
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          opacity: disabled ? 0.35 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        } as any
+      }
+    >
+      <IconClose size={11} color={color} />
+      <Text
+        style={{
+          fontFamily: fonts.body,
+          fontSize: 11,
+          fontWeight: '600',
+          color,
+          textDecorationLine: hovered && !disabled ? 'underline' : 'none',
+        }}
+      >
+        Reset
+      </Text>
+    </Pressable>
   )
 }
