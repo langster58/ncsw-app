@@ -91,23 +91,16 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
           {`Your ${saved.year} ${saved.make} ${saved.model}: see systems`}
         </Link>
       ) : null}
-      <View
-        style={
-          {
-            flexDirection: narrow ? 'column' : 'row',
-            alignItems: narrow ? 'stretch' : 'center',
-            gap: 10,
-            maxWidth: 880,
-          } as any
-        }
-      >
-        <View style={{ flex: narrow ? undefined : 1 } as any}>
+      {/* One row that fills the width at every screen size: year, make, model,
+          then the button. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
+        <View style={{ flex: 1, minWidth: 0 } as any}>
           <Dropdown label="Year" value={year} options={years} onChange={pickYear} placeholder="Year" />
         </View>
-        <View style={{ flex: narrow ? undefined : 1.4 } as any}>
+        <View style={{ flex: 1.3, minWidth: 0 } as any}>
           <Dropdown label="Make" value={make} options={makes} onChange={pickMake} placeholder="Make" disabled={!year} />
         </View>
-        <View style={{ flex: narrow ? undefined : 1.6 } as any}>
+        <View style={{ flex: 1.5, minWidth: 0 } as any}>
           <Dropdown label="Model" value={model} options={models} onChange={setModel} placeholder="Model" disabled={!make} />
         </View>
         <Button variant="primary" size="control" disabled={!ready} onPress={go}>
