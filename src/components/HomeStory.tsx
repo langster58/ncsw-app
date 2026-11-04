@@ -17,6 +17,7 @@ import {
   fonts,
   lineHeight,
   radius,
+  space,
   type,
   useFluidPx,
 } from '@/ui'
@@ -427,8 +428,11 @@ export function Articles() {
 
 // ── Closing band: the finder again, for the visitor who read everything ─────
 export function ClosingFinder({ children }: { children: React.ReactNode }) {
+  // The last band before the footer: give it the same room below as a section
+  // gets above, so the button doesn't sit on the footer's edge.
+  const bottom = useFluidPx(space.sectionTop)
   return (
-    <Section>
+    <Section style={{ paddingBottom: bottom }}>
       <Container>
         <SectionIntro
           label="Find your car"
