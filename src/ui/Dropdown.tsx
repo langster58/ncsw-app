@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Platform, Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 // @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
 import { IconCheck, IconChevron, IconChevronUp, IconClose } from './Icon'
@@ -80,6 +80,10 @@ export function Dropdown({
   const norm = options.map(normalize)
   const current = norm.find((o) => o.value === value)
   const isWeb = Platform.OS === 'web'
+  // Floating-label fields on a phone sit four to a row, so they give the text
+  // more room: less side padding, a smaller arrow, a tighter gap.
+  const { width: screenW } = useWindowDimensions()
+  const tight = floatingLabel && screenW <= 760
 
   // Touch screen or not is known only in the browser, after the first paint (the
   // page is rendered ahead of time without it).
@@ -283,7 +287,7 @@ export function Dropdown({
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: PAD_X,
+            paddingHorizontal: tight ? 8 : PAD_X,
             paddingVertical: 8,
             borderRadius: radius.sm,
             borderWidth: 1,
@@ -292,7 +296,7 @@ export function Dropdown({
             opacity: disabled ? 0.35 : 1,
             cursor: disabled ? 'not-allowed' : 'pointer',
             minHeight: floatingLabel ? FIELD_HEIGHT : 38,
-            gap: floatingLabel ? 8 : undefined,
+            gap: floatingLabel ? (tight ? 4 : 8) : undefined,
           } as any
         }
       >
@@ -362,7 +366,11 @@ export function Dropdown({
 
         {/* chevron — vertically centered; right padding === left padding via paddingHorizontal */}
         <View style={{ alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {open ? <IconChevronUp size={14} color={colors.ink} /> : <IconChevron size={14} color={colors.inkFaint} />}
+          {open ? (
+            <IconChevronUp size={tight ? 12 : 14} color={colors.ink} />
+          ) : (
+            <IconChevron size={tight ? 12 : 14} color={colors.inkFaint} />
+          )}
         </View>
       </Pressable>
 
