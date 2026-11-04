@@ -32,7 +32,6 @@ import { colors, fonts, radius } from './tokens'
 
 const PAD_X = 12 // identical left and right
 const ROW_GAP = 6 // label ↔ value
-const LABEL_ONLY_GAP = 8 // label ↔ arrow, the same in every labelOnly trigger
 
 type Option = string | { label: string; value: string }
 
@@ -44,8 +43,8 @@ type DropdownProps = {
   placeholder?: string
   disabled?: boolean
   hideLabel?: boolean // trigger shows only the value; label still voices via accessibility (for external labels)
-  // Trigger shows only the label, never the chosen value, with the arrow a fixed
-  // distance after the label and the pair flush left. To see the choice, open it.
+  // Trigger shows only the label, never the chosen value: label flush left, arrow
+  // at the right edge. To see the choice, open it.
   labelOnly?: boolean
   // On phones and other touch screens, open the device's own picker (a native
   // <select>) instead of the popover: the full-width list on Android, the wheel
@@ -193,8 +192,7 @@ export function Dropdown({
           {
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: labelOnly ? 'flex-start' : 'space-between',
-            gap: labelOnly ? LABEL_ONLY_GAP : undefined,
+            justifyContent: 'space-between',
             paddingHorizontal: PAD_X,
             paddingVertical: 8,
             borderRadius: radius.sm,

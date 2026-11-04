@@ -32,6 +32,9 @@ type ButtonProps = {
   // 'control' matches the 38px control band (Dropdown, FilterTriggerButton)
   // for buttons that sit in a control row; 'default' keeps the source 36px.
   size?: Size
+  // Fill the width of the parent instead of sizing to the label (e.g. one of
+  // several equal cells in a row).
+  fill?: boolean
 }
 
 export function Button({
@@ -40,6 +43,7 @@ export function Button({
   disabled = false,
   onPress,
   size = 'default',
+  fill = false,
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false)
   const [pressed, setPressed] = useState(false)
@@ -108,7 +112,8 @@ export function Button({
           // child to the full width of its column. Without this, "content
           // width" was never really the default — it just looked that way
           // by accident of where the button happened to be used.
-          alignSelf: 'flex-start',
+          alignSelf: fill ? 'stretch' : 'flex-start',
+          ...(fill ? { width: '100%' } : null),
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',

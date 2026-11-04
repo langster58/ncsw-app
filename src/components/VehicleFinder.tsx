@@ -104,7 +104,7 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
       {/* One row that fills the width at every screen size: year, make, model,
           then the button. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
-        {/* Three equal widths, whatever the label length. */}
+        {/* Four equal cells, whatever the label length: each fills its share of the row. */}
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
           <Dropdown label="Year" value={year} options={years} onChange={pickYear} labelOnly nativeOnTouch />
         </View>
@@ -114,9 +114,11 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
           <Dropdown label="Model" value={model} options={models} onChange={setModel} disabled={!make} labelOnly nativeOnTouch />
         </View>
-        <Button variant="primary" size="control" disabled={!ready} onPress={go}>
-          {shortButton ? 'Go' : 'See systems'}
-        </Button>
+        <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
+          <Button variant="primary" size="control" fill disabled={!ready} onPress={go}>
+            {shortButton ? 'Go' : 'See systems'}
+          </Button>
+        </View>
       </View>
       {error ? (
         <Text style={{ fontFamily: fonts.body, fontSize: noteSize, color: colors.gray } as any}>{error}</Text>
