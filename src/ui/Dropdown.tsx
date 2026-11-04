@@ -154,6 +154,8 @@ export function Dropdown({
         onPress={() => select(o.value)}
         accessibilityRole="button"
         accessibilityState={{ selected }}
+        // data-selected on web: what the sheet looks for to open at the current choice
+        {...({ dataSet: { selected: selected ? 'true' : 'false' } } as any)}
         style={{ paddingHorizontal: inset, ...(isWeb ? { cursor: 'pointer' } : null) } as any}
       >
         <View
@@ -195,8 +197,10 @@ export function Dropdown({
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const r = requestAnimationFrame(() => {
-      const el = listRef.current?.querySelector?.('[aria-selected="true"]')
-      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' })
+      // Scroll only the sheet's own list (scrollIntoView would also move the page).
+      const list = listRef.current
+      const el = list?.querySelector?.('[data-selected="true"]')
+      if (list && el) list.scrollTop = el.offsetTop - list.clientHeight / 2 + el.clientHeight / 2
     })
     return () => {
       document.body.style.overflow = prev
