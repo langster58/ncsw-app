@@ -1,6 +1,6 @@
 import { Platform, ScrollView, View } from 'react-native'
 import Head from 'expo-router/head'
-import { Preloader, Reveal, colors } from '@/ui'
+import { Reveal, colors } from '@/ui'
 import { Nav } from '@/components/Nav'
 import { Hero } from '@/components/Hero'
 import {
@@ -75,7 +75,6 @@ export default function HomeScreen() {
         <meta property="og:url" content={`${SITE.url}/`} />
       </Head>
       <JsonLd data={BUSINESS} />
-      <Preloader />
       <View style={outerStyle}>
         <Nav />
         <ScrollView
