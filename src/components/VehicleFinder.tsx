@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
-import { Button, Dropdown, IconClose, Link, colors, fonts, type, useFluidPx } from '@/ui'
+import { Button, Dropdown, IconClose, colors, fonts, type, useFluidPx } from '@/ui'
 import { fetchMakes, fetchModels, fetchYears } from '@/lib/packages'
 
 // VehicleFinder — year, make, model, then straight to the systems for that
@@ -11,8 +11,9 @@ import { fetchMakes, fetchModels, fetchYears } from '@/lib/packages'
 // Until the vehicle pages exist, "See systems" opens the packages page with the
 // vehicle already chosen (/packages?year=&make=&model=).
 //
-// The last vehicle entered is remembered in this browser so a returning visitor
-// sees "Your 2015 Honda CR-V: see systems" instead of empty fields.
+// The last vehicle a visitor looked up is remembered in this browser: on their
+// next visit the fields start filled in with it, ready for the button. Reset
+// clears the fields and forgets it. The selection lives only in the fields.
 
 const STORE_KEY = 'ncsw_vehicle'
 
@@ -42,6 +43,14 @@ function remember(v: Picked) {
   }
 }
 
+function forget() {
+  try {
+    window.localStorage.removeItem(STORE_KEY)
+  } catch {
+    // nothing stored, or storage blocked
+  }
+}
+
 export function VehicleFinder({ nativeID }: { nativeID?: string }) {
   const { width } = useWindowDimensions()
   const narrow = width <= 760
@@ -52,19 +61,30 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
   const [make, setMake] = useState('')
   const [model, setModel] = useState('')
   const [error, setError] = useState('')
-  const [saved, setSaved] = useState<Picked | null>(null)
   const noteSize = useFluidPx(type.small)
 
   useEffect(() => {
     fetchYears().then(setYears).catch(() => setError('Could not reach the vehicle list. Please try again.'))
   }, [])
 
-  // The remembered vehicle is read after the first paint: the page is rendered
-  // ahead of time without it, and reading storage during render would disagree.
+  // A returning visitor's saved vehicle fills the fields after the first paint
+  // (the page is rendered ahead of time without it). The make and model lists
+  // are loaded first so each field can show its choice.
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
-    const r = requestAnimationFrame(() => setSaved(readRemembered()))
-    return () => cancelAnimationFrame(r)
+    let live = true
+    const r = requestAnimationFrame(() => {
+      const v = readRemembered()
+      if (!v) return
+      Promise.all([fetchMakes(v.year), fetchModels(v.year, v.make)])
+        .then(([mk, md]) => {
+          if (!live || !mk.includes(v.make) || !md.includes(v.model)) return
+          setMakes(mk); setModels(md)
+          setYear(v.year); setMake(v.make); setModel(v.model)
+        })
+        .catch(() => {})
+    })
+    return () => { live = false; cancelAnimationFrame(r) }
   }, [])
 
   function pickYear(v: string) {
@@ -90,6 +110,7 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
   const anyPicked = !!(year || make || model)
   function reset() {
     setYear(''); setMake(''); setModel(''); setMakes([]); setModels([])
+    forget()
   }
   function go() {
     if (!ready) return
@@ -100,11 +121,6 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
 
   return (
     <View nativeID={nativeID} style={{ gap: 14 } as any}>
-      {saved ? (
-        <Link variant="cta" href={systemsHref(saved)}>
-          {`Your ${saved.year} ${saved.make} ${saved.model}: see systems`}
-        </Link>
-      ) : null}
       {/* One row that fills the width at every screen size: year, make, model,
           then the button. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
@@ -124,8 +140,9 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
           </Button>
         </View>
       </View>
-      {/* Reset, flush right under the row: clears the three fields. Faded and
-          inert until something is chosen (same as the packages table's Reset). */}
+      {/* Reset, flush right under the row: clears the three fields and forgets the
+          saved vehicle. Faded and inert until something is chosen (same as the
+          packages table's Reset). */}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end' } as any}>
         <ResetLink disabled={!anyPicked} onPress={reset} />
       </View>
