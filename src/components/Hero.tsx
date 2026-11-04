@@ -12,7 +12,7 @@ import { SITE, callLabel, telHref } from '@/lib/site'
 // Copy is the approved first screen in docs/homepage-story.md.
 // Layout values from the source home.css:
 //   .hero { padding: 64px 0 0 }
-//   .montage { margin-top:56px }
+//   .montage { margin-top:32px } (source 56)
 //   .montage-grid { grid; repeat(4,1fr); gap:1px; background:#1b1b1b; overflow:hidden }  (1fr 1fr mobile)
 //   .montage-cell { aspect-ratio:3/4; overflow:hidden; background:#000 }
 //   .montage-cell video { object-fit:cover; filter:grayscale(.35) contrast(1.05) }
@@ -117,8 +117,9 @@ export function Hero() {
         </View>
       </Container>
 
-      {/* .montage > .container > .montage-grid */}
-      <View style={{ marginTop: 56 }}>
+      {/* .montage > .container > .montage-grid — 32 below the finder row
+          (the source's 56 left too much air once the finder sat above it) */}
+      <View style={{ marginTop: 32 }}>
         <Container>
           <View
             style={
