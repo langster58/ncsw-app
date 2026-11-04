@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 // @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
-import { IconCheck, IconChevron } from './Icon'
+import { IconCheck, IconChevron, IconClose } from './Icon'
 import { Modal } from './Modal'
 import { colors, fonts, radius } from './tokens'
 
@@ -46,11 +46,11 @@ type DropdownProps = {
   // Trigger shows only the label, never the chosen value: label flush left, arrow
   // at the right edge. To see the choice, open it.
   labelOnly?: boolean
-  // On phones and other touch screens, open the device's own picker (a native
-  // <select>) instead of the popover: the full-width list on Android, the wheel
-  // on iPhone. That is the standard select on a phone, and it marks the current
-  // choice when opened.
-  nativeOnTouch?: boolean
+  // On phones and other touch screens, open a bottom sheet instead of the
+  // popover: the mobile pattern for choosing from a list (Material's modal bottom
+  // sheet; Apple's sheet at its half-height "medium" resting point). It takes the
+  // site's type and inset rules, which the device's own picker cannot.
+  sheetOnTouch?: boolean
 }
 
 function normalize(o: Option): { label: string; value: string } {
@@ -66,7 +66,7 @@ export function Dropdown({
   disabled = false,
   hideLabel = false,
   labelOnly = false,
-  nativeOnTouch = false,
+  sheetOnTouch = false,
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
   const [open, setOpen] = useState(false)
@@ -81,13 +81,13 @@ export function Dropdown({
   // page is rendered ahead of time without it).
   const [touch, setTouch] = useState(false)
   useEffect(() => {
-    if (!isWeb || !nativeOnTouch || typeof window === 'undefined' || !window.matchMedia) return
+    if (!isWeb || !sheetOnTouch || typeof window === 'undefined' || !window.matchMedia) return
     const r = requestAnimationFrame(() =>
       setTouch(window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 760),
     )
     return () => cancelAnimationFrame(r)
-  }, [isWeb, nativeOnTouch])
-  const useNativeSelect = isWeb && nativeOnTouch && touch
+  }, [isWeb, sheetOnTouch])
+  const useSheet = isWeb && sheetOnTouch && touch
 
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
   const borderColor = disabled ? colors.borderStrong : hovered ? colors.inkSoft : colors.borderStrong
@@ -141,40 +141,121 @@ export function Dropdown({
     }
   }, [isWeb, open])
 
-  function optionRow(o: { label: string; value: string }, size: 'compact' | 'comfortable') {
+  // One option. The rule under it is inset to the text (it starts and ends
+  // where the text does, never edge to edge), and the last option has none.
+  // Type follows the site: Inter, the body size, accent + check when selected.
+  function optionRow(o: { label: string; value: string }, size: 'compact' | 'sheet', last: boolean) {
     const selected = o.value === value
     const compact = size === 'compact'
+    const inset = compact ? 12 : 20
     return (
       <Pressable
         key={o.value}
         onPress={() => select(o.value)}
-        style={
-          {
-            paddingVertical: compact ? 9 : 14,
-            paddingHorizontal: compact ? 10 : 4,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.line,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            ...(compact && isWeb ? { cursor: 'pointer' } : null),
-          } as any
-        }
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        style={{ paddingHorizontal: inset, ...(isWeb ? { cursor: 'pointer' } : null) } as any}
       >
-        <Text
+        <View
           style={
             {
-              fontFamily: fonts.body,
-              fontSize: compact ? 14 : 16,
-              color: selected ? colors.accent : colors.ink,
-              fontWeight: selected ? '600' : '400',
+              minHeight: compact ? 38 : 48,
+              borderBottomWidth: last ? 0 : 1,
+              borderBottomColor: colors.line,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
             } as any
           }
         >
-          {o.label}
-        </Text>
-        {selected ? <IconCheck size={compact ? 14 : 16} color={colors.accent} /> : null}
+          <Text
+            style={
+              {
+                fontFamily: fonts.body,
+                fontSize: compact ? 13 : 15,
+                color: selected ? colors.accent : colors.ink,
+                fontWeight: selected ? '600' : '400',
+              } as any
+            }
+          >
+            {o.label}
+          </Text>
+          {selected ? <IconCheck size={14} color={colors.accent} /> : null}
+        </View>
       </Pressable>
+    )
+  }
+
+  // Touch screens: the bottom sheet. Opens to the selected option so a returning
+  // visitor sees their choice; scrolls inside itself; tap outside or the close
+  // button (or Escape) to dismiss. Body scrolling is held while it is open.
+  useEffect(() => {
+    if (!useSheet || !open || typeof document === 'undefined') return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const r = requestAnimationFrame(() => {
+      const el = listRef.current?.querySelector?.('[aria-selected="true"]')
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center' })
+    })
+    return () => {
+      document.body.style.overflow = prev
+      cancelAnimationFrame(r)
+    }
+  }, [useSheet, open])
+
+  function sheet() {
+    if (typeof document === 'undefined') return null
+    return createPortal(
+      <>
+        <Pressable
+          onPress={close}
+          accessibilityLabel="Close"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 299, backgroundColor: 'rgba(9, 8, 14, 0.32)' } as any}
+        />
+        <View
+          {...({ role: 'dialog', 'aria-modal': true, 'aria-label': label } as any)}
+          style={
+            {
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 300,
+              maxHeight: '55vh',
+              backgroundColor: colors.white,
+              borderTopLeftRadius: radius.lg,
+              borderTopRightRadius: radius.lg,
+              boxShadow: '0 -8px 24px rgba(9, 8, 14, 0.12)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
+            } as any
+          }
+        >
+          <View
+            style={
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 20,
+                paddingTop: 18,
+                paddingBottom: 12,
+              } as any
+            }
+          >
+            <Text style={{ fontFamily: fonts.body, fontSize: 15, fontWeight: '700', color: colors.ink } as any}>{label}</Text>
+            <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close" hitSlop={10}>
+              <IconClose size={18} color={colors.ink} />
+            </Pressable>
+          </View>
+          {React.createElement(
+            'div',
+            { ref: listRef, style: { overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: '1 1 auto', minHeight: 0, paddingBottom: 12 } },
+            <View>{norm.map((o, i) => optionRow(o, 'sheet', i === norm.length - 1))}</View>,
+          )}
+        </View>
+      </>,
+      document.body,
     )
   }
 
@@ -183,7 +264,7 @@ export function Dropdown({
       <Pressable
         ref={triggerRef}
         disabled={disabled}
-        onPress={() => (useNativeSelect ? null : setOpen(true))}
+        onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={`${label}${current ? `: ${current.label}` : ''}`}
         accessibilityHint={!current && placeholder ? placeholder : undefined}
@@ -256,41 +337,15 @@ export function Dropdown({
         </View>
       </Pressable>
 
-      {useNativeSelect
-        ? // The device's own picker: an invisible <select> laid over the trigger,
-          // so the tap opens the phone's list while the trigger keeps its look.
-          // 16px text stops iPhone Safari zooming the page when it opens.
-          React.createElement(
-            'select',
-            {
-              'aria-label': label,
-              disabled,
-              value: value || '',
-              onChange: (e: any) => {
-                if (e.target.value) onChange(e.target.value)
-              },
-              style: {
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                opacity: 0,
-                fontSize: 16,
-                cursor: disabled ? 'not-allowed' : 'pointer',
-              },
-            },
-            React.createElement('option', { value: '', disabled: true }, label),
-            ...norm.map((o) => React.createElement('option', { key: o.value, value: o.value }, o.label)),
-          )
-        : null}
 
       {isWeb
         ? // Compact popover, anchored directly under the trigger — standard
           // desktop select/combobox behavior, portaled to <body> so it
           // always paints above the rest of the page (see the comment on
           // the measuring effect above for why).
-          open && anchorRect && typeof document !== 'undefined'
+          open && useSheet
+          ? sheet()
+          : open && anchorRect && typeof document !== 'undefined'
           ? createPortal(
               <>
                 <Pressable
@@ -322,9 +377,7 @@ export function Dropdown({
                   {React.createElement(
                     'div',
                     { ref: listRef, style: { maxHeight: 260, overflowY: 'auto' } },
-                    <View style={{ paddingHorizontal: 4 } as any}>
-                      {norm.map((o) => optionRow(o, 'compact'))}
-                    </View>,
+                    <View>{norm.map((o, i) => optionRow(o, 'compact', i === norm.length - 1))}</View>,
                   )}
                 </View>
               </>,
@@ -335,7 +388,7 @@ export function Dropdown({
           // on a phone.
           (
             <Modal open={open} onClose={close} title={label}>
-              <Modal.Body>{norm.map((o) => optionRow(o, 'comfortable'))}</Modal.Body>
+              <Modal.Body>{norm.map((o, i) => optionRow(o, 'sheet', i === norm.length - 1))}</Modal.Body>
             </Modal>
           )}
     </View>

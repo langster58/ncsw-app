@@ -106,13 +106,13 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
         {/* Four equal cells, whatever the label length: each fills its share of the row. */}
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
-          <Dropdown label="Year" value={year} options={years} onChange={pickYear} labelOnly nativeOnTouch />
+          <Dropdown label="Year" value={year} options={years} onChange={pickYear} labelOnly sheetOnTouch />
         </View>
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
-          <Dropdown label="Make" value={make} options={makes} onChange={pickMake} disabled={!year} labelOnly nativeOnTouch />
+          <Dropdown label="Make" value={make} options={makes} onChange={pickMake} disabled={!year} labelOnly sheetOnTouch />
         </View>
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
-          <Dropdown label="Model" value={model} options={models} onChange={setModel} disabled={!make} labelOnly nativeOnTouch />
+          <Dropdown label="Model" value={model} options={models} onChange={setModel} disabled={!make} labelOnly sheetOnTouch />
         </View>
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
           <Button variant="primary" size="control" fill disabled={!ready} onPress={go}>
