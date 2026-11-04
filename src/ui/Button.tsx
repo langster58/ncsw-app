@@ -22,7 +22,7 @@ import { colors, fonts, radius, tracking } from './tokens'
 
 type Variant = 'primary' | 'secondary'
 
-type Size = 'default' | 'control'
+type Size = 'default' | 'control' | 'field'
 
 type ButtonProps = {
   children: React.ReactNode
@@ -30,7 +30,8 @@ type ButtonProps = {
   disabled?: boolean
   onPress?: () => void
   // 'control' matches the 38px control band (Dropdown, FilterTriggerButton)
-  // for buttons that sit in a control row; 'default' keeps the source 36px.
+  // for buttons that sit in a control row; 'field' matches the 46px
+  // floating-label dropdown; 'default' keeps the source 36px.
   size?: Size
   // Fill the width of the parent instead of sizing to the label (e.g. one of
   // several equal cells in a row).
@@ -118,7 +119,7 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 9,
-          minHeight: size === 'control' ? 38 : 36,
+          minHeight: size === 'field' ? 46 : size === 'control' ? 38 : 36,
           paddingVertical: 7,
           paddingHorizontal: 14,
           borderWidth: 1,

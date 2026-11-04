@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, Text, View } from 'react-native'
 // @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
-import { IconCheck, IconChevron, IconClose } from './Icon'
+import { IconCheck, IconChevron, IconChevronUp, IconClose } from './Icon'
 import { Modal } from './Modal'
 import { colors, fonts, radius } from './tokens'
 
@@ -32,6 +32,7 @@ import { colors, fonts, radius } from './tokens'
 
 const PAD_X = 12 // identical left and right
 const ROW_GAP = 6 // label ↔ value
+const FIELD_HEIGHT = 46 // floating-label field: label line + value line
 
 type Option = string | { label: string; value: string }
 
@@ -43,9 +44,12 @@ type DropdownProps = {
   placeholder?: string
   disabled?: boolean
   hideLabel?: boolean // trigger shows only the value; label still voices via accessibility (for external labels)
-  // Trigger shows only the label, never the chosen value: label flush left, arrow
-  // at the right edge. To see the choice, open it.
-  labelOnly?: boolean
+  // The standard field states with a floating label (Material's exposed
+  // dropdown, Carbon's dropdown): empty = the label sits in the field; populated
+  // = the label shrinks to the top and the choice shows below it, cut off with an
+  // ellipsis when it does not fit; open = strong border and the arrow points up.
+  // A taller field (46) so both lines fit; the arrow stays at the right edge.
+  floatingLabel?: boolean
   // On phones and other touch screens, open a bottom sheet instead of the
   // popover: the mobile pattern for choosing from a list (Material's modal bottom
   // sheet; Apple's sheet at its half-height "medium" resting point). It takes the
@@ -65,7 +69,7 @@ export function Dropdown({
   placeholder,
   disabled = false,
   hideLabel = false,
-  labelOnly = false,
+  floatingLabel = false,
   sheetOnTouch = false,
 }: DropdownProps) {
   const [hovered, setHovered] = useState(false)
@@ -90,7 +94,8 @@ export function Dropdown({
   const useSheet = isWeb && sheetOnTouch && touch
 
   const hoverProps: any = { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
-  const borderColor = disabled ? colors.borderStrong : hovered ? colors.inkSoft : colors.borderStrong
+  // Open wins over hover, so the field the menu belongs to always reads as active.
+  const borderColor = disabled ? colors.borderStrong : open ? colors.ink : hovered ? colors.inkSoft : colors.borderStrong
 
   const close = () => setOpen(false)
   const select = (v: string) => {
@@ -286,17 +291,37 @@ export function Dropdown({
             backgroundColor: colors.white,
             opacity: disabled ? 0.35 : 1,
             cursor: disabled ? 'not-allowed' : 'pointer',
-            minHeight: 38,
+            minHeight: floatingLabel ? FIELD_HEIGHT : 38,
+            gap: floatingLabel ? 8 : undefined,
           } as any
         }
       >
-        {labelOnly ? (
-          <Text
-            numberOfLines={1}
-            style={{ fontFamily: fonts.body, fontSize: 12, fontWeight: '600', color: colors.ink, flexShrink: 1 }}
-          >
-            {label}
-          </Text>
+        {floatingLabel ? (
+          <View style={{ flexShrink: 1, minWidth: 0, gap: 1 } as any}>
+            {current ? (
+              <>
+                <Text
+                  numberOfLines={1}
+                  style={{ fontFamily: fonts.body, fontSize: 10, fontWeight: '600', color: colors.inkFaint }}
+                >
+                  {label}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={{ fontFamily: fonts.body, fontSize: 13, fontWeight: '600', color: colors.ink }}
+                >
+                  {current.label}
+                </Text>
+              </>
+            ) : (
+              <Text
+                numberOfLines={1}
+                style={{ fontFamily: fonts.body, fontSize: 13, fontWeight: '500', color: colors.inkSoft }}
+              >
+                {label}
+              </Text>
+            )}
+          </View>
         ) : (
         <View
           style={
@@ -337,7 +362,7 @@ export function Dropdown({
 
         {/* chevron — vertically centered; right padding === left padding via paddingHorizontal */}
         <View style={{ alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <IconChevron size={14} color={colors.inkFaint} />
+          {open ? <IconChevronUp size={14} color={colors.ink} /> : <IconChevron size={14} color={colors.inkFaint} />}
         </View>
       </Pressable>
 
