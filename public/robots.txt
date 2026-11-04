@@ -1,0 +1,9 @@
+# North Coast Soundworks
+# Every crawler, including AI assistants' crawlers, may read the public site.
+User-agent: *
+Allow: /
+# Working pages that are not for search: the parts library and a design sample.
+Disallow: /components
+Disallow: /pdp
+
+Sitemap: https://northcoastsoundworks.com/sitemap.xml

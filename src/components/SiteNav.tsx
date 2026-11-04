@@ -3,6 +3,7 @@ import { Linking, Platform, Pressable, Text, View, useWindowDimensions } from 'r
 // @ts-ignore — react-dom has no bundled types here; resolves at runtime via react-native-web (web only).
 import { createPortal } from 'react-dom'
 import { Container, IconClose, colors, fluid, type, useFluidPx } from '@/ui'
+import { SITE, callLabel, telHref } from '@/lib/site'
 
 // SiteNav — the site header, used on every page. Lifted verbatim from the
 // landing nav so there is ONE nav across the app: a static (non-sticky) bar,
@@ -17,6 +18,44 @@ import { Container, IconClose, colors, fluid, type, useFluidPx } from '@/ui'
 //   .nav-burger: 3 x (24x2) ink bars, becomes an X while the menu is open
 
 export type NavLinkItem = readonly [label: string, href: string]
+
+// The site-wide menu. Only pages and sections that exist; every page shows the
+// same set unless it passes its own.
+export const SITE_NAV_LINKS: readonly NavLinkItem[] = [
+  ['Find your car', '/#find'],
+  ['How we design', '/#design'],
+  ['Demo cars', '/#demo-cars'],
+  ['Articles', '/#articles'],
+  ['Location', '/#location'],
+]
+
+// On web every menu item is a real <a href>, so search engines and LLMs can
+// follow it and cmd-click / middle-click work. Native keeps the Pressable.
+function WebAnchor({
+  href,
+  children,
+  onClick,
+  onHover,
+  style,
+}: {
+  href: string
+  children: React.ReactNode
+  onClick?: () => void
+  onHover?: (on: boolean) => void
+  style?: Record<string, unknown>
+}) {
+  return React.createElement(
+    'a',
+    {
+      href,
+      onClick,
+      onMouseEnter: onHover ? () => onHover(true) : undefined,
+      onMouseLeave: onHover ? () => onHover(false) : undefined,
+      style: { textDecoration: 'none', color: 'inherit', display: 'inline-flex', ...style },
+    },
+    children,
+  )
+}
 
 function openHref(href: string) {
   if (Platform.OS === 'web') {
@@ -34,28 +73,38 @@ function NavLink({ label, href }: { label: string; href: string }) {
     Platform.OS === 'web'
       ? { onHoverIn: () => setHovered(true), onHoverOut: () => setHovered(false) }
       : {}
+  const text = (
+    <Text
+      style={
+        {
+          fontFamily: 'Inter',
+          textTransform: 'uppercase',
+          letterSpacing: 1.32, // .12em * 11
+          fontSize,
+          fontWeight: '600',
+          color: hovered ? colors.body : colors.ink,
+        } as any
+      }
+    >
+      {label}
+    </Text>
+  )
+  if (Platform.OS === 'web') {
+    return (
+      <WebAnchor href={href} onHover={setHovered} style={{ paddingBottom: 3 }}>
+        {text}
+      </WebAnchor>
+    )
+  }
   return (
     <Pressable onPress={() => openHref(href)} style={{ paddingBottom: 3 }} {...hoverProps}>
-      <Text
-        style={
-          {
-            fontFamily: 'Inter',
-            textTransform: 'uppercase',
-            letterSpacing: 1.32, // .12em * 11
-            fontSize,
-            fontWeight: '600',
-            color: hovered ? colors.body : colors.ink,
-          } as any
-        }
-      >
-        {label}
-      </Text>
+      {text}
     </Pressable>
   )
 }
 
-// Inert plain phone text — desktop web only. No dialer / tel: handoff worth
-// offering on desktop, so it is deliberately non-interactive.
+// Plain phone text — desktop web only. No dialer / tel: handoff worth offering
+// on desktop, so it is deliberately non-interactive.
 function PhoneText({ number }: { number: string }) {
   const fontSize = useFluidPx(type.meta)
   return (
@@ -100,6 +149,28 @@ function Brand() {
 function MobileNavLink({ label, href, onNavigate }: { label: string; href: string; onNavigate: () => void }) {
   const [hovered, setHovered] = useState(false)
   const fontSize = useFluidPx(type.h2sm)
+  const text = (
+    <Text
+      style={
+        {
+          fontFamily: 'Creato Display',
+          fontWeight: '800',
+          fontSize,
+          color: hovered ? colors.body : colors.ink,
+        } as any
+      }
+    >
+      {label}
+    </Text>
+  )
+  if (Platform.OS === 'web') {
+    // The anchor navigates; the click only closes the menu.
+    return (
+      <WebAnchor href={href} onClick={onNavigate} onHover={setHovered}>
+        {text}
+      </WebAnchor>
+    )
+  }
   return (
     <Pressable
       onPress={() => {
@@ -109,18 +180,7 @@ function MobileNavLink({ label, href, onNavigate }: { label: string; href: strin
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
     >
-      <Text
-        style={
-          {
-            fontFamily: 'Creato Display',
-            fontWeight: '800',
-            fontSize,
-            color: hovered ? colors.body : colors.ink,
-          } as any
-        }
-      >
-        {label}
-      </Text>
+      {text}
     </Pressable>
   )
 }
@@ -177,6 +237,7 @@ function MobileNavMenu({
         {links.map(([label, href]) => (
           <MobileNavLink key={label} label={label} href={href} onNavigate={onClose} />
         ))}
+        {telHref() ? <MobileNavLink label={callLabel} href={telHref() as string} onNavigate={onClose} /> : null}
       </View>
     </View>,
     document.body,
@@ -184,16 +245,18 @@ function MobileNavMenu({
 }
 
 export function SiteNav({
-  links,
-  phone,
+  links = SITE_NAV_LINKS,
   brandHref = '/',
 }: {
-  links: readonly NavLinkItem[]
+  links?: readonly NavLinkItem[]
+  // Accepted for older call sites and ignored: the number shown always comes
+  // from SITE (src/lib/site.ts), so a placeholder can never reach the menu.
   phone?: string
   brandHref?: string
 }) {
   const { width } = useWindowDimensions()
   const narrow = Platform.OS === 'web' && width <= 900
+  const phone = SITE.phoneDisplay
   const showPhoneAsText = Platform.OS === 'web' && !narrow && !!phone
   const navY = narrow ? 14 : 16
 
@@ -235,9 +298,15 @@ export function SiteNav({
             } as any
           }
         >
-          <Pressable onPress={() => openHref(brandHref)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Brand />
-          </Pressable>
+          {Platform.OS === 'web' ? (
+            <WebAnchor href={brandHref} style={{ alignItems: 'center' }}>
+              <Brand />
+            </WebAnchor>
+          ) : (
+            <Pressable onPress={() => openHref(brandHref)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Brand />
+            </Pressable>
+          )}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 } as any}>
             {!narrow ? (

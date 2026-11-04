@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Only pages that exist. Vehicle pages are added here when they are built. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://northcoastsoundworks.com/</loc></url>
+  <url><loc>https://northcoastsoundworks.com/packages</loc></url>
+  <url><loc>https://northcoastsoundworks.com/article</loc></url>
+  <url><loc>https://northcoastsoundworks.com/modeler</loc></url>
+</urlset>

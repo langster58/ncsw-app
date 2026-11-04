@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import Head from 'expo-router/head'
-import { Link } from 'expo-router'
+import { Link, useLocalSearchParams } from 'expo-router'
 import {
   Card,
   Container,
@@ -18,7 +18,7 @@ import {
   radius,
   useFluidPx,
 } from '@/ui'
-import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
+import { SiteNav } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 import {
   bodyOptions,
@@ -64,15 +64,6 @@ import {
 // collection is being curated the list renders its honest empty state — the
 // picker and wiring are live against Directus either way.
 
-const NAV_LINKS: NavLinkItem[] = [
-  ['Packages', '/packages'],
-  ['Subwoofers', '/methodology/subwoofers'],
-  ['Install Types', '/'],
-  ['Editorial', '/'],
-  ['About', '/'],
-  ['Location', '/#location'],
-]
-
 const IS_WEB = Platform.OS === 'web'
 const outerStyle: any = IS_WEB
   ? { height: '100dvh', flexDirection: 'column' }
@@ -112,6 +103,24 @@ export default function PackagesScreen() {
   useEffect(() => {
     fetchYears().then(setYears).catch(() => setError('Could not reach the catalog.'))
   }, [])
+
+  // Arriving from the homepage's vehicle finder (/packages?year=&make=&model=):
+  // start with that vehicle chosen. Applied a frame after the first paint, because
+  // the page is rendered ahead of time without a query string and the first
+  // render has to match it. The effects below then load makes, models and rows.
+  const params = useLocalSearchParams<{ year?: string; make?: string; model?: string }>()
+  const qYear = typeof params.year === 'string' ? params.year : ''
+  const qMake = typeof params.make === 'string' ? params.make : ''
+  const qModel = typeof params.model === 'string' ? params.model : ''
+  useEffect(() => {
+    if (!qYear) return
+    const r = requestAnimationFrame(() => {
+      setYear(qYear)
+      if (qMake) setMake(qMake)
+      if (qMake && qModel) setModel(qModel)
+    })
+    return () => cancelAnimationFrame(r)
+  }, [qYear, qMake, qModel])
 
   // Choosing a step clears every step below it. This lives in the handlers rather
   // than in effects because a selection is the only thing that changes these —
@@ -318,7 +327,7 @@ export default function PackagesScreen() {
         <meta name="description" content="Engineered sound system packages, built for your exact vehicle." />
       </Head>
       <View style={outerStyle}>
-        <SiteNav links={NAV_LINKS} />
+        <SiteNav />
         <ScrollView style={{ flex: 1, backgroundColor: colors.white }} contentContainerStyle={{ flexGrow: 1 }}>
           <Container>
             <View style={{ paddingVertical: padY, gap } as any}>

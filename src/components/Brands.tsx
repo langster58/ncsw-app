@@ -71,10 +71,10 @@ export function Brands() {
     <Section>
       <Container>
         <SectionIntro
-          index="07"
+          index="09"
           label="Brands"
           heading="The gear we build with"
-          body="Subwoofers, amplifiers, front-stage drivers, and processors from the brands we stock and install — the parts every package is solved around."
+          body="The speakers, subwoofers, amplifiers and processors every system is built from."
           paddingBottom={44}
         />
 

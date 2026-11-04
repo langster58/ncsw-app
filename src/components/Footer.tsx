@@ -1,21 +1,47 @@
 import React from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import { View, Text, Pressable, Platform, Linking } from 'react-native';
 import { Container, Section, colors, fluid, fluidLineHeight, lineHeight, type, useFluidPx } from '@/ui';
+import { SITE, callLabel, telHref } from '@/lib/site';
 
 const INK = colors.ink;
 const FONT_BODY = 'Inter';
 const FONT_MONO = 'IBM Plex Mono';
 
-type Col = { h: string; links: string[] };
+type FooterItem = readonly [label: string, href: string];
+type Col = { h: string; links: FooterItem[] };
 
+// Only pages and sections that exist. The call link appears once the shop has a
+// number (src/lib/site.ts).
+const call = telHref();
 const COLS: Col[] = [
-  { h: 'Systems', links: ['Packages', 'Subwoofers', 'Front stages', 'Amplifiers', 'DSP & tuning'] },
-  { h: 'Read', links: ['Editorial', 'Build logs', 'Reviews', 'The value frontier'] },
-  { h: 'Shop', links: ['About', 'Cleveland, OH', 'Schedule install', 'Call (216) 555-0114'] },
+  {
+    h: 'Systems',
+    links: [
+      ['Find your car', '/#find'],
+      ['All packages', '/packages'],
+      ['Enclosure modeler', '/modeler'],
+    ],
+  },
+  {
+    h: 'Read',
+    links: [
+      ['How we design', '/#design'],
+      ['Common questions', '/#questions'],
+      ['The Sub Value Frontier', '/article'],
+    ],
+  },
+  {
+    h: 'Shop',
+    links: [
+      ['Demo cars', '/#demo-cars'],
+      ['Location and hours', '/#location'],
+      ...(call ? ([[`${callLabel} ${SITE.phoneDisplay ?? ''}`.trim(), call]] as FooterItem[]) : []),
+    ],
+  },
 ];
 
 const BRAND_COPY =
-  "Cleveland's MECP-certified car-audio installation specialist. Factory-integrated systems, engineered for one vehicle and priced installed.";
+  "Cleveland's MECP-certified car audio specialist. Car audio systems pre-engineered for your make and model, installed and calibrated at one price.";
 
 // footer-top: brand block (sized to its own content) on one side, the
 // three link columns grouped tightly together on the other. The empty
@@ -33,29 +59,45 @@ const FOOTER_TOP_CSS = `
 }
 `;
 
-function FooterLink({ label }: { label: string }) {
+function FooterLink({ label, href }: { label: string; href: string }) {
   const [hovered, setHovered] = React.useState(false);
   const fontSize = useFluidPx(type.small);
+  const text = (
+    <Text
+      style={
+        {
+          display: 'block',
+          color: hovered ? colors.white : 'rgba(255,255,255,0.82)',
+          fontFamily: FONT_BODY,
+          fontSize,
+          transition: 'color .2s ease-in-out',
+        } as any
+      }
+    >
+      {label}
+    </Text>
+  );
+  // Web: a real <a href>, so the footer's links can be followed by crawlers.
+  if (Platform.OS === 'web') {
+    return React.createElement(
+      'a',
+      {
+        href,
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+        style: { display: 'block', padding: '6px 0', textDecoration: 'none' },
+      },
+      text,
+    );
+  }
   return (
     <Pressable
-      onPress={() => {}}
+      onPress={() => Linking.openURL(href).catch(() => {})}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       style={{ paddingVertical: 6 } as any}
     >
-      <Text
-        style={
-          {
-            display: 'block',
-            color: hovered ? colors.white : 'rgba(255,255,255,0.82)',
-            fontFamily: FONT_BODY,
-            fontSize,
-            transition: 'color .2s ease-in-out',
-          } as any
-        }
-      >
-        {label}
-      </Text>
+      {text}
     </Pressable>
   );
 }
@@ -143,8 +185,8 @@ function NavColumns() {
       >
         {c.h}
       </Text>
-      {c.links.map((l) => (
-        <FooterLink key={l} label={l} />
+      {c.links.map(([label, href]) => (
+        <FooterLink key={label} label={label} href={href} />
       ))}
     </View>
   ));
@@ -223,7 +265,7 @@ export function Footer() {
                 } as any
               }
             >
-              MECP Certified · Cleveland OH · Pre-engineered · Installed · Tuned
+              MECP Certified · Ohio · Pre-engineered · Installed · Calibrated
             </Text>
           </View>
         </View>

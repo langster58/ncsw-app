@@ -1,30 +1,30 @@
 import React from 'react'
-import { Linking, Platform, Text, View, useWindowDimensions } from 'react-native'
-import { Button, Container, Lead, Section, colors, type, useFluidPx } from '@/ui'
+import { Linking, Platform, View, useWindowDimensions } from 'react-native'
+import { Button, Container, Eyebrow, Heading, Lead, Section, colors } from '@/ui'
+import { VehicleFinder } from '@/components/VehicleFinder'
+import { SITE, callLabel, telHref } from '@/lib/site'
 
-// Hero — values taken verbatim from the source tokens.css / home.css:
+// Hero — the homepage's first screen. Order, top to bottom:
+//   small line (specialty + place) -> the page's one main heading (h1) ->
+//   the trust sentence and the method sentence -> the vehicle finder ->
+//   Call or text (only once the shop has a number, see src/lib/site.ts) ->
+//   the install montage.
+// Copy is the approved first screen in docs/homepage-story.md.
+// Layout values from the source home.css:
 //   .hero { padding: 64px 0 0 }
-//   .container { max-width: 1410px; margin: 0 auto; padding: 0 40px }  (0 22px mobile)
-//   .hero-wordmark { display:block; width:100%; max-width:760px; height:auto }
-//   .hero-statement { display:grid; grid-template-columns:1fr; gap:28px; margin-top:24px }
-//   .hero-lede { max-width:760px; font-size:22px; line-height:1.45; font-weight:400; color:#09080e }
-//   .hero-call — the CTA below the paragraph, mobile web/tablet/native only
-//   (standard heading -> copy -> CTA hero pattern). Desktop nav already
-//   shows the number as plain text, so no CTA is shown here on desktop —
-//   see Nav.tsx.
 //   .montage { margin-top:56px }
 //   .montage-grid { grid; repeat(4,1fr); gap:1px; background:#1b1b1b; overflow:hidden }  (1fr 1fr mobile)
 //   .montage-cell { aspect-ratio:3/4; overflow:hidden; background:#000 }
 //   .montage-cell video { object-fit:cover; filter:grayscale(.35) contrast(1.05) }
 //   .montage-cell::after { linear-gradient(to top, rgba(0,0,0,.6) 0%, rgba(0,0,0,0) 42%) }
 
-// .hero-lede content (verbatim from Hero.jsx STATEMENT).
+const HEADING = 'Car audio systems pre-engineered for your make and model.'
 const STATEMENT =
-  "North Coast Soundworks is Cleveland's MECP-certified car audio specialist. We provide " +
-  'factory-integrated audio system design, fabrication, and tuning. This work includes hands-free signal ' +
-  'integration, amplifier and speaker installation, subwoofer enclosure fabrication, and ' +
-  'measurement-based digital signal processor tuning.'
+  "North Coast Soundworks is Cleveland's MECP-certified car audio specialist. We score every speaker, " +
+  'subwoofer and amplifier we could build with on what it can actually play, then design each system so ' +
+  'every part is matched to the others and to the vehicle.'
 
+// Stock footage of the kind of work (not a specific NCSW build).
 // MONTAGE order from Hero.jsx: audison(01), bmw(02), alfa(03), kia(04).
 const MONTAGE = [
   '/video/install-audison.mp4',
@@ -33,32 +33,14 @@ const MONTAGE = [
   '/video/install-kia.mp4',
 ]
 
-const PHONE_NUMBER = '(216) 555-0114'
-
 function callShop() {
-  const href = 'tel:+12165550114'
+  const href = telHref()
+  if (!href) return
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined') window.location.href = href
   } else {
     Linking.openURL(href).catch(() => {})
   }
-}
-
-// .hero-lede — uses the Lead primitive at heroLead size (22px ref) so
-// body color / max-width / line-height flow from tokens.
-function HeroLede() {
-  return <Lead size="heroLead">{STATEMENT}</Lead>
-}
-
-// .hero-call — the CTA button, mobile web/tablet/native only. No spacing
-// of its own — it's a sibling of HeroLede inside the same gapped column
-// (see Hero()), not a section with its own before/after rhythm.
-function HeroCta() {
-  return (
-    <Button onPress={callShop}>
-      Call {PHONE_NUMBER}
-    </Button>
-  )
 }
 
 // One .montage-cell with its <video> and the ::after gradient overlay (web).
@@ -78,6 +60,8 @@ function MontageCell({ src }: { src: string }) {
         muted: true,
         loop: true,
         playsInline: true,
+        // Decorative: stock footage of the kind of work, not content to read.
+        'aria-hidden': true,
         style: {
           width: '100%',
           height: '100%',
@@ -108,45 +92,25 @@ export function Hero() {
   const isWeb = Platform.OS === 'web'
   const narrow = width <= 760
   const cols = isWeb && !narrow ? 4 : 2
-  const nativeWordmarkSize = useFluidPx(type.h2)
-  // Mobile web, tablet, and native — anywhere the nav doesn't show the
-  // phone number (see Nav.tsx's showPhoneAsText, which is the desktop-only
-  // inverse of this).
-  const showCta = !isWeb || width <= 900
-
-  // ---- Native fallback: text wordmark (SVG <Image> needs react-native-svg) ----
-  const Wordmark = isWeb ? (
-    <View style={{ lineHeight: 0 } as any}>
-      {React.createElement('img', {
-        src: '/brand/NCSW-wordmark-full.svg',
-        alt: 'North Coast Soundworks',
-        className: 'ncsw-hero-word', // entrance: translateY 40 -> 0 + fade (public/ncsw.css)
-        style: { display: 'block', width: '45%', height: 'auto' },
-      })}
-    </View>
-  ) : (
-    <Text
-      style={{
-        fontFamily: 'Creato Display',
-        fontSize: nativeWordmarkSize as number,
-        fontWeight: '700',
-        letterSpacing: -1.4,
-        color: colors.ink,
-      }}
-    >
-      NORTH COAST SOUNDWORKS
-    </Text>
-  )
 
   return (
     // .hero { padding: 64px 0 0 } — Section primitive owns the top spacing.
     <Section top={64}>
-      {/* .hero > .container : wordmark + statement */}
       <Container>
-        <View>{Wordmark}</View>
-        <View style={{ marginTop: 24, gap: 28 }}>
-          <HeroLede />
-          {showCta ? <HeroCta /> : null}
+        <View style={{ gap: 20 } as any}>
+          <Eyebrow>Car audio specialist · Ohio</Eyebrow>
+          <Heading level="h2" as={1}>
+            {HEADING}
+          </Heading>
+          <Lead size="heroLead">{STATEMENT}</Lead>
+        </View>
+        <View style={{ marginTop: 36, gap: 18 } as any}>
+          <VehicleFinder nativeID="find" />
+          {SITE.phone ? (
+            <View style={{ alignSelf: 'flex-start' } as any}>
+              <Button onPress={callShop}>{`${callLabel} ${SITE.phoneDisplay ?? ''}`.trim()}</Button>
+            </View>
+          ) : null}
         </View>
       </Container>
 

@@ -2,7 +2,7 @@ import React from 'react'
 import { Platform, ScrollView, View } from 'react-native'
 import Head from 'expo-router/head'
 import { Container, Eyebrow, Heading, Lead, colors, fluid, useFluidPx } from '@/ui'
-import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
+import { SiteNav } from '@/components/SiteNav'
 import { Footer } from '@/components/Footer'
 import { BoxModeler } from '@/components/BoxModeler'
 
@@ -10,15 +10,6 @@ import { BoxModeler } from '@/components/BoxModeler'
 // model (src/lib/driver-model.ts), interactive. Composed from the shared
 // primitives; the page itself is just arrangement.
 
-const NAV_LINKS: NavLinkItem[] = [
-  ['Packages', '/#packages'],
-  ['Subwoofers', '/methodology/subwoofers'],
-  ['Install Types', '/'],
-  ['Editorial', '/'],
-  ['About', '/'],
-  ['Location', '/#location'],
-]
-const PHONE = '(216) 555-0114'
 
 const IS_WEB = Platform.OS === 'web'
 const outerStyle: any = IS_WEB
@@ -41,7 +32,7 @@ export default function ModelerScreen() {
         />
       </Head>
       <View style={outerStyle}>
-        <SiteNav links={NAV_LINKS} phone={PHONE} />
+        <SiteNav />
         <ScrollView style={{ flex: 1, backgroundColor: colors.white }} contentContainerStyle={{ flexGrow: 1 }}>
           {/* Breadcrumb */}
           <Container>

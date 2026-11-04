@@ -27,7 +27,9 @@ import {
   useFluidPx,
   type ProseBlock,
 } from '@/ui'
-import { SiteNav, type NavLinkItem } from '@/components/SiteNav'
+import { SiteNav } from '@/components/SiteNav'
+import { JsonLd } from '@/components/JsonLd'
+import { SITE } from '@/lib/site'
 import { Footer } from '@/components/Footer'
 
 // Article template — the editorial render pattern. Single full-width column in
@@ -36,15 +38,6 @@ import { Footer } from '@/components/Footer'
 // fills the container. Composed from shared components. Content is a sample
 // record; it will come from the Directus `articles` collection later.
 
-const NAV_LINKS: NavLinkItem[] = [
-  ['Packages', '/#packages'],
-  ['Subwoofers', '/methodology/subwoofers'],
-  ['Install Types', '/'],
-  ['Editorial', '/'],
-  ['About', '/'],
-  ['Location', '/#location'],
-]
-const PHONE = '(216) 555-0114'
 const IS_WEB = Platform.OS === 'web'
 // The article reading measure — dek + body share it. One place to tune.
 const READ_MEASURE = '75%'
@@ -172,10 +165,10 @@ export default function ArticleScreen() {
       <Head>
         <title>{`${ARTICLE.title} — North Coast Soundworks`}</title>
         <meta name="description" content={ARTICLE.excerpt} />
-        {IS_WEB ? (React.createElement('script', { type: 'application/ld+json', dangerouslySetInnerHTML: { __html: JSON.stringify(LD) } }) as any) : null}
       </Head>
+      <JsonLd data={LD} />
       <View style={outer}>
-        <SiteNav links={NAV_LINKS} phone={PHONE} />
+        <SiteNav />
         <ScrollView style={{ flex: 1, backgroundColor: colors.white }} contentContainerStyle={{ flexGrow: 1 }}>
           {/* Breadcrumb */}
           <Container>
@@ -241,8 +234,8 @@ export default function ArticleScreen() {
           <CtaBar
             heading="Have a car in mind?"
             body="Tell us the vehicle and we'll show you where its value frontier lands — and the exact system we'd build to it."
-            phone={PHONE}
-            actions={<Button variant="primary">Find my system</Button>}
+            phone={SITE.phoneDisplay ?? undefined}
+            actions={<Button variant="primary" onPress={() => { if (IS_WEB && typeof window !== 'undefined') window.location.href = '/#find' }}>Find my system</Button>}
           />
 
           <Footer />
