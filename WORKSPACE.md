@@ -2,14 +2,14 @@
 
 ## Source of truth
 
-Directus is the only interface for catalog and schema work. Local agents and scripts use the Directus REST API. They do not connect directly to PostgreSQL and do not create fallback databases or files.
+Directus is the source of truth and the interface for catalog and schema work. Local agents and scripts use the Directus REST API, and never create fallback databases or files.
+
+Exception, matching `AGENTS.md` and `research/CLAUDE.md`: **bulk row changes** (over ~2,000 rows) go straight to PostgreSQL, because the Directus API caps updates at 100 rows and can crash the small Render instance. Shape changes (add / drop / rename a column) still go through Directus — see `research/DIRECTUS-WORKING-GUIDE.md` §6.
 
 ## Repository location
 
-- Workspace root: `/Volumes/SSD 1TB/ncsw-app`
-- Compatibility symlink: `/Users/brettcombs/Documents/Database`
-
-Both paths resolve to the same repository. New tasks should open the workspace root.
+- Repository: `/Volumes/SSD 1TB/NCSW/app` (the NCSW folder also holds `research/` and `assets/`).
+- The older paths `/Volumes/SSD 1TB/ncsw-app` and `/Users/brettcombs/Documents/Database` no longer exist (Mac reset 2026-11-12).
 
 ## Local Directus credentials
 
@@ -27,6 +27,8 @@ DIRECTUS_TOKEN=...
 ```
 
 It must not contain `DATABASE_URL`. The repository `.env` must not contain `DIRECTUS_TOKEN`.
+
+On this Mac `~/.config` is a shortcut into `/Volumes/SSD 1TB/Claude Home/dot-config/`, so the file survives a Mac reset. The SSD must be plugged in; after a reset, run `Claude Home/Restore Claude.command`.
 
 Verify authenticated access before every catalog or schema task:
 
@@ -48,9 +50,11 @@ scripts/directus-api.sh run node scripts/audit-year-ranges.mjs
 
 If `/users/me` fails, stop. Repair this credential file; do not switch to anonymous access, PostgreSQL, the deployed proxy, or a local data file.
 
-## Historical direct-database scripts
+## Direct-database access (bulk work only)
 
-Some historical migration scripts still import `psycopg2` or refer to `DATABASE_URL`. They are retained only as implementation history. They are unsupported, have no local database credential, and must not be used for catalog work. Any needed operation must be implemented through the Directus API.
+The Postgres password lives in `~/.pgpass` (mode 600; also a shortcut into `Claude Home`) and nowhere else. This Mac has no `psql`; use Python `psycopg2` — connection details are in `research/CLAUDE.md`. Get Brett's approval and write a rollback snapshot before any production write.
+
+Some older migration scripts read `DATABASE_URL`. Don't revive that variable; point them at `~/.pgpass` instead.
 
 ## Deployed application
 

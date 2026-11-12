@@ -8,7 +8,7 @@ The user has standing authorization for git commits and pushes to main. Commit a
 
 # Directus access
 
-Directus is the only catalog interface and the source of truth. The workspace root is `/Volumes/SSD 1TB/ncsw-app`; `/Users/brettcombs/Documents/Database` is only a compatibility symlink to that same repository.
+Directus is the only catalog interface and the source of truth. The repository is `/Volumes/SSD 1TB/NCSW/app` (the older `/Volumes/SSD 1TB/ncsw-app` and `/Users/brettcombs/...` paths are gone since the 2026-11-12 Mac reset).
 
 Before any catalog or schema task, verify authenticated Directus API access with:
 
@@ -41,12 +41,13 @@ Before any Fable call, prepare a bounded advisor packet with:
 
 If the source of truth is unclear, do one cheap inventory pass with Codex and stop. Do not escalate uncertainty to Fable and do not spawn agents to guess.
 
-## Credential file is IMMUTABLE — do not touch it
+## Credential file — do not touch it
 
-`~/.config/directus-render.env` is protected with the macOS immutable flag
-(`chflags uchg`, set 2026-08-01 after repeated agent cleanups deleted it and
-stalled all database work). It cannot be deleted, rewritten, or truncated —
-`rm` and `>` will fail with "Operation not permitted", and that is intentional.
+`~/.config/directus-render.env` must never be deleted or rewritten by an agent.
+(On the old Mac it carried the immutable flag, `chflags uchg`, after repeated
+agent cleanups deleted it. Since the 2026-11-12 reset, `~/.config` is a shortcut
+into `/Volumes/SSD 1TB/Claude Home/dot-config/` on the SSD, and the flag is not
+set — so the rule below is the only protection.)
 
 - NEVER attempt to remove, rewrite, regenerate, or "clean up" this file.
 - NEVER regenerate the Directus token unless the founder explicitly asks;
