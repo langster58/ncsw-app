@@ -60,6 +60,36 @@ def ceiling(f_hz, sd_cm2, xmax_mm_one_way, sensitivity=None, rms_watts=None):
         return round(min(m, thermal_spl(sensitivity, rms_watts)), 1)
     return round(m, 1)
 
+# ------------------------------------------------------- left + right pair gain
+# 2026-11-08 (Brett: "apply the 6 db to the front stages"). A front stage is a LEFT and a
+# RIGHT driver, and at the seat they add. Two equal sources add by how much they are in
+# step - their coherence rho:
+#
+#       pair gain = 10 * log10(2 + 2*rho)      rho=1 -> +6.02 dB,  rho=0 -> +3.01 dB
+#
+# With delay on every driver (every NCSW system has it) the DIRECT arrivals are in step by
+# construction - Wehmeyer's worked example shows the 250 Hz cancellation from 27" of path
+# difference disappearing once the near speaker is delayed. What decorrelates with frequency
+# is the REFLECTED field: long wavelengths stay correlated, short ones arrive as a dense
+# pattern that averages out. In-car measurement (DIYMA, 1/48 resolution, GB60/GB25 build)
+# puts the pair at ~6 dB through 700 Hz and ~3 dB by 2.5 kHz; an Audiotec Fischer tuner gives
+# the reflection reason. rho below models that falloff.
+#
+# EVERY frequency this instrument scores is 400 Hz or below, where rho >= 0.98 - so in
+# practice this is a flat +6.0 dB. The curve only matters if we ever score above 700 Hz,
+# and the knee's position rests on two hobbyist measurements, not a maker spec.
+#
+# The sub stage and the front sub PAIR already carried this (+6.02*log2(N), and the
+# generator's literal "+6" on the front sub). The midbass pair was the one that was missed.
+
+def pair_coherence(f, fc=1000.0, n=4.0):
+    """How in-step the left and right sides are at the seat. 1 = in step, 0 = unrelated."""
+    return 1.0 / (1.0 + (float(f) / fc) ** n)
+
+def pair_gain(f):
+    """Level a LEFT+RIGHT pair adds over one driver at the listening position, dB."""
+    return 10.0 * math.log10(2.0 + 2.0 * pair_coherence(f))
+
 def H(f, fc, qtc):
     """Sealed-box (2nd-order high-pass) magnitude response, linear."""
     x2 = (f / fc) ** 2
@@ -69,15 +99,72 @@ def H(f, fc, qtc):
 # Ported verbatim (physics-identical) from the SSD rescore_sealed_impact.py v2.4.
 
 _VB_CAP_FT3 = 7.0
+# 2026-11-07 (Brett: "ok do it"). A sealed design may not ring. Past Qtc 1.1 the system
+# has a hump over +1.6 dB at fc AND the cone keeps moving after the note stops, which no
+# EQ removes - the ringing is in time, not in frequency. Growing the box lowers Qtc, so
+# this is a constraint on the box search: among the volumes that stay under the ceiling,
+# still take the best output.
+#
+# 2026-11-08 (Brett: "those IB drivers should not have sealed designs at all"). If NO
+# volume in the grid clears the ceiling, the driver HAS NO SEALED DESIGN - these functions
+# return None and the sealed columns are written NULL, exactly like a ported driver with
+# no feasible build. There is no fall back to the largest box: a driver whose Vas is so
+# large that no boxable volume damps it is an infinite-baffle driver, and the honest
+# answer is that we do not sell it in a box, not that we sell it in a 6.6 cu ft one.
+QTC_MAX = 1.1
 _VB_FLOOR_FT3 = {"6.5": 0.15, "8": 0.25, "10": 0.45, "12": 0.7,
                  "13.5": 0.9, "15": 1.2, "18": 2.6, "21": 4.0}
 _VB_FLOOR_EXC = {"sky-high-car-audio-fxxl-18": 3.6}
 _BAND = [20, 25, 31.5, 40, 50, 63]
 _FT = 55.0
 
+# ---------------------------------------------------------------- the target curve
+# 2026-11-07 (Brett: "that is our curve then ... we use his laid back curve").
+# ResoNix Sound Solutions "Laid Back" (Nick Apicella, June 2025), renormalised so 1 kHz = 0 dB
+# - the reference every published car curve uses (Audiofrog, Whitledge, the DIYMA set).
+# Source file archived at research/drivers/curves-2026-11-07/resonix-laidback-2025.txt.
+#
+# This REPLACES the old `max(0, 22 - 7.33*log2(f/25))` anchor, which was set from a founder
+# handoff and never checked against practice. Research 2026-11-07 (see that folder) found it
+# sat above EVERY published curve: Audiofrog +10 dB at 20 Hz, Crutchfield +6, Audio Control +6,
+# B&K +3, ResoNix production +13.4, this Laid Back curve +17.3 - ours was +24.4. It was also
+# the only one that rose without bound to 20 Hz; nine independent tuner accounts limit that
+# bottom octave (flattened at 40 Hz, high-passed at 20, cut to 3/4 Whitledge, subsonic 35-40).
+# Laid Back plateaus below ~20 Hz on its own, so the bound is in the curve.
+#
+# What changed, against the old curve: the 20-63 Hz band asks ~3.9 dB LESS (7 dB less at
+# 20 Hz), 80-100 Hz asks ~2 dB less, 160-500 Hz asks 1.5-3 dB MORE (it tilts through the
+# midrange instead of flattening at 200), and there is now a treble rolloff to about -4.7 dB.
+_LB = [
+    (16.0, 17.29), (18.0, 17.29), (20.2, 17.29), (22.6, 17.16), (25.4, 16.87), (28.5, 16.45),
+    (32.0, 15.83), (35.9, 15.01), (40.3, 14.12), (45.3, 13.14), (50.8, 12.12), (57.0, 11.02),
+    (64.0, 9.83), (71.8, 8.6), (80.6, 7.33), (90.5, 6.27), (101.6, 5.51), (114.0, 5.01),
+    (128.0, 4.64), (143.7, 4.24), (161.3, 3.8), (181.0, 3.36), (203.2, 3.02), (228.1, 2.83),
+    (256.0, 2.69), (287.4, 2.57), (322.5, 2.43), (362.0, 2.28), (406.4, 2.11), (456.1, 1.93),
+    (512.0, 1.72), (574.7, 1.49), (645.1, 1.23), (724.1, 0.95), (812.7, 0.64), (912.3, 0.3),
+    (1024.0, -0.08), (1149.4, -0.5), (1290.2, -0.95), (1448.2, -1.44), (1625.5, -1.94),
+    (1824.6, -2.43), (2048.0, -2.95), (2298.8, -3.53), (2580.3, -4.14), (2896.3, -4.64),
+    (3251.0, -4.85), (3649.1, -4.72), (4096.0, -4.47), (4597.6, -4.3), (5160.6, -4.18),
+    (5792.6, -4.07), (6502.0, -3.98), (7298.2, -3.89), (8192.0, -3.81), (9195.2, -3.77),
+    (10321.3, -3.79), (11585.2, -3.91), (13004.0, -4.14), (14596.5, -4.41), (16384.0, -4.7),
+    (18390.4, -4.93),
+]
+
 def shape(f_hz):
-    """House target curve, dB above midrange reference level at f (0 at 200 Hz+)."""
-    return max(0.0, 22.0 - 7.33 * math.log2(f_hz / 25.0))
+    """Target curve, dB relative to 1 kHz. Log-frequency interpolation of ResoNix Laid Back.
+
+    NOTE the reference moved: this used to be 0 at 200 Hz and up, so it was never negative.
+    It is now 0 at 1 kHz, +3.0 at 200 Hz, and goes negative above ~1 kHz. Anything that
+    assumed shape() >= 0, or that 200 Hz was the zero, needs checking.
+    """
+    f = float(f_hz)
+    if f <= _LB[0][0]:  return _LB[0][1]
+    if f >= _LB[-1][0]: return _LB[-1][1]
+    for (f0, v0), (f1, v1) in zip(_LB, _LB[1:]):
+        if f <= f1:
+            t = math.log(f / f0) / math.log(f1 / f0)
+            return v0 + t * (v1 - v0)
+    return _LB[-1][1]
 
 REF_CABIN_CUFT = 120.0   # the cabin the 55 Hz transition stands for (Brett 2026-10-03)
 
@@ -124,12 +211,17 @@ def _sub_core(fs, qts, vas, sd, rms, sens, vb_l, xm):
     return composite_from_margins(_sub_margins(fs, qts, vas, sd, rms, sens, vb_l, xm))
 
 def sub_best_composite(row):
-    """Best-sealed-box composite for one sub row (raw, un-normalized)."""
+    """Best-sealed-box composite for one sub row (raw, un-normalized).
+
+    None when the driver has no sealed design at all - see QTC_MAX."""
     xm = row.get("effective_xmax_mm") or row["xmax_mm"]
     cap_l = min(_VB_CAP_FT3 * FT3_L, 4 * row["vas_l"])
     floor = _VB_FLOOR_EXC.get(row["slug"], _VB_FLOOR_FT3.get(str(row["driver_size"]), 0.05))
     grid = [v for v in (0.05 * 1.13 ** i for i in range(60))
             if v * FT3_L <= cap_l and v >= floor] or [min(floor, _VB_CAP_FT3)]
+    grid = [v for v in grid if sealed_qtc(row["qts"], row["vas_l"], v * FT3_L) <= QTC_MAX]
+    if not grid:
+        return None               # no box damps this driver -> it has no sealed design
     return max(_sub_core(row["fs_hz"], row["qts"], row["vas_l"], row["sd_cm2"],
                          row["rms_watts"], row["sensitivity_db_1w_1m"], v * FT3_L, xm)
                for v in grid)
@@ -140,8 +232,42 @@ def sub_impact(raw, anchor_raw):
     """Normalize a raw composite to impact_score (Fi HC-12 best box = 1.00)."""
     return round((raw / anchor_raw) ** 0.5, 3)
 
+# ---------------------------------------------------------------- bass CHARACTER
+# 2026-11-07. Everything above this point measures how LOUD a driver gets cleanly.
+# None of it says what the bass SOUNDS like. That is set by how fast the cone stops
+# when the note stops, and for a sealed box that is one number: Qtc.
+#
+#   alpha = Vas/Vb      Qtc = Qts * sqrt(alpha+1)      fc = Fs * sqrt(alpha+1)
+#
+# Qtc <= 0.71  flat, no overshoot.  ~0.9  inaudible hump.  1.0  +1.25 dB.
+# Past ~1.1 the system has a real peak at fc AND rings - the cone keeps moving after
+# the note ends, so every bass note gets the same tail and a kick drum starts to sound
+# like a bass guitar. EQ cannot fix it: you can flatten the peak and the ringing stays,
+# because the ringing is in TIME, not in frequency. Below ~0.5 the opposite - overdamped,
+# output lost near fc, thin. In a car the cabin gain below the transition covers most of
+# that, which is why it has never shown up as a complaint.
+#
+# NOTE an infinite-baffle install has NO box, so alpha = 0 and Qtc is exactly the
+# driver's own Qts - typically 0.3-0.5. IB is inherently the tightest bass we sell.
+
+def sealed_qtc(qts, vas_l, vb_l):
+    """Total Q of the driver-in-box system. The ringing number."""
+    return float(qts) * math.sqrt(float(vas_l) / float(vb_l) + 1.0)
+
+def sealed_fc(fs_hz, vas_l, vb_l):
+    """System resonance of the driver-in-box, Hz."""
+    return float(fs_hz) * math.sqrt(float(vas_l) / float(vb_l) + 1.0)
+
+def qtc_peak_db(qtc):
+    """Height of the response hump at fc, dB. Zero at or below Qtc 0.707."""
+    q = float(qtc)
+    if q <= 0.7071:
+        return 0.0
+    return 20.0 * math.log10(q / math.sqrt(1.0 - 1.0 / (4.0 * q * q)))
+
 def sub_best_box(row):
-    """Like sub_best_composite but returns (raw, vb_l) — the ARGMAX box.
+    """Like sub_best_composite but returns (raw, vb_l) — the ARGMAX box, or
+    None when the driver has no sealed design at all (see QTC_MAX).
 
     The design box is a per-driver property (founder model 2026-07-28: 'if the
     car only takes a 2 ft3 enclosure, there is a driver that is best with
@@ -152,6 +278,9 @@ def sub_best_box(row):
     floor = _VB_FLOOR_EXC.get(row["slug"], _VB_FLOOR_FT3.get(str(row["driver_size"]), 0.05))
     grid = [v for v in (0.05 * 1.13 ** i for i in range(60))
             if v * FT3_L <= cap_l and v >= floor] or [min(floor, _VB_CAP_FT3)]
+    grid = [v for v in grid if sealed_qtc(row["qts"], row["vas_l"], v * FT3_L) <= QTC_MAX]
+    if not grid:
+        return None               # no box damps this driver -> it has no sealed design
     return max((_sub_core(row["fs_hz"], row["qts"], row["vas_l"], row["sd_cm2"],
                           row["rms_watts"], row["sensitivity_db_1w_1m"], v * FT3_L, xm),
                 v * FT3_L) for v in grid)

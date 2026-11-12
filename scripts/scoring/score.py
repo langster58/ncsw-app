@@ -5,9 +5,11 @@ Usage:
     python3 score.py <class|all> --check     # report DB rows that don't reproduce
     python3 score.py <class|all> --write      # reconcile DB to the methodology
 
-Classes: midbass, component_sets, widebands, underseat, subs_sealed
-(front_subs, subs_ib, subs_ported are declared but NOT yet ported off the SSD — see
-COVERAGE below; --check/--write on them errors loudly rather than pretending.)
+Classes: midbass, component_sets, widebands, underseat, midranges, subs_sealed,
+subs_ib, subs_ported.
+(front_subs alone is still SSD-only — see COVERAGE below; --check/--write on it errors
+loudly rather than pretending. subs_ib and subs_ported WERE on that list and are now
+implemented; this line was stale and is corrected 2026-11-07.)
 
 Every scorer is a pure function of DB fields via instrument.py. --check recomputes
 and diffs against the stored column(s); --write PATCHes only the rows that differ.
@@ -17,14 +19,23 @@ import os, sys, math
 import psycopg2
 import instrument as I
 
+# The Postgres password lives in ~/.pgpass (mode 600) and NOWHERE else - never inline
+# it here, never in an .env. This DSN carries no password; libpq reads ~/.pgpass.
+# Same connection string every other NCSW script uses (cf. research/factory-audio/sync_fullrange.py).
+DSN = ("postgresql://directus_db_4b8w_user@"
+       "dpg-d86h4augvqtc73dmq7j0-a.ohio-postgres.render.com:5432/"
+       "directus_db_4b8w?sslmode=require")
+
 def db():
-    env = {}
-    with open(os.path.expanduser("~/.config/directus-render.env")) as f:
-        for line in f:
-            if "=" in line:
-                k, v = line.split("=", 1)
-                env[k.strip()] = v.strip()
-    return psycopg2.connect(env["DATABASE_URL"])
+    """Connect to Postgres.
+
+    Fixed 2026-11-07: this used to read DATABASE_URL out of
+    ~/.config/directus-render.env, which only ever held DIRECTUS_URL and
+    DIRECTUS_TOKEN - so the canonical scorer died with KeyError('DATABASE_URL')
+    before doing anything, and the DB had no way to be checked against the
+    methodology. An explicit DATABASE_URL in the environment still wins.
+    """
+    return psycopg2.connect(os.environ.get("DATABASE_URL") or DSN)
 
 # ---------------------------------------------------------------- class scorers
 # Each returns {slug: {column: value, ...}} for every scoreable row.
@@ -40,7 +51,11 @@ def _ceiling_class(cur, table, sd_f, xm_f, sens_f, rms_f, points, size_filter=""
         sd, xm = row[sd_f], row[xm_f]
         if not (sd and xm):
             continue
-        out[row["slug"]] = {col: I.ceiling(freq, sd, xm, row[sens_f], row[rms_f])
+        # Front stages are a LEFT and a RIGHT driver and they add at the seat; the stored
+        # score is the STAGE, not one driver (Brett 2026-11-08). See pair_gain in
+        # instrument.py. At every frequency scored here this is +6.0 dB.
+        out[row["slug"]] = {col: round(I.ceiling(freq, sd, xm, row[sens_f], row[rms_f])
+                                       + I.pair_gain(freq), 1)
                             for col, freq in points.items()}
     return out
 
@@ -82,13 +97,30 @@ def score_subs_sealed(cur):
     anchor = next(r for r in rows if r["slug"] == I.SUB_ANCHOR_SLUG)
     aref = I.sub_best_composite(anchor)
     out = {}
+    SEALED_COLS = ("impact_score", "sealed_design_vb_ft3", "sealed_gross_ft3",
+                   "sealed_qtc", "sealed_fc_hz", "sealed_peak_db")
     for r in rows:
-        raw, vb_l = I.sub_best_box(r)
+        best = I.sub_best_box(r)
+        if best is None:
+            # No box in the grid damps this driver below QTC_MAX, so it has no sealed
+            # design (Brett 2026-11-08: "those IB drivers should not have sealed designs
+            # at all"). NULL every sealed column - the generator's margins() already
+            # skips a driver with no sealed_design_vb_ft3, so it leaves sealed service.
+            out[r["slug"]] = {c: None for c in SEALED_COLS}
+            continue
+        raw, vb_l = best
         vb_ft3 = vb_l / I.FT3_L
         gross = vb_ft3 + I.DRIVER_DISP_FT3.get(str(r["driver_size"]), 0.12)
+        # bass CHARACTER alongside bass LEVEL (2026-11-07). Qtc is the ringing number:
+        # how fast the cone stops when the note stops. The scores above say only how
+        # loud it gets cleanly. See the "bass CHARACTER" block in instrument.py.
+        qtc = I.sealed_qtc(r["qts"], r["vas_l"], vb_l)
         out[r["slug"]] = {"impact_score": I.sub_impact(raw, aref),
                           "sealed_design_vb_ft3": round(vb_ft3, 2),
-                          "sealed_gross_ft3": round(gross, 2)}
+                          "sealed_gross_ft3": round(gross, 2),
+                          "sealed_qtc": round(qtc, 3),
+                          "sealed_fc_hz": round(I.sealed_fc(r["fs_hz"], r["vas_l"], vb_l), 1),
+                          "sealed_peak_db": round(I.qtc_peak_db(qtc), 2)}
     return out
 
 def _not_ported(name):
@@ -180,7 +212,13 @@ def run(names, write):
             old = cur_map.get(slug, {})
             for col, new in vals.items():
                 o = old.get(col)
-                if o is None or abs(float(o) - float(new)) > 0.01:
+                # new is None = "this row has no such design" (e.g. a sub with no
+                # sealed design at all); the column is written NULL, and matching
+                # NULL is not drift.
+                if new is None:
+                    if o is not None:
+                        drift.append((slug, col, o, new))
+                elif o is None or abs(float(o) - float(new)) > 0.01:
                     drift.append((slug, col, o, new))
         print(f"\n{name}: {len(scored)} scored, {len(drift)} value(s) drifted")
         for slug, col, o, new in drift[:40]:
