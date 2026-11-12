@@ -462,10 +462,17 @@ export function truckFitFilter(v: Vehicle): Record<string, unknown> {
  * alternative for four drivers (`fit_face_width_alt_in`, `fit_flange_alt_in`).
  * Returns null when the car has no dimensions on file (no narrowing). */
 export function carFitFilter(v: Vehicle): Record<string, unknown> | null {
-  const dims = [v.boot_width_in, v.boot_height_in, v.boot_depth_in].map((d) => (d == null ? NaN : Number(d) - 1.5))
-  if (dims.some((d) => !(d > 0))) return null
-  const [short, mid, long] = [...dims].sort((a, b) => a - b)
-  const cuft = (short * mid * long) / 1728
+  const raw = [v.boot_width_in, v.boot_height_in, v.boot_depth_in].map((d) => (d == null ? NaN : Number(d)))
+  if (raw.some((d) => !(d > 1.5))) return null
+  // Volume is the AIR INSIDE the box, so the 0.75 in panels come off each axis.
+  // The face is the OUTSIDE of the baffle, which spans the full space - the
+  // flanges sit on it, not inside the side walls. Taking the wall thickness off
+  // the face too was double-counting and cost half an inch on every car
+  // (Brett 2026-11-07: two 18s do fit a CR-V - its 39 in opening was being
+  // compared as 37.5 against the 38.0 two 18 flanges need). The truck filter
+  // below already separates these; this now matches it.
+  const [short, mid, long] = [...raw].sort((a, b) => a - b)
+  const cuft = ((short - 1.5) * (mid - 1.5) * (long - 1.5)) / 1728
   return {
     _and: [
       { _or: [{ fit_volume_cuft: { _null: true } }, { fit_volume_cuft: { _lte: cuft } }] },
@@ -580,7 +587,7 @@ export type VehicleDetail = Vehicle & {
   passenger_volume_cuft: number | null
   branded_system_name: string | null
   has_fullrange_output: string | boolean | null
-  head_unit_replacement_supported: boolean | null
+  dash_kit: string | null
   alternator: number | null
 }
 
@@ -590,7 +597,7 @@ export async function fetchVehicleById(vehicleId: string): Promise<VehicleDetail
     fields: [
       ...VEHICLE_FIELDS,
       'passenger_volume_cuft', 'branded_system_name', 'has_fullrange_output',
-      'head_unit_replacement_supported', 'alternator',
+      'dash_kit', 'alternator',
     ],
     limit: 1,
   })

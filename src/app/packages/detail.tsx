@@ -257,7 +257,13 @@ export default function PackageDetailScreen() {
         sub: fr === 'false' ? 'reconstruction included' : fr === 'option' ? 'verified at intake' : 'direct integration',
       })
     }
-    cells.push({ label: 'Head unit', value: 'Factory, retained', sub: vehicle.head_unit_replacement_supported === false ? 'replacement not supported — not needed' : undefined })
+    cells.push({
+      label: 'Head unit',
+      value: 'Factory, retained',
+      sub: vehicle.dash_kit === 'Yes' ? 'aftermarket radio fits with a dash kit'
+        : vehicle.dash_kit === 'Some versions' ? 'aftermarket radio fits some versions'
+        : undefined,
+    })
     if (vehicle.alternator) {
       cells.push({ label: 'Charging system', value: 'Stock alternator', sub: `HO upgrade quoted ${money(vehicle.alternator)}`, accent: true })
     }

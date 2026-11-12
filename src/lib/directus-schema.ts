@@ -18,7 +18,9 @@ export interface Vehicles {
   vehicle_category: string | null
   segment: string | null
   image: string | null
-  head_unit_replacement_supported: boolean | null
+  dash_kit: 'Yes' | 'Some versions' | 'Integration kit only' | 'No' | 'None known' | null
+  dash_kit_parts: string | null
+  dash_kit_note: string | null
   behind_seat_depth_in: number | null
   powertrain: string | null
   branded_system_name: string | null
