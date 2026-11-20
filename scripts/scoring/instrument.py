@@ -116,70 +116,80 @@ _VB_FLOOR_FT3 = {"6.5": 0.15, "8": 0.25, "10": 0.45, "12": 0.7,
                  "13.5": 0.9, "15": 1.2, "18": 2.6, "21": 4.0}
 _VB_FLOOR_EXC = {"sky-high-car-audio-fxxl-18": 3.6}
 _BAND = [20, 25, 31.5, 40, 50, 63]
-_FT = 55.0
+_FT = 60.0   # measured cabin-gain onset; see gain() below (was 55.0, volume-scaled, to 2026-11-20)
 
 # ---------------------------------------------------------------- the target curve
-# 2026-11-07 (Brett: "that is our curve then ... we use his laid back curve").
-# ResoNix Sound Solutions "Laid Back" (Nick Apicella, June 2025), renormalised so 1 kHz = 0 dB
-# - the reference every published car curve uses (Audiofrog, Whitledge, the DIYMA set).
-# Source file archived at research/drivers/curves-2026-11-07/resonix-laidback-2025.txt.
+# 2026-11-20 (Brett: "We should use what andy has"). Andy Wehmeyer's Audiofrog target curve,
+# REW export dated 2022-03-20, from Audiofrog's official "Target Curves / REW Targets" share
+# (linked from https://www.audiofrog.com/a-note-about-target-curves/). Archived at
+# research/drivers/curves-2026-11-20/audiofrog-target-curve.csv. Renormalised here so
+# 1 kHz = 0 dB (the file has -0.179 at 1 kHz).
 #
-# This REPLACES the old `max(0, 22 - 7.33*log2(f/25))` anchor, which was set from a founder
-# handoff and never checked against practice. Research 2026-11-07 (see that folder) found it
-# sat above EVERY published curve: Audiofrog +10 dB at 20 Hz, Crutchfield +6, Audio Control +6,
-# B&K +3, ResoNix production +13.4, this Laid Back curve +17.3 - ours was +24.4. It was also
-# the only one that rose without bound to 20 Hz; nine independent tuner accounts limit that
-# bottom octave (flattened at 40 Hz, high-passed at 20, cut to 3/4 Whitledge, subsonic 35-40).
-# Laid Back plateaus below ~20 Hz on its own, so the bound is in the curve.
+# On top of it sits the DAILY-DRIVER BASS SHELF (research packages/SYSTEM-DESIGN.md s3c):
+# measured in-car preference (Dennis/Nissan, AES 2015, "In-Vehicle Audio System Sound Quality
+# Preference Study") averages about +3 dB above Audiofrog; Harman listener groups put 15% at
+# +4..6 dB; road noise and low listening levels push it higher. Default = +3 dB. Systems are
+# DESIGN-CHECKED at +6 dB (the top of the customer's bass control), see DESIGN_BASS_SHELF_DB.
+# The shelf is a 2nd-order low shelf centred where the customer's control sits (Helix
+# CONDUCTOR tone control, ~100 Hz): full gain below, half at 100 Hz, gone by ~200 Hz.
 #
-# What changed, against the old curve: the 20-63 Hz band asks ~3.9 dB LESS (7 dB less at
-# 20 Hz), 80-100 Hz asks ~2 dB less, 160-500 Hz asks 1.5-3 dB MORE (it tilts through the
-# midrange instead of flattening at 200), and there is now a treble rolloff to about -4.7 dB.
-_LB = [
-    (16.0, 17.29), (18.0, 17.29), (20.2, 17.29), (22.6, 17.16), (25.4, 16.87), (28.5, 16.45),
-    (32.0, 15.83), (35.9, 15.01), (40.3, 14.12), (45.3, 13.14), (50.8, 12.12), (57.0, 11.02),
-    (64.0, 9.83), (71.8, 8.6), (80.6, 7.33), (90.5, 6.27), (101.6, 5.51), (114.0, 5.01),
-    (128.0, 4.64), (143.7, 4.24), (161.3, 3.8), (181.0, 3.36), (203.2, 3.02), (228.1, 2.83),
-    (256.0, 2.69), (287.4, 2.57), (322.5, 2.43), (362.0, 2.28), (406.4, 2.11), (456.1, 1.93),
-    (512.0, 1.72), (574.7, 1.49), (645.1, 1.23), (724.1, 0.95), (812.7, 0.64), (912.3, 0.3),
-    (1024.0, -0.08), (1149.4, -0.5), (1290.2, -0.95), (1448.2, -1.44), (1625.5, -1.94),
-    (1824.6, -2.43), (2048.0, -2.95), (2298.8, -3.53), (2580.3, -4.14), (2896.3, -4.64),
-    (3251.0, -4.85), (3649.1, -4.72), (4096.0, -4.47), (4597.6, -4.3), (5160.6, -4.18),
-    (5792.6, -4.07), (6502.0, -3.98), (7298.2, -3.89), (8192.0, -3.81), (9195.2, -3.77),
-    (10321.3, -3.79), (11585.2, -3.91), (13004.0, -4.14), (14596.5, -4.41), (16384.0, -4.7),
-    (18390.4, -4.93),
+# This REPLACES ResoNix "Laid Back" (2026-11-07 .. 2026-11-20), which asked +17.3 dB at 20 Hz,
+# tilted down through the midrange and dipped to -4.5 dB at 3-4 kHz. Against it, Audiofrog
+# +3 asks ~4.5 dB less at 20 Hz, ~1 dB less at 63-80 Hz, is flat 200 Hz-1 kHz, and is
+# 2.5-3 dB higher at 2-4 kHz.
+_AF = [
+    (20.0, 9.832), (25.0, 9.674), (31.5, 9.370), (40.0, 8.863), (50.0, 8.106), (63.0, 6.911),
+    (80.0, 5.238), (100.0, 3.529), (125.0, 2.037), (160.0, 0.901), (200.0, 0.296),
+    (250.0, -0.047), (315.0, -0.177), (400.0, -0.127), (500.0, -0.036), (630.0, 0.022),
+    (800.0, 0.031), (1000.0, 0.0), (1250.0, -0.067), (1600.0, -0.191), (2000.0, -0.358),
+    (2500.0, -0.587), (3150.0, -0.896), (4000.0, -1.291), (5000.0, -1.722), (6300.0, -2.223),
+    (8000.0, -2.800), (10000.0, -3.408), (12500.0, -4.087), (16000.0, -4.792), (20000.0, -4.900),
 ]
 
-def shape(f_hz):
-    """Target curve, dB relative to 1 kHz. Log-frequency interpolation of ResoNix Laid Back.
+DEFAULT_BASS_SHELF_DB = 3.0   # the tune every system ships with
+DESIGN_BASS_SHELF_DB = 6.0    # the headroom every stage must hold (top of the bass control)
+BASS_SHELF_HZ = 100.0
 
-    NOTE the reference moved: this used to be 0 at 200 Hz and up, so it was never negative.
-    It is now 0 at 1 kHz, +3.0 at 200 Hz, and goes negative above ~1 kHz. Anything that
-    assumed shape() >= 0, or that 200 Hz was the zero, needs checking.
-    """
+def audiofrog(f_hz):
+    """Audiofrog target, dB re 1 kHz, log-frequency interpolation; flat beyond the ends."""
     f = float(f_hz)
-    if f <= _LB[0][0]:  return _LB[0][1]
-    if f >= _LB[-1][0]: return _LB[-1][1]
-    for (f0, v0), (f1, v1) in zip(_LB, _LB[1:]):
+    if f <= _AF[0][0]:  return _AF[0][1]
+    if f >= _AF[-1][0]: return _AF[-1][1]
+    for (f0, v0), (f1, v1) in zip(_AF, _AF[1:]):
         if f <= f1:
             t = math.log(f / f0) / math.log(f1 / f0)
             return v0 + t * (v1 - v0)
-    return _LB[-1][1]
+    return _AF[-1][1]
 
-REF_CABIN_CUFT = 120.0   # the cabin the 55 Hz transition stands for (Brett 2026-10-03)
+def bass_shelf(f_hz, db, fc=BASS_SHELF_HZ):
+    """2nd-order low shelf in dB: `db` well below fc, db/2 at fc, ~0 by 2*fc."""
+    return db / (1.0 + (float(f_hz) / fc) ** 4)
+
+def shape(f_hz, shelf_db=DEFAULT_BASS_SHELF_DB):
+    """Target curve, dB relative to 1 kHz: Audiofrog + the daily-driver bass shelf.
+    Pass shelf_db=DESIGN_BASS_SHELF_DB for the headroom check, 0 for Audiofrog alone."""
+    return audiofrog(f_hz) + bass_shelf(f_hz, shelf_db)
+
+REF_CABIN_CUFT = 120.0   # kept for old callers; cabin volume no longer moves the onset
 
 def transition_hz(cabin_cuft=None):
-    """Cabin-gain transition frequency for a cabin of the given volume.
-    Below the transition the cabin is a pressure vessel: for the same cone displacement the
-    level rises 6 dB for each halving of cabin volume. With gain = 12 dB/oct below f_t that
-    means f_t scales with 1/sqrt(volume); 55 Hz at the 120 cu ft reference cabin."""
-    if not cabin_cuft:
-        return _FT
-    return _FT * math.sqrt(REF_CABIN_CUFT / float(cabin_cuft))
+    """Cabin-gain onset, Hz. 2026-11-20: a FIXED ~60 Hz for cars and SUVs, whatever the volume.
+    Measured (Andy Wehmeyer, 13 named vehicles from a Mini to a Yukon and an F350, LMS, DIYMA
+    2008; he averages ~20-30 cars for Audiofrog's woofer design) the gain starts at ~55-65 Hz in
+    nearly every vehicle; the old 1/sqrt(volume) scaling predicted a 35 Hz Yukon and is not
+    borne out. Pickup cabs differ (peaks 100-180 Hz) and are not modelled here. The argument is
+    accepted and ignored so existing callers keep working."""
+    return _FT
+
+# Measured shape (same source): about +20 dB between the ~60 Hz onset and ~30 Hz, then a
+# shelf - a real car leaks, so the gain stops growing below ~25-30 Hz (+20..28 dB measured).
+# Modelled conservatively: 20 dB/octave from 60 to 30 Hz, flat +20 dB below 30 Hz.
+_GAIN_SLOPE_DB_OCT = 20.0
+_GAIN_MAX_DB = 20.0
 
 def gain(f_hz, ft=_FT):
-    """Cabin gain below the transfer transition (55 Hz in the reference cabin), dB."""
-    return max(0.0, 12 * math.log2(ft / f_hz))
+    """Cabin gain, dB: 0 above the ~60 Hz onset, +20 dB/oct below it, capped at +20 dB."""
+    return min(_GAIN_MAX_DB, max(0.0, _GAIN_SLOPE_DB_OCT * math.log2(ft / f_hz)))
 
 _SHAPE = [shape(f) for f in _BAND]
 FT3_L = 28.3168
