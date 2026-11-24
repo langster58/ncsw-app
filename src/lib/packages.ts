@@ -322,18 +322,10 @@ export type PackageFilters = {
   topology?: string
   bassAlignment?: string
   maxPrice?: number
-  // True only when the car's factory system keeps its front speakers
-  // (factory_audio_systems.keep_factory_drivers). Unknown counts as no.
-  factoryDriversKept?: boolean
 }
 
-/** Packages that keep the factory front speakers and add the front sub,
- * substage, amplification and DSP (gen_factory_retained_packages.py). Offered
- * only to a car whose factory system has a separate amplifier powering its
- * front speakers - Brett's line, 2026-10-22. */
-export const RETAINED_TOPOLOGY = 'factory+front-sub'
-
-const NOT_RETAINED = { topology: { _neq: RETAINED_TOPOLOGY } }
+// NCSW does not offer packages that keep the factory speakers: every system
+// replaces the drivers (Brett, 2026-11-24; research/packages/SYSTEM-DESIGN.md §7).
 
 /** The cab size a truck's packages are balanced for. A sub plays louder in a
  * smaller cab, so each truck package row is written for one cab size
@@ -508,10 +500,6 @@ export async function fetchPackagesForVehicle(
   if (filters.topology) filter.topology = { _eq: filters.topology }
   if (filters.bassAlignment) filter.bass_alignment = { _eq: filters.bassAlignment }
   if (filters.maxPrice) filter.price_installed = { _lte: filters.maxPrice }
-  if (!filters.factoryDriversKept) {
-    if (filters.topology === RETAINED_TOPOLOGY) return []
-    filter._and = [...((filter._and as unknown[] | undefined) ?? []), NOT_RETAINED]
-  }
   try {
     return await getItems<PackageSummary>('packages', {
       filter,
@@ -522,10 +510,7 @@ export async function fetchPackagesForVehicle(
     // pending columns in the filter 400 until the curation pass adds them —
     // fall back to the bare fit key so the page keeps working mid-migration
     return getItems<PackageSummary>('packages', {
-      filter: {
-        vehicle_category: { _eq: vehicle.vehicle_category },
-        ...(filters.factoryDriversKept ? {} : NOT_RETAINED),
-      },
+      filter: { vehicle_category: { _eq: vehicle.vehicle_category } },
       limit: 200,
     })
   }
@@ -620,28 +605,25 @@ export type AudioOption = {
   brand_key: string
   has_fullrange: string | null
   picker_help: string | null
-  // From the choice's factory system: whether its front speakers are kept,
-  // and what the DSP has to take from it.
-  keep_factory_drivers: boolean | null
+  // From the choice's factory system: what the DSP has to take from it.
   fit: SystemFit | null
 }
 
-/** What a factory system decides about a package: whether its front speakers
- * are kept, and which DSP it needs. `dsp` is the Zapco that takes its feeds
- * (HB 68 II, six speaker-level inputs, when it has a factory sub; HB 46 II,
- * four, when not); `helix_dsp` the Helix for reference builds. */
+/** What a factory system decides about a package: which DSP it needs. `dsp` is
+ * the Zapco that takes its feeds (HB 68 II, six speaker-level inputs, when it
+ * has a factory sub; HB 46 II, four, when not); `helix_dsp` the Helix for
+ * reference builds. */
 export type SystemFit = {
   id: string | null
-  keep: boolean | null
   has_sub: boolean | null
   dsp: string | null
   helix_dsp: string | null
 }
 
-const FIT_FIELDS = ['id', 'keep_factory_drivers', 'has_subwoofer', 'dsp', 'helix_dsp']
-type FitRow = { id?: string; keep_factory_drivers?: boolean | null; has_subwoofer?: boolean | null; dsp?: string | null; helix_dsp?: string | null }
+const FIT_FIELDS = ['id', 'has_subwoofer', 'dsp', 'helix_dsp']
+type FitRow = { id?: string; has_subwoofer?: boolean | null; dsp?: string | null; helix_dsp?: string | null }
 const toFit = (r: FitRow | null | undefined): SystemFit | null =>
-  r ? { id: r.id ?? null, keep: r.keep_factory_drivers ?? null, has_sub: r.has_subwoofer ?? null, dsp: r.dsp ?? null, helix_dsp: r.helix_dsp ?? null } : null
+  r ? { id: r.id ?? null, has_sub: r.has_subwoofer ?? null, dsp: r.dsp ?? null, helix_dsp: r.helix_dsp ?? null } : null
 
 /** The DSP a build takes once the car's factory system is known. Value keeps
  * the $69 budget DSP (four inputs) unless the system has a factory sub, which
@@ -683,7 +665,7 @@ export function installedForSystem(
  * means only the owner can say which was ticked at the factory: it is not in the
  * VIN and no data vendor sells it, which is why the question is asked at all. */
 export async function fetchAudioOptions(vehicleId: string): Promise<AudioOption[]> {
-  type Row = Omit<AudioOption, 'keep_factory_drivers' | 'fit'> & { factory_audio_system?: FitRow | null }
+  type Row = Omit<AudioOption, 'fit'> & { factory_audio_system?: FitRow | null }
   const rows = await getItems<Row>('vehicle_audio_options', {
     filter: { vehicle_id: { _eq: vehicleId } },
     fields: ['position', 'label', 'system_name', 'brand_key', 'has_fullrange', 'picker_help',
@@ -693,12 +675,11 @@ export async function fetchAudioOptions(vehicleId: string): Promise<AudioOption[
   })
   return rows.map(({ factory_audio_system, ...o }) => ({
     ...o,
-    keep_factory_drivers: factory_audio_system?.keep_factory_drivers ?? null,
     fit: toFit(factory_audio_system),
   }))
 }
 
-/** One factory system's keep answer and DSP needs (null = no such system). */
+/** One factory system's DSP needs (null = no such system). */
 export async function fetchSystemFit(systemId: string): Promise<SystemFit | null> {
   const rows = await getItems<FitRow>('factory_audio_systems', {
     filter: { id: { _eq: systemId } },

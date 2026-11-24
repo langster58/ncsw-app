@@ -40,7 +40,6 @@ import {
   trimOptions,
   vehicleName,
   vehicleVariant,
-  RETAINED_TOPOLOGY,
   type AudioOption,
   type SystemFit,
   type PackageSummary,
@@ -69,12 +68,11 @@ const outerStyle: any = IS_WEB
   ? { height: '100dvh', flexDirection: 'column' }
   : { flex: 1, flexDirection: 'column' }
 
-const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way', '3-way+', 'wideband', 'wideband+', 'factory+']
-// Chip label -> packages.topology. 'factory+' keeps the factory front speakers
-// and adds the front sub; it lists only for cars whose factory system keeps them.
+const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way', '3-way+', 'wideband', 'wideband+']
+// Chip label -> packages.topology.
 const TOPOLOGY_VALUE: Record<string, string> = {
   '2-way': 'two-way', '2-way+': 'two-way+front-sub', '3-way': 'three-way', '3-way+': 'three-way+front-sub',
-  wideband: 'wideband', 'wideband+': 'wideband+front-sub', 'factory+': RETAINED_TOPOLOGY,
+  wideband: 'wideband', 'wideband+': 'wideband+front-sub',
 }
 const ALIGNMENTS = ['all', 'sealed', 'ported', 'trunk_ib', 'true_ib']
 const ALIGNMENT_LABEL: Record<string, string> = {
@@ -252,11 +250,9 @@ export default function PackagesScreen() {
   const chosenAudio = audioOpts.find((o) => o.label === picked) ?? null
   const helpOpen = helpFor === audioKey && audioKey !== ''
 
-  // Keep-the-factory-speakers packages list only when the car's factory system
-  // keeps its front speakers (factory_audio_systems.keep_factory_drivers). The
-  // owner's choice decides; before they answer, only when every system the car
-  // could have had keeps them. When the choices cannot be read, a car that only
-  // ever had one system (one picker label) answers from that system.
+  // The car's factory system decides each build's DSP. When the choices cannot
+  // be read, a car that only ever had one system (one picker label) answers
+  // from that system.
   const singleSystemId = vehicle && vehicle.factory_audio_system && !(vehicle.branded_system_name ?? '').includes('|')
     ? vehicle.factory_audio_system
     : ''
@@ -270,11 +266,6 @@ export default function PackagesScreen() {
     return () => { live = false }
   }, [singleSystemId])
   const singleFit = singleSystemId && sysFit?.key === singleSystemId ? sysFit.fit : null
-  const factoryDriversKept = chosenAudio
-    ? chosenAudio.keep_factory_drivers === true
-    : audioOpts.length
-      ? audioOpts.every((o) => o.keep_factory_drivers === true)
-      : singleFit?.keep === true
   // The system that decides each build's DSP: the owner's choice, the car's only
   // system, or none yet (then every build shows its own DSP and price).
   const fit: SystemFit | null = chosenAudio?.fit ?? (audioOpts.length === 1 ? audioOpts[0].fit : audioOpts.length ? null : singleFit)
@@ -292,7 +283,7 @@ export default function PackagesScreen() {
   // A vehicle we do not build for asks nothing: the render branches on
   // substage_not_offered before it reads either of these.
   const reqKey = vehicle && !vehicle.substage_not_offered
-    ? [vehicle.vehicle_id, show, topology, alignment, factoryDriversKept].join('|')
+    ? [vehicle.vehicle_id, show, topology, alignment].join('|')
     : ''
   const answered = result && result.key === reqKey ? result : null
   const items = answered && answered.list !== 'error' ? answered.list : null
@@ -306,12 +297,11 @@ export default function PackagesScreen() {
       ncswPicksOnly: show === 'NCSW Picks',
       topology: topology === 'all' ? undefined : TOPOLOGY_VALUE[topology] ?? topology,
       bassAlignment: alignment === 'all' ? undefined : alignment,
-      factoryDriversKept,
     })
       .then((list) => { if (live) setResult({ key: reqKey, list }) })
       .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
     return () => { live = false }
-  }, [reqKey, vehicle, show, topology, alignment, factoryDriversKept])
+  }, [reqKey, vehicle, show, topology, alignment])
 
 
   const gap = useFluidPx(fluid(20, 14))

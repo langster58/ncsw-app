@@ -412,8 +412,6 @@ export interface FactoryAudioSystems {
   subwoofer_evidence: string | null
   dsp: string | null
   helix_dsp: string | null
-  keep_factory_drivers: boolean | null
-  keep_factory_drivers_evidence: string | null
   factory_path: string | null
   factory_path_evidence: string | null
   tap_point: string | null
