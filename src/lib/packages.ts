@@ -556,9 +556,10 @@ type VariantCatalog = {
   enclosures: EnclosurePriceRow[]
 }
 
-// The installations a sealed sub stage in a car can be sold in. The plain
-// sealed box fits any car; the other two are for fixed rear seats.
-const CAR_INSTALLATIONS = ['fabricated-sealed', 'sealed-pass-through', 'sealed-rear-deck']
+// The installations a sealed sub stage in a car can be sold in. The prefab
+// sealed box (priced at what the box costs to buy; fitting it is part of the
+// base install) fits any car; the other two are for fixed rear seats.
+const CAR_INSTALLATIONS = ['prefab-sealed', 'sealed-pass-through', 'sealed-rear-deck']
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
 
@@ -652,7 +653,7 @@ type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fo
  * A fixed rear seat adds the pass-through (when the seat has a ski opening) or
  * the rear-deck enclosure (when it has none). Convertibles are sealed box only. */
 function installSlugsFor(vehicle: SeatFacts | null): string[] {
-  const slugs = ['fabricated-sealed']
+  const slugs = ['prefab-sealed']
   if (!vehicle || vehicle.vehicle_category !== 'trunk' || vehicle.body_style === 'Convertible') return slugs
   if (vehicle.rear_seat_fold === 'fixed') {
     if (vehicle.rear_seat_ski_pass === true) slugs.push('sealed-pass-through')
