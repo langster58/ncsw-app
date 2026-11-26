@@ -111,7 +111,6 @@ function componentMeta(c: ResolvedComponent): string[] {
   if (c.row?.rms_power) bits.push(`${c.row.rms_power} W`)
   if (c.row?.channels) bits.push(`${c.row.channels}-channel`)
   if (c.row?.snr) bits.push(`${c.row.snr} dB SNR`)
-  if (c.row?.tier) bits.push(String(c.row.tier))
   if (c.collection === 'sub_enclosures' && c.row?.volume_cuft) bits.push(`${c.row.volume_cuft} ft³ net`)
   return bits
 }
