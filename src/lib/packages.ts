@@ -857,7 +857,9 @@ export type SystemFit = {
   helix_dsp: string | null
 }
 
-const FIT_FIELDS = ['id', 'has_subwoofer', 'dsp', 'helix_dsp']
+// `dsp` / `helix_dsp` (the old per-tier DSP assignment) were removed from
+// factory_audio_systems on 2026-11-26; the DSP is now part of each variant.
+const FIT_FIELDS = ['id', 'has_subwoofer']
 type FitRow = { id?: string; has_subwoofer?: boolean | null; dsp?: string | null; helix_dsp?: string | null }
 const toFit = (r: FitRow | null | undefined): SystemFit | null =>
   r ? { id: r.id ?? null, has_sub: r.has_subwoofer ?? null, dsp: r.dsp ?? null, helix_dsp: r.helix_dsp ?? null } : null
