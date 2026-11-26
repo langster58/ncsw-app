@@ -511,6 +511,8 @@ export async function fetchPackagesForVehicle(
       const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
       return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
     })
+    // an infinite baffle variant is listed only where the car can take one
+    .filter((v) => v.bass_installation !== 'infinite-baffle' || installSlugsFor(vehicle, v.bass_installation).length > 0)
     .map((v) => variantSummary(v, cat, vehicle))
     .filter((p) => !filters.topology || p.topology === filters.topology)
     .filter((p) => !filters.bassAlignment || p.bass_alignment === filters.bassAlignment)
@@ -559,7 +561,7 @@ type VariantCatalog = {
 // The installations a sealed sub stage in a car can be sold in. The prefab
 // sealed box (priced at what the box costs to buy; fitting it is part of the
 // base install) fits any car; the other two are for fixed rear seats.
-const CAR_INSTALLATIONS = ['prefab-sealed', 'sealed-pass-through', 'sealed-rear-deck']
+const CAR_INSTALLATIONS = ['prefab-sealed', 'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib']
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
 
@@ -649,10 +651,20 @@ export type InstallOption = { slug: string; title: string; price: number }
 
 type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'>
 
-/** Which installations this car can take. Every car takes the plain sealed box.
- * A fixed rear seat adds the pass-through (when the seat has a ski opening) or
- * the rear-deck enclosure (when it has none). Convertibles are sealed box only. */
-function installSlugsFor(vehicle: SeatFacts | null): string[] {
+/** Which installations this car can take for a sealed or an infinite baffle sub
+ * stage. Sealed: every car takes the prefab box; a fixed rear seat adds the
+ * pass-through (seat has a ski opening) or the rear-deck enclosure (it has
+ * none); convertibles are prefab only. Infinite baffle: trunk IB behind a rear
+ * seat that folds (sedans and coupes, never convertibles), or true IB through
+ * the floor in a cargo-area car. Other cars take no infinite baffle. With no
+ * car chosen, every installation of that kind is listed. */
+function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string[] {
+  if (bass === 'infinite-baffle') {
+    if (!vehicle) return ['trunk-ib', 'fabricated-ib']
+    if (vehicle.vehicle_category === 'cargo') return ['fabricated-ib']
+    if (vehicle.vehicle_category === 'trunk' && vehicle.body_style !== 'Convertible' && vehicle.rear_seat_fold === 'folds') return ['trunk-ib']
+    return []
+  }
   const slugs = ['prefab-sealed']
   if (!vehicle || vehicle.vehicle_category !== 'trunk' || vehicle.body_style === 'Convertible') return slugs
   if (vehicle.rear_seat_fold === 'fixed') {
@@ -669,7 +681,7 @@ function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts |
   if (size == null) return []
   const count = sub.quantity || 1
   const out: InstallOption[] = []
-  for (const slug of installSlugsFor(vehicle)) {
+  for (const slug of installSlugsFor(vehicle, v.bass_installation)) {
     const it = cat.installTypes.find((i) => i.slug === slug)
     if (!it || (it.bass_installation ?? 'sealed') !== (v.bass_installation ?? 'sealed')) continue
     const prices = cat.enclosures
