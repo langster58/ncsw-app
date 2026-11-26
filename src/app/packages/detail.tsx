@@ -235,7 +235,7 @@ export default function PackageDetailScreen() {
     }
   }
 
-  const p3 = 'Every price on this page is computed from the live catalog — the ledger below is the current arithmetic of parts, labor, and materials, not a quote that drifts.'
+  const p3 = 'Every price on this page is computed from the live catalog — the ledger below is the current arithmetic of the parts, not a quote that drifts.'
 
   // ---- spec strip (cells render only where the data exists) -----------------
   const cells: SpecCell[] = []
@@ -341,9 +341,9 @@ export default function PackageDetailScreen() {
                   <Lead>{p3}</Lead>
 
                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'baseline', gap: 14, marginTop: priceRowTop as any }}>
-                    <Eyebrow>Total installed</Eyebrow>
+                    <Eyebrow>{installedN != null ? 'Total installed' : 'Parts total'}</Eyebrow>
                     <Text style={{ fontFamily: fonts.body, fontSize: priceSize as any, fontWeight: '600', fontVariant: ['tabular-nums'], color: colors.ink } as any}>
-                      {money(installedN)}
+                      {money(installedN ?? partsN)}
                     </Text>
                   </View>
                 </FullWidthCopyContext.Provider>
@@ -371,7 +371,7 @@ export default function PackageDetailScreen() {
                 <View style={{ marginTop: tableTop as any, borderTopWidth: 1, borderTopColor: colors.tableLineStrong }}>
                   {components.map((c, i) => (
                     <SysRow
-                      key={c.slug}
+                      key={`${c.collection}/${c.slug}`}
                       media={<SafeMedia src={c.row?.image_filename ? `/images/products/${c.row.image_filename}` : null} alt={componentTitle(c)} />}
                       title={componentTitle(c)}
                       meta={<Metaline items={componentMeta(c)} />}
@@ -408,11 +408,15 @@ export default function PackageDetailScreen() {
 
                 <View style={{ marginTop: tableTop as any }}>
                   <PriceSummary
-                    lines={[
-                      { label: 'Components', value: money(partsN) },
-                      { label: 'Installation & materials', value: money(laborMaterials) },
-                    ]}
-                    total={{ label: 'Total, installed & tuned', value: money(installedN) }}
+                    lines={installedN != null
+                      ? [
+                          { label: 'Components', value: money(partsN) },
+                          { label: 'Installation', value: money(laborMaterials) },
+                        ]
+                      : [{ label: 'Components', value: money(partsN) }]}
+                    total={installedN != null
+                      ? { label: 'Total, installed & tuned', value: money(installedN) }
+                      : { label: 'Parts total', value: money(partsN) }}
                   />
                 </View>
               </PdpSection>

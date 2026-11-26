@@ -16,6 +16,13 @@
 // (truck/trunk/cargo), matching vehicles.vehicle_category directly.
 import { getItems } from './directus'
 
+// 2026-11-26: the list and detail screens now read `systems` / `system_variants` /
+// `system_variant_parts` instead of the `packages` collection. A variant is one
+// hand-entered, engineered system; its price is its parts added up at request
+// time (nothing stored). There is no installed price yet: the flat installation
+// price has not been set, so `price_installed` is null and the screens show the
+// parts total. Variants exist for cars only; trucks get an empty list.
+
 // ------------------------------------------------------------- vehicle picker
 
 export type VehicleFacet = { value: string; count: number }
@@ -487,32 +494,145 @@ export async function fetchPackagesForVehicle(
   vehicle: Vehicle,
   filters: PackageFilters = {},
 ): Promise<PackageSummary[]> {
-  const filter: Record<string, unknown> = {
-    vehicle_category: { _eq: vehicle.vehicle_category },
-  }
-  if (vehicle.vehicle_category === 'truck') Object.assign(filter, truckFitFilter(vehicle))
-  else {
-    // the box has to fit the trunk / cargo area, and a dash driver needs a dash location
-    const fit = carFitFilter(vehicle)
-    filter._and = [...((fit?._and as unknown[] | undefined) ?? []), dashFitFilter(vehicle)]
-  }
-  if (filters.ncswPicksOnly) filter.ncsw_pick = { _eq: true }
-  if (filters.topology) filter.topology = { _eq: filters.topology }
-  if (filters.bassAlignment) filter.bass_alignment = { _eq: filters.bassAlignment }
-  if (filters.maxPrice) filter.price_installed = { _lte: filters.maxPrice }
-  try {
-    return await getItems<PackageSummary>('packages', {
-      filter,
-      sort: ['price_installed', 'price_total'],
-      limit: 200,
+  // No variants are engineered for trucks yet.
+  if (vehicle.vehicle_category === 'truck') return []
+  const cat = await loadVariantCatalog()
+  // The smallest proper sealed box has to fit the trunk / cargo space
+  // (same allowance as carFitFilter: 1.5 in of panel off each dimension).
+  const dims = [vehicle.boot_width_in, vehicle.boot_height_in, vehicle.boot_depth_in].map((d) => (d == null ? NaN : Number(d)))
+  const space = dims.every((d) => d > 1.5) ? ((dims[0] - 1.5) * (dims[1] - 1.5) * (dims[2] - 1.5)) / 1728 : null
+  return cat.variants
+    .filter((v) => {
+      const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
+      return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
     })
-  } catch {
-    // pending columns in the filter 400 until the curation pass adds them —
-    // fall back to the bare fit key so the page keeps working mid-migration
-    return getItems<PackageSummary>('packages', {
-      filter: { vehicle_category: { _eq: vehicle.vehicle_category } },
-      limit: 200,
-    })
+    .map((v) => variantSummary(v, cat, vehicle.vehicle_category))
+    .filter((p) => !filters.topology || p.topology === filters.topology)
+    .filter((p) => !filters.bassAlignment || p.bass_alignment === filters.bassAlignment)
+    .filter((p) => !filters.maxPrice || (p.price_total != null && p.price_total <= filters.maxPrice))
+}
+
+// ------------------------------------------------------- systems and variants
+
+type VariantRow = {
+  id: number
+  system: number | null
+  front_stage: string | null
+  bass_installation: string | null
+  sub_stage: string | null
+  sub_output_db: number | string | null
+  sealed_box_min_ft3: number | string | null
+  sealed_box_ideal_ft3: number | string | null
+  sort: number | null
+  dsp: string | null
+}
+
+export type VariantPart = {
+  id: number
+  variant: number
+  role: string
+  part_collection: string
+  part_slug: string
+  quantity: number
+}
+
+type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null }
+
+type VariantCatalog = {
+  variants: VariantRow[]
+  parts: Map<number, VariantPart[]>
+  rows: Map<string, PartRow>
+}
+
+const partKey = (collection: string, slug: string) => `${collection}/${slug}`
+
+let variantCatalog: Promise<VariantCatalog> | null = null
+
+/** Every variant, its parts, and the catalog row behind each part. Small
+ * (tens of variants), so it is read once per page load and reused. */
+function loadVariantCatalog(): Promise<VariantCatalog> {
+  if (!variantCatalog) {
+    variantCatalog = (async () => {
+      const [variants, parts] = await Promise.all([
+        getItems<VariantRow>('system_variants', { sort: ['sort', 'id'], limit: 500 }),
+        getItems<VariantPart>('system_variant_parts', { limit: 5000 }),
+      ])
+      const byVariant = new Map<number, VariantPart[]>()
+      const slugs = new Map<string, Set<string>>()
+      for (const p of parts) {
+        const list = byVariant.get(p.variant) ?? []
+        list.push(p)
+        byVariant.set(p.variant, list)
+        const s = slugs.get(p.part_collection) ?? new Set<string>()
+        s.add(p.part_slug)
+        slugs.set(p.part_collection, s)
+      }
+      const rows = new Map<string, PartRow>()
+      await Promise.all(
+        Array.from(slugs.entries()).map(async ([collection, set]) => {
+          try {
+            const found = await getItems<PartRow>(collection, { filter: { slug: { _in: Array.from(set) } }, limit: 500 })
+            for (const r of found) rows.set(partKey(collection, r.slug), r)
+          } catch {
+            // a parts collection the public role cannot read: its lines stay unpriced
+          }
+        }),
+      )
+      return { variants, parts: byVariant, rows }
+    })()
+    variantCatalog.catch(() => { variantCatalog = null })
+  }
+  return variantCatalog
+}
+
+const ROLE_ORDER = ['midbass', 'tweeter', 'wideband', 'subwoofer', 'multichannel_amp', 'mono_amp', 'dsp', 'dsp_remote']
+const roleRank = (role: string) => { const i = ROLE_ORDER.indexOf(role); return i < 0 ? ROLE_ORDER.length : i }
+
+function partName(cat: VariantCatalog, p: VariantPart): string {
+  const r = cat.rows.get(partKey(p.part_collection, p.part_slug))
+  if (!r) return p.part_slug
+  return [r.brand, r.model].filter(Boolean).join(' ') || r.name || p.part_slug
+}
+
+function variantParts(cat: VariantCatalog, id: number): VariantPart[] {
+  return [...(cat.parts.get(id) ?? [])].sort((a, b) => roleRank(a.role) - roleRank(b.role) || a.id - b.id)
+}
+
+/** Parts added up. Null when any part has no price on file, so a partial sum
+ * is never shown as the price. */
+function variantPartsTotal(cat: VariantCatalog, id: number): number | null {
+  let total = 0
+  for (const p of cat.parts.get(id) ?? []) {
+    const price = cat.rows.get(partKey(p.part_collection, p.part_slug))?.price
+    if (price == null) return null
+    total += Number(price) * (p.quantity || 1)
+  }
+  return Math.round(total * 100) / 100
+}
+
+const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
+
+function variantSummary(v: VariantRow, cat: VariantCatalog, vehicleCategory: string | null): PackageSummary {
+  const parts = variantParts(cat, v.id)
+  const named = (role: string) => parts.filter((p) => p.role === role).map((p) => partName(cat, p))
+  const sub = parts.find((p) => p.role === 'subwoofer')
+  const front = [...named('midbass'), ...named('wideband'), ...named('tweeter')].join(' + ')
+  const subs = sub ? `${sub.quantity > 1 ? `${sub.quantity} × ` : ''}${partName(cat, sub)}` : ''
+  const dsp = named('dsp')[0] ?? ''
+  const bass = v.bass_installation ?? null
+  return {
+    id: String(v.id),
+    sku: String(v.id),
+    display_name: [front, subs, dsp].filter(Boolean).join(' · ') || `System ${v.id}`,
+    topology: v.front_stage,
+    bass_alignment: bass ? BASS_ALIGNMENT[bass] ?? bass : null,
+    price_total: variantPartsTotal(cat, v.id),
+    price_installed: null,
+    summary: null,
+    ncsw_pick: null,
+    vehicle_category: vehicleCategory,
+    tier: null,
+    dsp_id: v.dsp,
   }
 }
 
@@ -545,14 +665,43 @@ export type PackageDetail = PackageSummary & {
   multichannel_amp_id: string | null
   dsp_id: string | null
   price_breakdown: PackageBreakdown | null
+  // the variant's own parts list (system_variant_parts)
+  parts?: VariantPart[]
 }
 
+/** One variant as a package detail. `sku` is the variant's id. */
 export async function fetchPackageBySku(sku: string): Promise<PackageDetail | null> {
-  const rows = await getItems<PackageDetail>('packages', {
-    filter: { sku: { _eq: sku } },
-    limit: 1,
-  })
-  return rows[0] ?? null
+  const cat = await loadVariantCatalog()
+  const v = cat.variants.find((x) => String(x.id) === sku)
+  if (!v) return null
+  const parts = variantParts(cat, v.id)
+  const slugOf = (role: string) => parts.find((p) => p.role === role)?.part_slug ?? null
+  const sub = parts.find((p) => p.role === 'subwoofer')
+  return {
+    ...variantSummary(v, cat, null),
+    sub_id: sub?.part_slug ?? null,
+    sub_count: sub?.quantity ?? null,
+    sub_enclosure_id: null,
+    front_sub_id: null,
+    component_set_id: null,
+    set_collection: null,
+    mono_amp_id: slugOf('mono_amp'),
+    multichannel_amp_id: slugOf('multichannel_amp'),
+    dsp_id: slugOf('dsp') ?? v.dsp,
+    price_breakdown: {
+      components: parts
+        .map((p) => ({
+          collection: p.part_collection,
+          slug: p.part_slug,
+          name: partName(cat, p),
+          qty: p.quantity || 1,
+          unit: Number(cat.rows.get(partKey(p.part_collection, p.part_slug))?.price ?? NaN),
+        }))
+        .filter((l) => Number.isFinite(l.unit)),
+      labor: { base: 0, extra_amps: 0, enclosure: 0 },
+    },
+    parts,
+  }
 }
 
 /** Resolve one component row for a detail block; collection per id-field.
@@ -724,8 +873,31 @@ const SLOT_ROLES: [keyof PackageDetail, string, string][] = [
   ['dsp_id', 'dsp_processors', 'Signal'],
 ]
 
+// system_variant_parts.role -> the label a detail row carries
+const PART_ROLE_LABEL: Record<string, string> = {
+  midbass: 'Front stage',
+  wideband: 'Front stage wideband',
+  tweeter: 'Front stage tweeter',
+  subwoofer: 'Sub stage',
+  multichannel_amp: 'Front amplification',
+  mono_amp: 'Sub amplification',
+  dsp: 'Signal',
+  dsp_remote: 'DSP remote',
+}
+
 /** Resolve every populated component slot of a package to its product row. */
 export async function fetchPackageComponents(pkg: PackageDetail): Promise<ResolvedComponent[]> {
+  if (pkg.parts) {
+    return Promise.all(
+      pkg.parts.map(async (p) => ({
+        role: PART_ROLE_LABEL[p.role] ?? p.role,
+        collection: p.part_collection,
+        slug: p.part_slug,
+        qty: p.quantity || 1,
+        row: await fetchComponent<ProductRow>(p.part_collection, p.part_slug).catch(() => null),
+      })),
+    )
+  }
   const qtyFor = (collection: string, slug: string): number => {
     const line = pkg.price_breakdown?.components?.find(
       (l) => l.collection === collection && l.slug === slug,
