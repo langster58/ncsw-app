@@ -491,7 +491,7 @@ export default function PackagesScreen() {
                                 </Text>
                                 <Metaline
                                   items={[p.topology, p.bass_alignment ? ALIGNMENT_LABEL[p.bass_alignment] : null,
-                                    p.price_installed != null ? `$${Number(installedForSystem(p, fit, dspPrices)).toLocaleString()} installed`
+                                    p.price_installed != null ? `from $${Number(installedForSystem(p, fit, dspPrices)).toLocaleString()} installed`
                                       : p.price_total != null ? `$${Number(p.price_total).toLocaleString()} parts` : null]
                                     .filter(Boolean) as string[]}
                                 />

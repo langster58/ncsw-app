@@ -6,6 +6,7 @@ import {
   Button,
   Container,
   Eyebrow,
+  FilterChipGroup,
   Heading,
   Lead,
   FullWidthCopyContext,
@@ -26,6 +27,8 @@ import {
   fetchDspPrices,
   fetchInstallationRows,
   fetchPackageBySku,
+  fetchInstallOptions,
+  type InstallOption,
   fetchSystemFit,
   fetchPackageComponents,
   fetchVehicleById,
@@ -126,6 +129,8 @@ export default function PackageDetailScreen() {
   const [components, setComponents] = useState<ResolvedComponent[]>([])
   const [vehicle, setVehicle] = useState<VehicleDetail | null>(null)
   const [install, setInstall] = useState<InstallationRow[]>([])
+  const [options, setOptions] = useState<InstallOption[]>([])
+  const [chosen, setChosen] = useState('')
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
   // Navigating from one package to another restarts the load. Adjusted during
@@ -172,6 +177,9 @@ export default function PackageDetailScreen() {
           }
         }
         setPkg(p); setVehicle(v); setInstall(inst)
+        const opts = await fetchInstallOptions(sku, v).catch(() => [] as InstallOption[])
+        if (!live) return
+        setOptions(opts); setChosen(opts[0]?.slug ?? '')
         const comps = await fetchPackageComponents(p)
         if (!live) return
         setComponents(comps)
@@ -202,9 +210,10 @@ export default function PackageDetailScreen() {
   const vehicleName = vehicle ? formatVehicleName(vehicle) : ''
   const title = pkg?.display_name ?? sku
 
-  const installedN = pkg?.price_installed != null ? Number(pkg.price_installed) : null
   const partsN = pkg?.price_total != null ? Number(pkg.price_total) : null
-  const laborMaterials = installedN != null && partsN != null ? installedN - partsN : null
+  const baseInstallN = pkg?.install_price != null ? Number(pkg.install_price) : null
+  const option = options.find((o) => o.slug === chosen) ?? options[0] ?? null
+  const installedN = partsN != null && baseInstallN != null && option ? partsN + baseInstallN + option.price : null
 
   // ---- generated copy (package grain + vehicle grain) -----------------------
   const sub = components.find((c) => c.collection === 'subwoofers')
@@ -234,7 +243,7 @@ export default function PackageDetailScreen() {
     }
   }
 
-  const p3 = 'Every price on this page is computed from the live catalog — the ledger below is the current arithmetic of the parts, not a quote that drifts.'
+  const p3 = 'Every price on this page is computed from the live catalog — the ledger below is the current arithmetic of the parts, the flat installation price and the sub stage, not a quote that drifts.'
 
   // ---- spec strip (cells render only where the data exists) -----------------
   const cells: SpecCell[] = []
@@ -405,12 +414,28 @@ export default function PackageDetailScreen() {
                   </View>
                 ) : null}
 
+                {options.length > 1 ? (
+                  <View style={{ marginTop: tableTop as any }}>
+                    <FilterChipGroup
+                      label="Sub stage installation"
+                      value={option?.slug ?? ''}
+                      options={options.map((o) => o.slug)}
+                      onChange={setChosen}
+                      renderOption={(slug) => {
+                        const o = options.find((x) => x.slug === slug)
+                        return o ? `${o.title} · ${money(o.price)}` : slug
+                      }}
+                    />
+                  </View>
+                ) : null}
+
                 <View style={{ marginTop: tableTop as any }}>
                   <PriceSummary
-                    lines={installedN != null
+                    lines={installedN != null && option
                       ? [
                           { label: 'Components', value: money(partsN) },
-                          { label: 'Installation', value: money(laborMaterials) },
+                          { label: 'Installation', value: money(baseInstallN) },
+                          { label: `Sub stage: ${option.title}`, value: money(option.price) },
                         ]
                       : [{ label: 'Components', value: money(partsN) }]}
                     total={installedN != null

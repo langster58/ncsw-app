@@ -19,9 +19,10 @@ import { getItems } from './directus'
 // 2026-11-26: the list and detail screens now read `systems` / `system_variants` /
 // `system_variant_parts` instead of the `packages` collection. A variant is one
 // hand-entered, engineered system; its price is its parts added up at request
-// time (nothing stored). There is no installed price yet: the flat installation
-// price has not been set, so `price_installed` is null and the screens show the
-// parts total. Variants exist for cars only; trucks get an empty list.
+// time (nothing stored). Installed price = parts + the system's flat base install
+// (`systems.install_price`) + the sub stage price of an installation the car can
+// take (`sub_enclosures.price` for that installation, sub size and count).
+// Variants exist for cars only; trucks get an empty list.
 
 // ------------------------------------------------------------- vehicle picker
 
@@ -122,6 +123,10 @@ export type Vehicle = {
   // Floor infinite baffle under the lifted rear seat, motor in the cab: offered
   // only on trucks that take no full-frame driver in the cab any other way.
   truck_rear_floor_ib_option?: boolean | null
+  // does the rear seatback fold: 'folds' | 'fixed' | 'varies' | 'no rear seat' (blank = not settled)
+  rear_seat_fold?: string | null
+  // a fixed seat's ski pass-through: true / false (blank = not settled)
+  rear_seat_ski_pass?: boolean | null
   // Factory dash speaker position and its size (empty = none). Decides whether
   // a front stage with a dash driver - a wideband or a three-way midrange - can
   // be offered (vehicleDashClass).
@@ -145,6 +150,7 @@ const VEHICLE_FIELDS = [
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
   'dash', 'truck_rear_floor_ib_option',
+  'rear_seat_fold', 'rear_seat_ski_pass',
   'factory_audio_system', 'branded_system_name',
 ]
 
@@ -506,10 +512,11 @@ export async function fetchPackagesForVehicle(
       const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
       return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
     })
-    .map((v) => variantSummary(v, cat, vehicle.vehicle_category))
+    .map((v) => variantSummary(v, cat, vehicle))
     .filter((p) => !filters.topology || p.topology === filters.topology)
     .filter((p) => !filters.bassAlignment || p.bass_alignment === filters.bassAlignment)
-    .filter((p) => !filters.maxPrice || (p.price_total != null && p.price_total <= filters.maxPrice))
+    .filter((p) => !filters.maxPrice || ((p.price_installed ?? p.price_total) != null && Number(p.price_installed ?? p.price_total) <= filters.maxPrice))
+    .sort((a, b) => Number(a.price_installed ?? a.price_total ?? 0) - Number(b.price_installed ?? b.price_total ?? 0))
 }
 
 // ------------------------------------------------------- systems and variants
@@ -536,13 +543,23 @@ export type VariantPart = {
   quantity: number
 }
 
-type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null }
+type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null; driver_size?: number | string | null }
+
+type InstallTypeRow = { id: string; slug: string; title: string | null; bass_installation: string | null; sort: number | null }
+type EnclosurePriceRow = { install_type: string | null; size: string | null; driver_count: number | null; price: number | string | null }
 
 type VariantCatalog = {
   variants: VariantRow[]
   parts: Map<number, VariantPart[]>
   rows: Map<string, PartRow>
+  installPrice: Map<number, number>
+  installTypes: InstallTypeRow[]
+  enclosures: EnclosurePriceRow[]
 }
+
+// The installations a sealed sub stage in a car can be sold in. The plain
+// sealed box fits any car; the other two are for fixed rear seats.
+const CAR_INSTALLATIONS = ['fabricated-sealed', 'sealed-pass-through', 'sealed-rear-deck']
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
 
@@ -553,10 +570,25 @@ let variantCatalog: Promise<VariantCatalog> | null = null
 function loadVariantCatalog(): Promise<VariantCatalog> {
   if (!variantCatalog) {
     variantCatalog = (async () => {
-      const [variants, parts] = await Promise.all([
+      const [variants, parts, systems, installTypes] = await Promise.all([
         getItems<VariantRow>('system_variants', { sort: ['sort', 'id'], limit: 500 }),
         getItems<VariantPart>('system_variant_parts', { limit: 5000 }),
+        getItems<{ id: number; install_price: number | string | null }>('systems', { limit: 100 }).catch(() => []),
+        getItems<InstallTypeRow>('install_types', {
+          filter: { slug: { _in: CAR_INSTALLATIONS } },
+          fields: ['id', 'slug', 'title', 'bass_installation', 'sort'],
+          limit: 20,
+        }).catch(() => []),
       ])
+      const enclosures = installTypes.length
+        ? await getItems<EnclosurePriceRow>('sub_enclosures', {
+            filter: { install_type: { _in: installTypes.map((i) => i.id) } },
+            fields: ['install_type', 'size', 'driver_count', 'price'],
+            limit: 500,
+          }).catch(() => [])
+        : []
+      const installPrice = new Map<number, number>()
+      for (const s of systems) if (s.install_price != null) installPrice.set(s.id, Number(s.install_price))
       const byVariant = new Map<number, VariantPart[]>()
       const slugs = new Map<string, Set<string>>()
       for (const p of parts) {
@@ -578,7 +610,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
           }
         }),
       )
-      return { variants, parts: byVariant, rows }
+      return { variants, parts: byVariant, rows, installPrice, installTypes, enclosures }
     })()
     variantCatalog.catch(() => { variantCatalog = null })
   }
@@ -612,7 +644,53 @@ function variantPartsTotal(cat: VariantCatalog, id: number): number | null {
 
 const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
 
-function variantSummary(v: VariantRow, cat: VariantCatalog, vehicleCategory: string | null): PackageSummary {
+/** One way the sub stage can be installed in a given car, with its flat price. */
+export type InstallOption = { slug: string; title: string; price: number }
+
+type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'>
+
+/** Which installations this car can take. Every car takes the plain sealed box.
+ * A fixed rear seat adds the pass-through (when the seat has a ski opening) or
+ * the rear-deck enclosure (when it has none). Convertibles are sealed box only. */
+function installSlugsFor(vehicle: SeatFacts | null): string[] {
+  const slugs = ['fabricated-sealed']
+  if (!vehicle || vehicle.vehicle_category !== 'trunk' || vehicle.body_style === 'Convertible') return slugs
+  if (vehicle.rear_seat_fold === 'fixed') {
+    if (vehicle.rear_seat_ski_pass === true) slugs.push('sealed-pass-through')
+    else if (vehicle.rear_seat_ski_pass === false) slugs.push('sealed-rear-deck')
+  }
+  return slugs
+}
+
+function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts | null): InstallOption[] {
+  const sub = (cat.parts.get(v.id) ?? []).find((p) => p.role === 'subwoofer')
+  if (!sub) return []
+  const size = cat.rows.get(partKey(sub.part_collection, sub.part_slug))?.driver_size
+  if (size == null) return []
+  const count = sub.quantity || 1
+  const out: InstallOption[] = []
+  for (const slug of installSlugsFor(vehicle)) {
+    const it = cat.installTypes.find((i) => i.slug === slug)
+    if (!it || (it.bass_installation ?? 'sealed') !== (v.bass_installation ?? 'sealed')) continue
+    const prices = cat.enclosures
+      .filter((e) => e.install_type === it.id && Number(e.size) === Number(size) && Number(e.driver_count) === count && e.price != null)
+      .map((e) => Number(e.price))
+    if (prices.length) out.push({ slug, title: it.title ?? slug, price: Math.min(...prices) })
+  }
+  return out
+}
+
+/** Parts + the system's flat base install + the cheapest sub stage installation
+ * the car can take. Null when any of the three is missing. */
+function variantInstalled(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts | null): number | null {
+  const parts = variantPartsTotal(cat, v.id)
+  const base = v.system == null ? undefined : cat.installPrice.get(v.system)
+  const options = installOptions(cat, v, vehicle)
+  if (parts == null || base == null || !options.length) return null
+  return Math.round((parts + base + Math.min(...options.map((o) => o.price))) * 100) / 100
+}
+
+function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts | null): PackageSummary {
   const parts = variantParts(cat, v.id)
   const named = (role: string) => parts.filter((p) => p.role === role).map((p) => partName(cat, p))
   const sub = parts.find((p) => p.role === 'subwoofer')
@@ -627,10 +705,10 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicleCategory: str
     topology: v.front_stage,
     bass_alignment: bass ? BASS_ALIGNMENT[bass] ?? bass : null,
     price_total: variantPartsTotal(cat, v.id),
-    price_installed: null,
+    price_installed: variantInstalled(cat, v, vehicle),
     summary: null,
     ncsw_pick: null,
-    vehicle_category: vehicleCategory,
+    vehicle_category: vehicle?.vehicle_category ?? null,
     tier: null,
     dsp_id: v.dsp,
   }
@@ -667,6 +745,8 @@ export type PackageDetail = PackageSummary & {
   price_breakdown: PackageBreakdown | null
   // the variant's own parts list (system_variant_parts)
   parts?: VariantPart[]
+  // the system's flat base install price (systems.install_price)
+  install_price?: number | null
 }
 
 /** One variant as a package detail. `sku` is the variant's id. */
@@ -679,6 +759,7 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
   const sub = parts.find((p) => p.role === 'subwoofer')
   return {
     ...variantSummary(v, cat, null),
+    install_price: v.system == null ? null : cat.installPrice.get(v.system) ?? null,
     sub_id: sub?.part_slug ?? null,
     sub_count: sub?.quantity ?? null,
     sub_enclosure_id: null,
@@ -702,6 +783,14 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
     },
     parts,
   }
+}
+
+/** The installations one variant can be sold in for one car, cheapest first. */
+export async function fetchInstallOptions(sku: string, vehicle: SeatFacts | null): Promise<InstallOption[]> {
+  const cat = await loadVariantCatalog()
+  const v = cat.variants.find((x) => String(x.id) === sku)
+  if (!v) return []
+  return installOptions(cat, v, vehicle).sort((a, b) => a.price - b.price)
 }
 
 /** Resolve one component row for a detail block; collection per id-field.
