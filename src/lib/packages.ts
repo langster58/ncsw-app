@@ -904,6 +904,40 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
 }
 
 /** Material and finish choices for a box Brett builds, each kind cheapest first. */
+/** One choice on a system's page: picking it opens the sibling variant `sku`. */
+export type SystemChoice = { sku: string; label: string; price: number | null; current: boolean }
+
+/** The choices a system offers from this variant (Brett, 2026-11-27: one system
+ * with choices, shown on the page): the other front speaker sets with the same
+ * bass and DSP, and the other bass stages with the same front speakers and DSP,
+ * limited to what this vehicle can take. The DSP is not a choice; it follows the
+ * car's factory system. */
+export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): Promise<{ front: SystemChoice[]; bass: SystemChoice[] }> {
+  const cat = await loadVariantCatalog()
+  const cur = cat.variants.find((x) => String(x.id) === sku)
+  if (!cur) return { front: [], bass: [] }
+  const allowed = vehicle ? new Set((await fetchPackagesForVehicle(vehicle)).map((p) => p.sku)) : null
+  const slugs = (id: number, roles: string[]) =>
+    variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${p.part_slug}x${p.quantity || 1}`).join('+')
+  const frontKey = (id: number) => slugs(id, ['midbass', 'wideband', 'tweeter'])
+  const bassKey = (v: VariantRow) => `${v.bass_installation ?? 'sealed'}|${slugs(v.id, ['subwoofer'])}`
+  const names = (id: number, roles: string[]) =>
+    variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${(p.quantity || 1) > 1 && p.role === 'subwoofer' ? `${p.quantity} × ` : ''}${partName(cat, p)}`).join(' + ')
+  const siblings = cat.variants.filter((v) => v.system === cur.system && v.dsp === cur.dsp && (v.id === cur.id || !allowed || allowed.has(String(v.id))))
+  const pick = (v: VariantRow, label: string): SystemChoice => ({
+    sku: String(v.id), label, current: v.id === cur.id,
+    price: vehicle ? variantInstalled(cat, v, vehicle) : variantPartsTotal(cat, v.id),
+  })
+  const front = siblings
+    .filter((v) => bassKey(v) === bassKey(cur))
+    .map((v) => pick(v, names(v.id, ['midbass', 'wideband', 'tweeter'])))
+  const bass = siblings
+    .filter((v) => frontKey(v.id) === frontKey(cur.id))
+    .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : 'sealed'}`))
+  const byPrice = (a: SystemChoice, b: SystemChoice) => Number(a.price ?? Infinity) - Number(b.price ?? Infinity)
+  return { front: front.sort(byPrice), bass: bass.sort(byPrice) }
+}
+
 /** One way the tweeters can be mounted, with its price over the base install
  * (0 = included). */
 export type TweeterOption = { slug: string; title: string; price: number; included: boolean }

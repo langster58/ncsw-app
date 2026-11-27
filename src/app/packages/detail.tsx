@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ActivityIndicator, Platform, ScrollView, Text, View, useWindowDimensions } from 'react-native'
 import Head from 'expo-router/head'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import {
   Button,
   Container,
@@ -33,6 +33,8 @@ import {
   type InstallOption,
   fetchTweeterOptions,
   type TweeterOption,
+  fetchSystemChoices,
+  type SystemChoice,
   fetchSystemFit,
   fetchPackageComponents,
   fetchVehicleById,
@@ -140,6 +142,7 @@ export default function PackageDetailScreen() {
   const [finish, setFinish] = useState('')
   const [tweeterOpts, setTweeterOpts] = useState<TweeterOption[]>([])
   const [tweeterChosen, setTweeterChosen] = useState('')
+  const [choices, setChoices] = useState<{ front: SystemChoice[]; bass: SystemChoice[] }>({ front: [], bass: [] })
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
   // Navigating from one package to another restarts the load. Adjusted during
@@ -192,6 +195,9 @@ export default function PackageDetailScreen() {
         const tw = await fetchTweeterOptions(v).catch(() => [] as TweeterOption[])
         if (!live) return
         setTweeterOpts(tw); setTweeterChosen(tw[0]?.slug ?? '')
+        const ch = await fetchSystemChoices(sku, v).catch(() => ({ front: [], bass: [] }))
+        if (!live) return
+        setChoices(ch)
         const bo = await fetchBoxOptions().catch(() => [] as BoxOption[])
         if (!live) return
         setBoxOptions(bo)
@@ -439,6 +445,29 @@ export default function PackageDetailScreen() {
                         />
                       ))}
                     </View>
+                  </View>
+                ) : null}
+
+                {choices.front.length > 1 || choices.bass.length > 1 ? (
+                  <View style={{ marginTop: tableTop as any }}>
+                    {([['Front speakers', choices.front], ['Bass', choices.bass]] as const).map(([label, list]) =>
+                      list.length > 1 ? (
+                        <FilterChipGroup
+                          key={label}
+                          label={label}
+                          value={sku}
+                          options={list.map((c) => c.sku)}
+                          onChange={(next) => {
+                            if (next === sku) return
+                            router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}` as any)
+                          }}
+                          renderOption={(s) => {
+                            const c = list.find((x) => x.sku === s)
+                            return c ? `${c.label}${c.price != null ? ` · ${money(c.price)}` : ''}` : s
+                          }}
+                        />
+                      ) : null,
+                    )}
                   </View>
                 ) : null}
 
