@@ -345,6 +345,11 @@ export type PackageSummary = {
   vehicle_category: string | null
   tier?: string | null
   dsp_id?: string | null
+  // the system this variant belongs to, and its three choices in plain names
+  system?: number | null
+  front_name?: string
+  bass_name?: string
+  dsp_name?: string
 }
 
 export type PackageFilters = {
@@ -852,6 +857,10 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts |
     vehicle_category: vehicle?.vehicle_category ?? null,
     tier: null,
     dsp_id: v.dsp,
+    system: v.system,
+    front_name: front,
+    bass_name: subs,
+    dsp_name: dsp,
   }
 }
 

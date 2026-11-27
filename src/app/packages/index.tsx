@@ -7,7 +7,6 @@ import {
   Container,
   Dropdown,
   Eyebrow,
-  FilterChipGroup,
   Heading,
   Lead,
   Metaline,
@@ -68,15 +67,19 @@ const outerStyle: any = IS_WEB
   ? { height: '100dvh', flexDirection: 'column' }
   : { flex: 1, flexDirection: 'column' }
 
-const TOPOLOGIES = ['all', '2-way', '2-way+', '3-way', '3-way+', 'wideband', 'wideband+']
-// Chip label -> packages.topology.
-const TOPOLOGY_VALUE: Record<string, string> = {
-  '2-way': 'two-way', '2-way+': 'two-way+front-sub', '3-way': 'three-way', '3-way+': 'three-way+front-sub',
-  wideband: 'wideband', 'wideband+': 'wideband+front-sub',
-}
-const ALIGNMENTS = ['all', 'sealed', 'ported', 'trunk_ib', 'true_ib']
 const ALIGNMENT_LABEL: Record<string, string> = {
-  all: 'All', sealed: 'Sealed box', ported: 'Ported box', trunk_ib: 'No box (infinite baffle)', true_ib: 'No box (infinite baffle)',
+  sealed: 'sealed box', ported: 'ported box', trunk_ib: 'no box', true_ib: 'no box',
+}
+
+// What each system is, in the customer's words (systems.id -> copy). A car
+// page lists systems, one card each; the speaker, bass and DSP choices are made
+// on the system's own page (Brett, 2026-11-27: one system with choices).
+const SYSTEM_COPY: Record<number, { name: string; blurb: string }> = {
+  1: { name: 'Two-way system', blurb: '6.5 in speakers in the front doors, tweeters up front, subwoofers in the trunk.' },
+  2: { name: 'Under-seat system', blurb: '8 in woofers under the front seats, 4 in speakers in the doors, tweeters up front, subwoofers in the trunk.' },
+  3: { name: 'Two-way with a front sub', blurb: 'The two-way system plus a 10 in sub under a front seat, so the bass sits up front with the music.' },
+  4: { name: 'Two-way with two front subs', blurb: 'The two-way system plus two 8 in subs through the floor under the front seats, for centered bass up front.' },
+  5: { name: 'Two-way with two sealed front subs', blurb: 'The two-way system plus two 8 in subs in sealed boxes under the front seats, no cutting into the floor.' },
 }
 
 export default function PackagesScreen() {
@@ -92,9 +95,6 @@ export default function PackagesScreen() {
   const [cab, setCab] = useState('')
   const [trim, setTrim] = useState('')
   const [engine, setEngine] = useState('')
-  const [show, setShow] = useState('NCSW Picks')
-  const [topology, setTopology] = useState('all')
-  const [alignment, setAlignment] = useState('all')
   const [result, setResult] = useState<{ key: string; list: PackageSummary[] | 'error' } | null>(null)
   const [error, setError] = useState('')
 
@@ -297,7 +297,7 @@ export default function PackagesScreen() {
   // A vehicle we do not build for asks nothing: the render branches on
   // substage_not_offered before it reads either of these.
   const reqKey = vehicle && !vehicle.substage_not_offered
-    ? [vehicle.vehicle_id, seat, show, topology, alignment].join('|')
+    ? [vehicle.vehicle_id, seat].join('|')
     : ''
   const answered = result && result.key === reqKey ? result : null
   const items = answered && answered.list !== 'error' ? answered.list : null
@@ -307,16 +307,33 @@ export default function PackagesScreen() {
   useEffect(() => {
     if (!reqKey || !carForFit) return
     let live = true
-    fetchPackagesForVehicle(carForFit, {
-      ncswPicksOnly: show === 'NCSW Picks',
-      topology: topology === 'all' ? undefined : TOPOLOGY_VALUE[topology] ?? topology,
-      bassAlignment: alignment === 'all' ? undefined : alignment,
-    })
+    fetchPackagesForVehicle(carForFit)
       .then((list) => { if (live) setResult({ key: reqKey, list }) })
       .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
     return () => { live = false }
-  }, [reqKey, carForFit, show, topology, alignment])
+  }, [reqKey, carForFit])
 
+
+  // One card per system: its lowest installed price for this car, the variant
+  // that price belongs to (the card opens it), and how many choices it holds.
+  const systems = useMemo(() => {
+    const by = new Map<number | null, PackageSummary[]>()
+    for (const p of items ?? []) {
+      const k = p.system ?? null
+      by.set(k, [...(by.get(k) ?? []), p])
+    }
+    const price = (p: PackageSummary) => Number(installedForSystem(p, fit, dspPrices) ?? p.price_installed ?? Infinity)
+    return [...by.entries()].map(([system, list]) => {
+      const cheapest = list.reduce((a, b) => (price(b) < price(a) ? b : a))
+      const basses = [...new Set(list.map((p) =>
+        `${p.bass_name ?? ''}${p.bass_alignment && ALIGNMENT_LABEL[p.bass_alignment] ? `, ${ALIGNMENT_LABEL[p.bass_alignment]}` : ''}`))]
+      return {
+        system, cheapest, from: price(cheapest), basses,
+        fronts: new Set(list.map((p) => p.front_name)).size,
+        dsps: new Set(list.map((p) => p.dsp_name)).size,
+      }
+    }).sort((a, b) => a.from - b.from)
+  }, [items, fit, dspPrices])
 
   const gap = useFluidPx(fluid(20, 14))
   const padY = useFluidPx(fluid(56, 32))
@@ -473,22 +490,6 @@ export default function PackagesScreen() {
                         : []),
                     ]}
                   />
-                  {vehicle.substage_not_offered ? null : (
-                    <>
-                      <FilterChipGroup
-                        label="Show"
-                        value={show}
-                        options={['NCSW Picks', 'All packages']}
-                        pick="NCSW Picks"
-                        onChange={setShow}
-                      />
-                      <FilterChipGroup label="Topology" value={topology} options={TOPOLOGIES} onChange={setTopology}
-                        renderOption={(o) => (o === 'all' ? 'All' : o)} />
-                      <FilterChipGroup label="Bass" value={alignment} options={ALIGNMENTS} onChange={setAlignment}
-                        renderOption={(o) => ALIGNMENT_LABEL[o] ?? o} />
-                    </>
-                  )}
-
                   {vehicle.substage_not_offered ? (
                     <Card>
                       <View style={{ gap: 8 }}>
@@ -520,34 +521,41 @@ export default function PackagesScreen() {
                     </Card>
                   ) : loading ? (
                     <ActivityIndicator color={colors.ink} />
-                  ) : items && items.length > 0 ? (
+                  ) : systems.length > 0 ? (
                     <View style={{ gap }}>
-                      {items.map((p) => (
-                        <Link
-                          key={p.sku ?? p.id}
-                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}${fit?.id ? `&sys=${encodeURIComponent(fit.id)}` : ''}${seat ? `&seat=${seat}` : ''}` as any}
-                          asChild
-                        >
-                          <Pressable>
-                            <Card>
-                              <View style={{ gap: 6 }}>
-                                <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
-                                  {p.display_name ?? p.sku}
-                                </Text>
-                                <Metaline
-                                  items={[p.topology, p.bass_alignment ? ALIGNMENT_LABEL[p.bass_alignment] : null,
-                                    p.price_installed != null ? `from $${Number(installedForSystem(p, fit, dspPrices)).toLocaleString()} installed`
-                                      : p.price_total != null ? `$${Number(p.price_total).toLocaleString()} parts` : null]
-                                    .filter(Boolean) as string[]}
-                                />
-                                {p.summary ? (
-                                  <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>{p.summary}</Text>
-                                ) : null}
-                              </View>
-                            </Card>
-                          </Pressable>
-                        </Link>
-                      ))}
+                      {systems.map((g) => {
+                        const copy = g.system != null ? SYSTEM_COPY[g.system] : undefined
+                        const p = g.cheapest
+                        const counts = [
+                          g.fronts > 1 ? `${g.fronts} front speaker choices` : null,
+                          g.basses.length > 1 ? `${g.basses.length} bass choices` : null,
+                          g.dsps > 1 ? `${g.dsps} DSP choices` : null,
+                        ].filter(Boolean) as string[]
+                        return (
+                          <Link
+                            key={g.system ?? p.id}
+                            href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}${fit?.id ? `&sys=${encodeURIComponent(fit.id)}` : ''}${seat ? `&seat=${seat}` : ''}` as any}
+                            asChild
+                          >
+                            <Pressable>
+                              <Card>
+                                <View style={{ gap: 8 }}>
+                                  <Text style={{ fontFamily: fonts.display, fontSize: 20, color: colors.ink }}>
+                                    {copy?.name ?? `System ${g.system ?? ''}`}
+                                  </Text>
+                                  <Metaline items={[`from $${g.from.toLocaleString()} installed`, ...counts]} />
+                                  {copy ? (
+                                    <Text style={{ fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.gray }}>{copy.blurb}</Text>
+                                  ) : null}
+                                  <Text style={{ fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.gray }}>
+                                    Bass: {g.basses.join('; ')}
+                                  </Text>
+                                </View>
+                              </Card>
+                            </Pressable>
+                          </Link>
+                        )
+                      })}
                     </View>
                   ) : items ? (
                     <Card>
