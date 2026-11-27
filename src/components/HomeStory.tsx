@@ -309,24 +309,46 @@ const SYSTEM_PARTS: [part: string, text: string][] = [
   ['Calibration', 'Set with a measurement microphone in your car.'],
 ]
 
+// A photo of the work beside the list: a door woofer going in on its ring, over
+// sound treatment (Brett, 2026-11-27). Photo left of the list on wide screens,
+// above it on phones.
+const SYSTEM_PHOTO = '/images/system-door-install.jpg'
+
 export function SystemContents() {
+  const narrow = useNarrow()
+  const list = (
+    <View style={{ flex: 1, minWidth: 0 } as any}>
+      {SYSTEM_PARTS.map(([part, text]) => (
+        <View
+          key={part}
+          style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14, paddingBottom: 14, gap: 6 } as any}
+        >
+          <Heading level="h5" as={3}>
+            {part}
+          </Heading>
+          <BodyText>{text}</BodyText>
+        </View>
+      ))}
+    </View>
+  )
+  const photo = IS_WEB ? (
+    <View style={{ width: narrow ? '100%' : '38%', aspectRatio: narrow ? 4 / 3 : 3 / 4, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surface, flexShrink: 0 } as any}>
+      {React.createElement('img', {
+        src: SYSTEM_PHOTO,
+        alt: 'A door woofer being installed on its mounting ring over sound treatment',
+        loading: 'lazy',
+        style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 55%' },
+      })}
+    </View>
+  ) : null
   return (
     <Section>
       <Container>
         <SectionIntro index="06" label="Every system" heading="What goes into every system" />
-        <Grid cols={2}>
-          {SYSTEM_PARTS.map(([part, text]) => (
-            <View
-              key={part}
-              style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14, paddingBottom: 6, gap: 6 } as any}
-            >
-              <Heading level="h5" as={3}>
-                {part}
-              </Heading>
-              <BodyText>{text}</BodyText>
-            </View>
-          ))}
-        </Grid>
+        <View style={{ flexDirection: narrow ? 'column' : 'row', gap: narrow ? 20 : 48, alignItems: 'flex-start' } as any}>
+          {photo}
+          {list}
+        </View>
       </Container>
     </Section>
   )
