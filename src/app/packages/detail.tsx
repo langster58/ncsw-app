@@ -87,11 +87,15 @@ function money(v: number | string | null | undefined): string {
   return `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// Product photo that degrades to the pending-photo slot when the catalog's
-// image_filename has no file behind it (the library is still being shot).
-function SafeMedia({ src, alt }: { src: string | null; alt: string }) {
-  const [failed, setFailed] = useState(false)
-  if (!src || failed || !IS_WEB) return <PhotoSlot label={'Product photo\npending'} />
+// Product photo. Tries each candidate in turn (the catalog's image_filename,
+// then /images/products/<slug>.webp|.png|.jpg, so a photo named after the part
+// shows without a database column) and degrades to the pending-photo slot when
+// none has a file behind it (the library is still being shot).
+function SafeMedia({ srcs, alt }: { srcs: string[]; alt: string }) {
+  const [tries, setTries] = useState(0)
+  const src = srcs[tries]
+  const setFailed = () => setTries((n) => n + 1)
+  if (!src || !IS_WEB) return <PhotoSlot label={'Product photo\npending'} />
   return (
     <View
       style={{
@@ -106,7 +110,7 @@ function SafeMedia({ src, alt }: { src: string | null; alt: string }) {
       {React.createElement('img', {
         src,
         alt,
-        onError: () => setFailed(true),
+        onError: setFailed,
         style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },
       })}
     </View>
@@ -487,7 +491,14 @@ export default function PackageDetailScreen() {
                   {components.map((c, i) => (
                     <SysRow
                       key={`${c.collection}/${c.slug}`}
-                      media={<SafeMedia src={c.row?.image_filename ? `/images/products/${c.row.image_filename}` : null} alt={componentTitle(c)} />}
+                      media={<SafeMedia
+                        key={c.slug}
+                        srcs={[
+                          ...(c.row?.image_filename ? [`/images/products/${c.row.image_filename}`] : []),
+                          ...['webp', 'png', 'jpg'].map((x) => `/images/products/${c.slug}.${x}`),
+                        ]}
+                        alt={componentTitle(c)}
+                      />}
                       title={componentTitle(c)}
                       meta={<Metaline items={componentMeta(c)} />}
                       desc={c.row?.description ?? ''}
