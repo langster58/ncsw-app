@@ -17,15 +17,18 @@ export const BUILDS: Build[] = [
   {
     slug: 'bmw-328i-2014',
     car: '2014 BMW 328i xDrive',
-    status: 'Being rebuilt',
-    summary: 'A processor, amplifiers and a subwoofer, playing through the factory speakers for now.',
+    status: 'In progress',
+    summary: 'Two 15-inch infinite-baffle subwoofers in the trunk, and new speakers in place of the factory ones.',
     photo: '/images/build-bmw-328i-1000.jpg',
     parts: [
-      ['Front speakers', 'Factory speakers, for now.'],
-      ['Processor and amplifiers', 'Added.'],
-      ['Subwoofer', 'Added.'],
+      ['Subwoofers', 'Two Acoustic Elegance IB15, infinite baffle in the trunk.'],
+      ['Front woofers', 'Under the front seats, in the factory under-seat locations, infinite baffle.'],
+      ['Door speakers', '4-inch, in the factory door locations.'],
+      ['Tweeters', 'On the dash.'],
     ],
-    notes: [],
+    notes: [
+      'The factory speakers come out. Real drivers in those locations cost little, and the whole system plays better for it.',
+    ],
   },
   {
     slug: 'mini-cooper-s-2008',
