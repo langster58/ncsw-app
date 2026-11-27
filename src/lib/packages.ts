@@ -522,7 +522,8 @@ export async function fetchPackagesForVehicle(
   // for one does not get it (Brett, 2026-11-27).
   // The under-seat system is the one for those cars, and only for them.
   const doorOk = (v: VariantRow) =>
-    v.front_stage === 'under-seat' ? !!vehicle.no_door_woofer_location : !(vehicle.no_door_woofer_location && v.front_stage === 'two-way')
+    v.front_stage === 'under-seat' ? !!vehicle.no_door_woofer_location
+      : !(vehicle.no_door_woofer_location && (v.front_stage === 'two-way' || v.front_stage === 'two-way-front-sub'))
   if (vehicle.vehicle_category === 'truck') {
     // a truck lists only the variants its sub space can take
     return cat.variants
@@ -661,7 +662,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
   return variantCatalog
 }
 
-const ROLE_ORDER = ['midbass', 'midrange', 'tweeter', 'wideband', 'subwoofer', 'multichannel_amp', 'mono_amp', 'dsp', 'dsp_remote']
+const ROLE_ORDER = ['midbass', 'midrange', 'tweeter', 'wideband', 'front_sub', 'subwoofer', 'multichannel_amp', 'mono_amp', 'dsp', 'dsp_remote']
 const roleRank = (role: string) => { const i = ROLE_ORDER.indexOf(role); return i < 0 ? ROLE_ORDER.length : i }
 
 function partName(cat: VariantCatalog, p: VariantPart): string {
@@ -832,7 +833,9 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts |
   const parts = variantParts(cat, v.id)
   const named = (role: string) => parts.filter((p) => p.role === role).map((p) => partName(cat, p))
   const sub = parts.find((p) => p.role === 'subwoofer')
-  const front = [...named('midbass'), ...named('midrange'), ...named('wideband'), ...named('tweeter')].join(' + ')
+  const fsub = parts.find((p) => p.role === 'front_sub')
+  const front = [...named('midbass'), ...named('midrange'), ...named('wideband'), ...named('tweeter'),
+    ...(fsub ? [`${fsub.quantity > 1 ? `${fsub.quantity} × ` : ''}${partName(cat, fsub)} front sub${fsub.quantity > 1 ? 's' : ''}`] : [])].join(' + ')
   const subs = sub ? `${sub.quantity > 1 ? `${sub.quantity} × ` : ''}${partName(cat, sub)}` : ''
   const dsp = named('dsp')[0] ?? ''
   const bass = v.bass_installation ?? null
@@ -1283,6 +1286,7 @@ const SLOT_ROLES: [keyof PackageDetail, string, string][] = [
 const PART_ROLE_LABEL: Record<string, string> = {
   midbass: 'Front stage',
   midrange: 'Front stage door midrange',
+  front_sub: 'Front subs',
   wideband: 'Front stage wideband',
   tweeter: 'Front stage tweeter',
   subwoofer: 'Sub stage',
