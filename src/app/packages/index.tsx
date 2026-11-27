@@ -276,6 +276,20 @@ export default function PackagesScreen() {
     return () => { live = false }
   }, [])
 
+  // ---- rear seat -----------------------------------------------------------
+  // Where a folding rear seat was an option on the trim, only the owner knows
+  // whether theirs folds, and that decides the trunk installations (trunk IB and
+  // baffle sealed need the opening behind a folding seat). Same keyed-pick
+  // pattern as the factory system.
+  const needSeat = !!vehicle && vehicle.vehicle_category === 'trunk' && vehicle.body_style !== 'Convertible'
+    && vehicle.rear_seat_fold === 'varies'
+  const [seatPick, setSeatPick] = useState({ key: '', value: '' })
+  const seat = needSeat && seatPick.key === audioKey ? seatPick.value : ''
+  const carForFit = useMemo(
+    () => (vehicle && seat ? { ...vehicle, rear_seat_fold: seat } : vehicle),
+    [vehicle, seat],
+  )
+
   // One request is one key. Holding the answer against the key it was asked for
   // makes `items` and `loading` derived rather than flags an effect has to keep
   // in step — and it makes a slow reply for a vehicle you have already moved on
@@ -283,7 +297,7 @@ export default function PackagesScreen() {
   // A vehicle we do not build for asks nothing: the render branches on
   // substage_not_offered before it reads either of these.
   const reqKey = vehicle && !vehicle.substage_not_offered
-    ? [vehicle.vehicle_id, show, topology, alignment].join('|')
+    ? [vehicle.vehicle_id, seat, show, topology, alignment].join('|')
     : ''
   const answered = result && result.key === reqKey ? result : null
   const items = answered && answered.list !== 'error' ? answered.list : null
@@ -291,9 +305,9 @@ export default function PackagesScreen() {
   const loading = !!reqKey && !answered
 
   useEffect(() => {
-    if (!reqKey || !vehicle) return
+    if (!reqKey || !carForFit) return
     let live = true
-    fetchPackagesForVehicle(vehicle, {
+    fetchPackagesForVehicle(carForFit, {
       ncswPicksOnly: show === 'NCSW Picks',
       topology: topology === 'all' ? undefined : TOPOLOGY_VALUE[topology] ?? topology,
       bassAlignment: alignment === 'all' ? undefined : alignment,
@@ -301,7 +315,7 @@ export default function PackagesScreen() {
       .then((list) => { if (live) setResult({ key: reqKey, list }) })
       .catch(() => { if (live) setResult({ key: reqKey, list: 'error' }) })
     return () => { live = false }
-  }, [reqKey, vehicle, show, topology, alignment])
+  }, [reqKey, carForFit, show, topology, alignment])
 
 
   const gap = useFluidPx(fluid(20, 14))
@@ -408,6 +422,20 @@ export default function PackagesScreen() {
                 </View>
               ) : null}
 
+              {needSeat ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap, zIndex: 24 }}>
+                  <View style={{ minWidth: 240, flexGrow: 1, maxWidth: 420 }}>
+                    <Dropdown
+                      label="Does your rear seat fold down?"
+                      value={seat}
+                      options={[{ label: 'Yes, it folds down', value: 'folds' }, { label: 'No, it doesn’t fold', value: 'fixed' }]}
+                      onChange={(v) => setSeatPick({ key: audioKey, value: v })}
+                      placeholder="Select"
+                    />
+                  </View>
+                </View>
+              ) : null}
+
               <Modal open={helpOpen} onClose={() => setHelpFor('')} title="Which sound system is in your car?">
                 <Modal.Body>
                   <Text style={{ fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.gray, marginBottom: 18 }}>
@@ -482,6 +510,14 @@ export default function PackagesScreen() {
                         Choose your factory sound system above to see the systems for your {vehicleLabel}.
                       </Text>
                     </Card>
+                  ) : needSeat && !seat ? (
+                    // Whether the seat folds decides how the bass can go in the
+                    // trunk, so the list waits for the answer.
+                    <Card>
+                      <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
+                        Tell us whether your rear seat folds down to see the systems for your {vehicleLabel}.
+                      </Text>
+                    </Card>
                   ) : loading ? (
                     <ActivityIndicator color={colors.ink} />
                   ) : items && items.length > 0 ? (
@@ -489,7 +525,7 @@ export default function PackagesScreen() {
                       {items.map((p) => (
                         <Link
                           key={p.sku ?? p.id}
-                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}${fit?.id ? `&sys=${encodeURIComponent(fit.id)}` : ''}` as any}
+                          href={`/packages/detail?sku=${encodeURIComponent(p.sku ?? String(p.id))}&vid=${encodeURIComponent(vehicle.vehicle_id)}${fit?.id ? `&sys=${encodeURIComponent(fit.id)}` : ''}${seat ? `&seat=${seat}` : ''}` as any}
                           asChild
                         >
                           <Pressable>

@@ -134,11 +134,14 @@ function componentMeta(c: ResolvedComponent): string[] {
 }
 
 export default function PackageDetailScreen() {
-  const params = useLocalSearchParams<{ sku?: string; vid?: string; sys?: string; hu?: string; ad?: string }>()
+  const params = useLocalSearchParams<{ sku?: string; vid?: string; sys?: string; hu?: string; ad?: string; seat?: string }>()
   const sku = typeof params.sku === 'string' ? params.sku : ''
   const vid = typeof params.vid === 'string' ? params.vid : ''
   // The car's factory system, when the owner has said which: it decides the DSP.
   const sys = typeof params.sys === 'string' ? params.sys : ''
+  // Whether the rear seat folds, when the owner has said (cars where the fold
+  // was an option): it decides the trunk installations.
+  const seat = params.seat === 'folds' || params.seat === 'fixed' ? params.seat : ''
 
   const [pkg, setPkg] = useState<PackageDetail | null>(null)
   const [components, setComponents] = useState<ResolvedComponent[]>([])
@@ -164,7 +167,7 @@ export default function PackageDetailScreen() {
   // render rather than set inside the effect, so the previous package's content
   // is never committed under the new URL. The first render deliberately does not
   // fire: it has to match the statically rendered HTML, which has no query string.
-  const reqKey = `${sku}|${vid}|${sys}`
+  const reqKey = `${sku}|${vid}|${sys}|${seat}`
   const [seenKey, setSeenKey] = useState(reqKey)
   if (seenKey !== reqKey) {
     setSeenKey(reqKey)
@@ -182,8 +185,9 @@ export default function PackageDetailScreen() {
       fetchInstallationRows().catch(() => []),
       sys ? fetchSystemFit(sys).catch(() => null) : Promise.resolve(null),
     ])
-      .then(async ([found, v, inst, fit]) => {
+      .then(async ([found, v0, inst, fit]) => {
         if (!live) return
+        const v = v0 && seat && v0.rear_seat_fold === 'varies' ? { ...v0, rear_seat_fold: seat } : v0
         if (!found) { setState('missing'); return }
         // A build takes the DSP its car's factory system needs (dspForSystem);
         // the price moves by the difference.
@@ -241,7 +245,7 @@ export default function PackageDetailScreen() {
       })
       .catch(() => live && setState('error'))
     return () => { live = false }
-  }, [sku, vid, sys])
+  }, [sku, vid, sys, seat])
 
   // All fluid values hoisted here — hooks must never sit inside the
   // conditional branches below (loading/ready changes the hook count).
@@ -294,7 +298,7 @@ export default function PackageDetailScreen() {
   const phoneLines = phoneLinesFor(curDsp)
   const huN = (huOpt?.price ?? 0) + phoneLines.reduce((a, l) => a + l.value, 0)
   const goVariant = (next: string, nextHu = hu) =>
-    router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}&hu=${nextHu}${adapter ? `&ad=${adapter}` : ''}` as any)
+    router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}${seat ? `&seat=${seat}` : ''}&hu=${nextHu}${adapter ? `&ad=${adapter}` : ''}` as any)
   const pickHu = (slug: string) => {
     const kind = huOpts.find((o) => o.slug === slug)?.kind ?? 'factory'
     setHu(slug)
