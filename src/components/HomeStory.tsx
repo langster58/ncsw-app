@@ -170,25 +170,62 @@ const STEPS: [title: string, text: string][] = [
   ['Drive away calibrated.', 'We calibrate the system in your car and walk you through it before you leave.'],
 ]
 
+// A timeline, not boxes: the steps are not things to tap, so they are drawn as
+// numbered points on one line (Brett, 2026-11-27). Across the page on wide
+// screens, down the page on phones.
+const DOT = 36
+
+function Dot({ n }: { n: number }) {
+  return (
+    <View style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', zIndex: 1 } as any}>
+      <Text style={{ fontFamily: fonts.display, fontWeight: '800', fontSize: 16, color: colors.white } as any}>{String(n)}</Text>
+    </View>
+  )
+}
+
 export function HowItWorksSteps() {
-  const numSize = useFluidPx(type.h3)
+  const narrow = useNarrow()
+  const last = STEPS.length - 1
   return (
     <Section>
       <Container>
         <SectionIntro index="04" label="How it works" heading="How it works" />
-        <Grid cols={5}>
-          {STEPS.map(([title, text], i) => (
-            <Tile key={title}>
-              <Text style={{ fontFamily: fonts.display, fontWeight: '800', fontSize: numSize, color: colors.accent } as any}>
-                {String(i + 1)}
-              </Text>
-              <Heading level="h5" as={3}>
-                {title}
-              </Heading>
-              <BodyText>{text}</BodyText>
-            </Tile>
-          ))}
-        </Grid>
+        {narrow ? (
+          <View accessibilityRole={'list' as any}>
+            {STEPS.map(([title, text], i) => (
+              <View key={title} accessibilityRole={'listitem' as any} style={{ flexDirection: 'row', gap: 16 } as any}>
+                <View style={{ width: DOT, alignItems: 'center' } as any}>
+                  <Dot n={i + 1} />
+                  {i < last ? <View style={{ flex: 1, width: 2, backgroundColor: colors.line, marginVertical: 4 } as any} /> : null}
+                </View>
+                <View style={{ flex: 1, minWidth: 0, paddingTop: 6, paddingBottom: i < last ? 28 : 0, gap: 6 } as any}>
+                  <Heading level="h5" as={3}>
+                    {title}
+                  </Heading>
+                  <BodyText>{text}</BodyText>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View accessibilityRole={'list' as any} style={{ flexDirection: 'row' } as any}>
+            {STEPS.map(([title, text], i) => (
+              <View key={title} accessibilityRole={'listitem' as any} style={{ flex: 1, minWidth: 0 } as any}>
+                <View style={{ height: DOT, justifyContent: 'center', position: 'relative' } as any}>
+                  {/* the line runs through the dots, from the first to the last */}
+                  <View style={{ position: 'absolute', left: i === 0 ? DOT / 2 : 0, right: i === last ? '100%' : 0, top: DOT / 2 - 1, height: 2, backgroundColor: colors.line } as any} />
+                  <Dot n={i + 1} />
+                </View>
+                <View style={{ paddingTop: 18, paddingRight: 24, gap: 8 } as any}>
+                  <Heading level="h5" as={3}>
+                    {title}
+                  </Heading>
+                  <BodyText>{text}</BodyText>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </Container>
     </Section>
   )
