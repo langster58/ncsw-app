@@ -22,7 +22,8 @@ import { getItems } from './directus'
 // time (nothing stored). Installed price = parts + the system's flat base install
 // (`systems.install_price`) + the sub stage price of an installation the car can
 // take (`sub_enclosures.price` for that installation, sub size and count).
-// Variants exist for cars only; trucks get an empty list.
+// Trucks take sealed variants in a box under the (lifted) rear seat where the
+// drivers and the box fit that space; no other truck installation yet.
 
 // ------------------------------------------------------------- vehicle picker
 
@@ -499,9 +500,17 @@ export async function fetchPackagesForVehicle(
   vehicle: Vehicle,
   filters: PackageFilters = {},
 ): Promise<PackageSummary[]> {
-  // No variants are engineered for trucks yet.
-  if (vehicle.vehicle_category === 'truck') return []
   const cat = await loadVariantCatalog()
+  if (vehicle.vehicle_category === 'truck') {
+    // a truck lists only the variants its sub space can take
+    return cat.variants
+      .filter((v) => installOptions(cat, v, vehicle).length > 0)
+      .map((v) => variantSummary(v, cat, vehicle))
+      .filter((p) => !filters.topology || p.topology === filters.topology)
+      .filter((p) => !filters.bassAlignment || p.bass_alignment === filters.bassAlignment)
+      .filter((p) => !filters.maxPrice || ((p.price_installed ?? p.price_total) != null && Number(p.price_installed ?? p.price_total) <= filters.maxPrice))
+      .sort((a, b) => Number(a.price_installed ?? a.price_total ?? 0) - Number(b.price_installed ?? b.price_total ?? 0))
+  }
   // The smallest proper sealed box has to fit the trunk / cargo space
   // (same allowance as carFitFilter: 1.5 in of panel off each dimension).
   const dims = [vehicle.boot_width_in, vehicle.boot_height_in, vehicle.boot_depth_in].map((d) => (d == null ? NaN : Number(d)))
@@ -544,7 +553,7 @@ export type VariantPart = {
   quantity: number
 }
 
-type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null; driver_size?: number | string | null }
+type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null; driver_size?: number | string | null; mounting_depth_in?: number | string | null }
 
 type InstallTypeRow = { id: string; slug: string; title: string | null; bass_installation: string | null; sort: number | null; price: number | string | null; takes_box_options: boolean | null }
 
@@ -562,12 +571,13 @@ type VariantCatalog = {
   enclosures: EnclosurePriceRow[]
 }
 
-// The installations a sealed sub stage in a car can be sold in. The prefab
-// sealed box (priced at what the box costs to buy; fitting it is part of the
-// base install) fits any car; the other two are for fixed rear seats.
-const CAR_INSTALLATIONS = [
+// The installations a sub stage can be sold in (installSlugsFor decides which
+// a given vehicle takes). The prefab sealed box is priced at what the box costs
+// to buy; fitting it is part of the base install.
+const INSTALLATIONS = [
   'prefab-sealed', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
   'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib', 'true-ib-manifold',
+  'underseat',
 ]
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
@@ -584,7 +594,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
         getItems<VariantPart>('system_variant_parts', { limit: 5000 }),
         getItems<{ id: number; install_price: number | string | null }>('systems', { limit: 100 }).catch(() => []),
         getItems<InstallTypeRow>('install_types', {
-          filter: { slug: { _in: CAR_INSTALLATIONS } },
+          filter: { slug: { _in: INSTALLATIONS } },
           fields: ['id', 'slug', 'title', 'bass_installation', 'sort', 'price', 'takes_box_options'],
           limit: 20,
         }).catch(() => []),
@@ -659,7 +669,24 @@ const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
  * finish where the customer picks a material and finish). */
 export type InstallOption = { slug: string; title: string; price: number; takesBoxOptions: boolean }
 
-type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'>
+type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'> &
+  Partial<Pick<Vehicle, 'substage_lane' | 'substage_width_in' | 'substage_depth_in' | 'substage_height_in' | 'substage_pockets'>>
+
+/** Does a sealed box with `count` drivers of `size` in (mounting depth `depthIn`,
+ * smallest proper box `minFt3` in all) fit the space under a truck's lifted rear
+ * seat? Panels are 3/4 in, so 1.5 in comes off each dimension of each pocket; the
+ * drivers sit side by side on the top or bottom panel (frame = size + 0.8 in). */
+function underseatFits(v: SeatFacts, size: number, count: number, depthIn: number | null, minFt3: number | null): boolean {
+  const pockets = Math.max(1, Number(v.substage_pockets) || 1)
+  const w = Number(v.substage_width_in) / pockets - 1.5
+  const d = Number(v.substage_depth_in) - 1.5
+  const h = Number(v.substage_height_in) - 1.5
+  if (!(w > 0 && d > 0 && h > 0)) return false
+  const frame = size + 0.8
+  if (frame > d || Math.floor(w / frame) * pockets < count) return false
+  if (depthIn != null && depthIn > h - 0.4) return false
+  return minFt3 == null || minFt3 <= (pockets * w * d * h) / 1728
+}
 
 /** Which installations this car can take for a sealed or an infinite baffle sub
  * stage.
@@ -673,6 +700,9 @@ type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fo
  * cars take no infinite baffle. With no car chosen, every installation of that
  * kind is listed. */
 function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string[] {
+  if (vehicle?.vehicle_category === 'truck') {
+    return bass !== 'infinite-baffle' && vehicle.substage_lane === 'under-seat-lifted' ? ['underseat'] : []
+  }
   const cargo = vehicle?.vehicle_category === 'cargo'
   const trunk = vehicle?.vehicle_category === 'trunk' && vehicle?.body_style !== 'Convertible'
   if (bass === 'infinite-baffle') {
@@ -697,13 +727,19 @@ function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string
 function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts | null): InstallOption[] {
   const sub = (cat.parts.get(v.id) ?? []).find((p) => p.role === 'subwoofer')
   if (!sub) return []
-  const size = cat.rows.get(partKey(sub.part_collection, sub.part_slug))?.driver_size
+  const subRow = cat.rows.get(partKey(sub.part_collection, sub.part_slug))
+  const size = subRow?.driver_size
   if (size == null) return []
   const count = sub.quantity || 1
   const out: InstallOption[] = []
   for (const slug of installSlugsFor(vehicle, v.bass_installation)) {
     const it = cat.installTypes.find((i) => i.slug === slug)
     if (!it || (it.bass_installation ?? 'sealed') !== (v.bass_installation ?? 'sealed')) continue
+    if (slug === 'underseat' && vehicle) {
+      const depth = subRow?.mounting_depth_in == null ? null : Number(subRow.mounting_depth_in)
+      const minFt3 = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
+      if (!underseatFits(vehicle, Number(size), count, depth, minFt3)) continue
+    }
     // the manifold always carries two drivers
     if (slug === 'true-ib-manifold' && count !== 2) continue
     const title = it.title ?? slug
