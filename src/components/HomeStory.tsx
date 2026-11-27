@@ -155,7 +155,7 @@ export function Calibration() {
 // ── 04 / How it works ───────────────────────────────────────────────────────
 const STEPS: [title: string, text: string][] = [
   ['Find your car.', 'Enter its year, make and model to see the systems pre-engineered for it, each with its installed price.'],
-  ['Choose a system.', 'Like choosing a trim level: each step up says what it adds.'],
+  ['Choose a system.', 'Each one is designed for your car. Choose its speakers, bass and processor, and see the installed price as you go.'],
   [
     'Call us.',
     "We'll confirm the system for your car and set a date. For some builds we'll ask you to bring the car by first, so we can plan the install together.",
@@ -192,22 +192,39 @@ export function HowItWorksSteps() {
 }
 
 // ── 05 / Demo cars ──────────────────────────────────────────────────────────
-// Lowest system to highest, so the list reads like the ladder on a vehicle page.
-const DEMO_CARS: [car: string, text: string][] = [
-  [
-    '2014 BMW 328i xDrive',
-    'The factory speakers kept, with a processor, amplifiers and a subwoofer added. Our simplest kind of system.',
-  ],
-  [
-    '2008 Mini Cooper S',
-    'Our entry front speakers on our entry electronics, with an 18-inch subwoofer where the back seat was.',
-  ],
-  ['2018 Volkswagen Golf Alltrack', 'Two 18-inch subwoofers built into the cargo floor, with our top front speakers.'],
-  [
-    '2015 Honda CR-V',
-    'Our biggest system: two 15-inch subwoofers built into the cargo floor, a second, smaller subwoofer under the passenger seat, and a lithium battery to power it.',
-  ],
+// The demo cars are the build cards until customer builds exist (approved
+// homepage story, section 6): photo, vehicle, one line on the result. A car
+// without a photo of its own build shows a "Build photo coming" slot, never a
+// stock photo of a different generation.
+const DEMO_CARS: { car: string; text: string; photo?: string }[] = [
+  {
+    car: '2014 BMW 328i xDrive',
+    text: 'The factory speakers kept, with a processor, amplifiers and a subwoofer added.',
+  },
+  {
+    car: '2008 Mini Cooper S',
+    text: 'Affordable front speakers and electronics, with an 18-inch subwoofer where the back seat was.',
+  },
+  {
+    car: '2018 Volkswagen Golf Alltrack',
+    text: 'Two 18-inch subwoofers built into the cargo floor, with high-end front speakers.',
+    photo: '/images/build-golf-alltrack-1200.jpg',
+  },
+  {
+    car: '2015 Honda CR-V',
+    text: 'Two 15-inch subwoofers built into the cargo floor, a smaller subwoofer under the passenger seat, and a lithium battery to power it.',
+  },
 ]
+
+function BuildPhoto({ src, alt }: { src?: string; alt: string }) {
+  return (
+    <View style={{ aspectRatio: 4 / 3, backgroundColor: colors.surface, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' } as any}>
+      {src && IS_WEB
+        ? React.createElement('img', { src, alt, loading: 'lazy', style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' } })
+        : <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.gray } as any}>Build photo coming</Text>}
+    </View>
+  )
+}
 
 export function DemoCars() {
   const call = telHref()
@@ -218,17 +235,20 @@ export function DemoCars() {
           <SectionIntro
             index="05"
             label="Demo cars"
-            heading="Hear every level before you decide."
-            body="Four demo cars live at the shop, and between them they cover the range we build:"
+            heading="Hear our systems before you decide."
+            body="Four demo cars live at the shop. Sit in them and listen:"
           />
           <Grid cols={4}>
-            {DEMO_CARS.map(([car, text]) => (
-              <Tile key={car}>
-                <Heading level="h5" as={3}>
-                  {car}
-                </Heading>
-                <BodyText>{text}</BodyText>
-              </Tile>
+            {DEMO_CARS.map(({ car, text, photo }) => (
+              <View key={car} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, overflow: 'hidden', flex: 1, minWidth: 0 } as any}>
+                <BuildPhoto src={photo} alt={car} />
+                <View style={{ padding: 22, gap: 10 } as any}>
+                  <Heading level="h5" as={3}>
+                    {car}
+                  </Heading>
+                  <BodyText>{text}</BodyText>
+                </View>
+              </View>
             ))}
           </Grid>
           <View style={{ marginTop: 24 } as any}>

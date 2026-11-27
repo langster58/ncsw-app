@@ -1,7 +1,7 @@
 # Homepage story — approved copy
 
 Copy Brett has approved for the homepage, section by section, in page order.
-Nothing here is in the site code yet.
+On the site since 2026-11-04 (src/components/HomeStory.tsx, Hero.tsx).
 
 ## Machine layer (what search reads, not shown as page copy)
 
@@ -40,7 +40,7 @@ Once your system is in, we place a measurement microphone where you sit and set 
 **How it works**
 
 1. **Find your car.** Enter its year, make and model to see the systems pre-engineered for it, each with its installed price.
-2. **Choose a system.** Like choosing a trim level: each step up says what it adds.
+2. **Choose a system.** Each one is designed for your car. Choose its speakers, bass and processor, and see the installed price as you go. (Changed 2026-11-27: systems are one design with choices, not a ladder.)
 3. **Call us.** We'll confirm the system for your car and set a date. For some builds we'll ask you to bring the car by first, so we can plan the install together.
 4. **We take the time it needs.** Most systems spend a few days in the shop. Custom work, like a subwoofer built into the car's floor, takes longer, and we don't rush it.
 5. **Drive away calibrated.** We calibrate the system in your car and walk you through it before you leave.
@@ -50,20 +50,21 @@ Loaner line held back until Brett offers one: "Coming from a distance? Ask about
 
 ## 5. Demo cars — accepted 2026-11-04
 
-**Hear every level before you decide.**
+**Hear our systems before you decide.**
 
-Four demo cars live at the shop, and between them they cover the range we build:
+Four demo cars live at the shop. Sit in them and listen:
 
-- **2014 BMW 328i xDrive.** The factory speakers kept, with a processor, amplifiers and a subwoofer added. Our simplest kind of system.
-- **2008 Mini Cooper S.** Our entry front speakers on our entry electronics, with an 18-inch subwoofer where the back seat was.
-- **2018 Volkswagen Golf Alltrack.** Two 18-inch subwoofers built into the cargo floor, with our top front speakers.
-- **2015 Honda CR-V.** Our biggest system: two 15-inch subwoofers built into the cargo floor, a second, smaller subwoofer under the passenger seat, and a lithium battery to power it.
+- **2014 BMW 328i xDrive.** The factory speakers kept, with a processor, amplifiers and a subwoofer added.
+- **2008 Mini Cooper S.** Affordable front speakers and electronics, with an 18-inch subwoofer where the back seat was.
+- **2018 Volkswagen Golf Alltrack.** Two 18-inch subwoofers built into the cargo floor, with high-end front speakers.
+- **2015 Honda CR-V.** Two 15-inch subwoofers built into the cargo floor, a smaller subwoofer under the passenger seat, and a lithium battery to power it.
 
 Call to set a time to sit in them and listen.
 
 ## 6. Builds and reviews — agreed 2026-11-04
 
-- Build cards: photo, vehicle, one line on the result, "Read the build". Result first, parts in the build log. Demo cars are the build logs until customer builds exist.
+- Build cards: photo, vehicle, one line on the result, "Read the build". Built 2026-11-27 into the demo cars section (photo + vehicle + line); "Read the build" waits for build pages, photos for the BMW, Mini and CR-V wait for Brett's own shots.
+- Demo-car wording changed 2026-11-27: no tier words (simplest, entry, top, biggest), since systems are no longer a ladder. Result first, parts in the build log. Demo cars are the build logs until customer builds exist.
 - Reviews section left out until there are reviews; then three short quotes naming the vehicle, placed between the demo cars and the builds.
 
 ## 7. What goes into every system — draft 2026-11-04
