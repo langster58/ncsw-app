@@ -213,6 +213,7 @@ const DEMO_CARS: { car: string; text: string; photo?: string }[] = [
   {
     car: '2015 Honda CR-V',
     text: 'Two 15-inch subwoofers built into the cargo floor, a smaller subwoofer under the passenger seat, and a lithium battery to power it.',
+    photo: '/images/build-honda-crv-1000.jpg',
   },
 ]
 
