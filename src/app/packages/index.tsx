@@ -492,7 +492,7 @@ export default function PackagesScreen() {
                   />
                   {vehicle.substage_not_offered ? (
                     <Card>
-                      <View style={{ gap: 8 }}>
+                      <Card.Body gap={8}>
                         <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
                           We don’t install substages in the {vehicleLabel}.
                         </Text>
@@ -500,24 +500,24 @@ export default function PackagesScreen() {
                           {vehicle.substage_not_offered_reason ??
                             'There is no space in this truck for a full-frame subwoofer enclosure, and we do not sell shallow-driver stages.'}
                         </Text>
-                      </View>
+                      </Card.Body>
                     </Card>
                   ) : needAudio && !chosenAudio ? (
                     // The car's factory system decides the DSP and head unit
                     // choices, so a system is not shown until the owner says
                     // which one the car has.
                     <Card>
-                      <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
+                      <Card.Body><Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
                         Choose your factory sound system above to see the systems for your {vehicleLabel}.
-                      </Text>
+                      </Text></Card.Body>
                     </Card>
                   ) : needSeat && !seat ? (
                     // Whether the seat folds decides how the bass can go in the
                     // trunk, so the list waits for the answer.
                     <Card>
-                      <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
+                      <Card.Body><Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
                         Tell us whether your rear seat folds down to see the systems for your {vehicleLabel}.
-                      </Text>
+                      </Text></Card.Body>
                     </Card>
                   ) : loading ? (
                     <ActivityIndicator color={colors.ink} />
@@ -539,7 +539,7 @@ export default function PackagesScreen() {
                           >
                             <Pressable>
                               <Card>
-                                <View style={{ gap: 8 }}>
+                                <Card.Body gap={8}>
                                   <Text style={{ fontFamily: fonts.display, fontSize: 20, color: colors.ink }}>
                                     {copy?.name ?? `System ${g.system ?? ''}`}
                                   </Text>
@@ -550,7 +550,7 @@ export default function PackagesScreen() {
                                   <Text style={{ fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: colors.gray }}>
                                     Bass: {g.basses.join('; ')}
                                   </Text>
-                                </View>
+                                </Card.Body>
                               </Card>
                             </Pressable>
                           </Link>
@@ -559,7 +559,7 @@ export default function PackagesScreen() {
                     </View>
                   ) : items ? (
                     <Card>
-                      <View style={{ gap: 8 }}>
+                      <Card.Body gap={8}>
                         <Text style={{ fontFamily: fonts.display, fontSize: 18, color: colors.ink }}>
                           Packages for the {vehicleLabel} are being engineered.
                         </Text>
@@ -568,7 +568,7 @@ export default function PackagesScreen() {
                           vehicle’s factory speaker locations and cargo dimensions, not adapted from a
                           generic kit. Check back soon, or call us and we’ll spec yours first.
                         </Text>
-                      </View>
+                      </Card.Body>
                     </Card>
                   ) : null}
                 </View>
