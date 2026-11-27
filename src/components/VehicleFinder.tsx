@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-native'
 import { Button, Dropdown, IconClose, colors, fonts, type, useFluidPx } from '@/ui'
 import { fetchMakes, fetchModels, fetchYears } from '@/lib/packages'
+import { CarPicker, type Car } from './CarPicker'
 
 // VehicleFinder — year, make, model, then straight to the systems for that
 // vehicle. Lives on the homepage's first screen (id "find", which the menu's
@@ -10,6 +11,11 @@ import { fetchMakes, fetchModels, fetchYears } from '@/lib/packages'
 //
 // Until the vehicle pages exist, "See systems" opens the packages page with the
 // vehicle already chosen (/packages?year=&make=&model=).
+//
+// On a phone (760 px and narrower) the row is replaced by a line of direction
+// and one button that opens a full-screen picker (CarPicker): four fields do not
+// fit a phone's width (Brett, 2026-11-27). Both versions are rendered and a CSS
+// width rule shows one, so the page is right on first paint.
 //
 // The last vehicle a visitor looked up is remembered in this browser: on their
 // next visit the fields start filled in with it, ready for the button. Reset
@@ -119,11 +125,51 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
     if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.href = systemsHref(v)
   }
 
+  const [pickerOpen, setPickerOpen] = useState(false)
+  function chosen(v: Car) {
+    remember(v)
+    // replace the picker's history entry, so back from the car page returns here
+    if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.replace(systemsHref(v))
+  }
+
   return (
     <View nativeID={nativeID} style={{ gap: 14 } as any}>
-      {/* One row that fills the width at every screen size: year, make, model,
-          then the button. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
+      {Platform.OS === 'web'
+        ? React.createElement('style', null,
+            '@media (max-width:760px){[data-vf="row"]{display:none!important}}' +
+            '@media (min-width:761px){[data-vf="phone"]{display:none!important}}')
+        : null}
+
+      {/* Phone: direction, then one button that opens the full-screen picker. */}
+      <View {...({ dataSet: { vf: 'phone' } } as any)} style={{ gap: 10 } as any}>
+        <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.gray } as any}>
+          Find the systems designed for your car.
+        </Text>
+        {ready ? (
+          <>
+            <Button variant="primary" size="field" fill onPress={go}>
+              {`See systems for ${year} ${make} ${model}`}
+            </Button>
+            <Pressable onPress={() => setPickerOpen(true)} accessibilityRole="button" hitSlop={8} style={{ alignSelf: 'flex-start', paddingVertical: 6 } as any}>
+              <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.accent, textDecorationLine: 'underline' } as any}>Change car</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Button variant="primary" size="field" fill onPress={() => setPickerOpen(true)}>
+            Select your car
+          </Button>
+        )}
+        <CarPicker
+          open={pickerOpen}
+          initial={ready ? { year, make, model } : null}
+          onClose={() => setPickerOpen(false)}
+          onDone={chosen}
+        />
+      </View>
+
+      {/* Wider screens: one row that fills the width: year, make, model, then
+          the button. */}
+      <View {...({ dataSet: { vf: 'row' } } as any)} style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 6 : 10, width: '100%' } as any}>
         {/* Four equal cells, whatever the label length: each fills its share of the row. */}
         <View style={{ flex: 1, flexBasis: 0, minWidth: 0 } as any}>
           <Dropdown label="Year" value={year} options={years} onChange={pickYear} floatingLabel sheetOnTouch />
@@ -143,7 +189,7 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
       {/* Reset, flush right under the row: clears the three fields and forgets the
           saved vehicle. Faded and inert until something is chosen (same as the
           packages table's Reset). */}
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' } as any}>
+      <View {...({ dataSet: { vf: 'row' } } as any)} style={{ flexDirection: 'row', justifyContent: 'flex-end' } as any}>
         <ResetLink disabled={!anyPicked} onPress={reset} />
       </View>
       {error ? (
