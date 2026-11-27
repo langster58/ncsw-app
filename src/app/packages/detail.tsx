@@ -54,6 +54,7 @@ import {
   powertrainLabel,
   vehicleName as formatVehicleName,
   vehicleVariant,
+  boxOptionPrice,
 } from '@/lib/packages'
 import { installArt, productPhotoSrcs, standInPhoto } from '@/lib/media'
 
@@ -300,8 +301,9 @@ export default function PackageDetailScreen() {
   const option = options.find((o) => o.slug === chosen) ?? options[0] ?? null
   const materials = boxOptions.filter((b) => b.kind === 'material')
   const finishes = boxOptions.filter((b) => b.kind === 'finish')
+  const largeBox = !!option?.largeBox
   const boxExtra = option?.takesBoxOptions
-    ? Number(materials.find((m) => m.label === material)?.add_price ?? 0) + Number(finishes.find((f) => f.label === finish)?.add_price ?? 0)
+    ? boxOptionPrice(materials.find((m) => m.label === material), largeBox) + boxOptionPrice(finishes.find((f) => f.label === finish), largeBox)
     : 0
   const subStageN = option ? option.price + boxExtra : null
   const subStageLabel = option
@@ -659,8 +661,8 @@ export default function PackageDetailScreen() {
                       options={materials.map((m) => m.label)}
                       onChange={setMaterial}
                       renderOption={(l) => {
-                        const m = materials.find((x) => x.label === l)
-                        return m && Number(m.add_price) > 0 ? `${l} · +${money(m.add_price)}` : l
+                        const add = boxOptionPrice(materials.find((x) => x.label === l), largeBox)
+                        return add > 0 ? `${l} · +${money(add)}` : l
                       }}
                     />
                     <FilterChipGroup
@@ -669,8 +671,8 @@ export default function PackageDetailScreen() {
                       options={finishes.map((f) => f.label)}
                       onChange={setFinish}
                       renderOption={(l) => {
-                        const f = finishes.find((x) => x.label === l)
-                        return f && Number(f.add_price) > 0 ? `${l} · +${money(f.add_price)}` : l
+                        const add = boxOptionPrice(finishes.find((x) => x.label === l), largeBox)
+                        return add > 0 ? `${l} · +${money(add)}` : l
                       }}
                     />
                   </View>

@@ -620,8 +620,20 @@ type PartRow = { slug: string; brand?: string | null; model?: string | null; nam
 type InstallTypeRow = { id: string; slug: string; title: string | null; bass_installation: string | null; sort: number | null; price: number | string | null; takes_box_options: boolean | null }
 
 /** A material or finish choice for a box Brett builds (box_options). */
-export type BoxOption = { id: number; kind: 'material' | 'finish' | string; label: string; add_price: number | string; sort: number | null }
-type EnclosurePriceRow = { install_type: string | null; size: string | null; driver_count: number | null; price: number | string | null }
+export type BoxOption = { id: number; kind: 'material' | 'finish' | string; label: string; add_price: number | string; add_price_large?: number | string | null; sort: number | null }
+type EnclosurePriceRow = { install_type: string | null; size: string | null; driver_count: number | null; price: number | string | null; volume_cuft: number | string | null }
+
+/** A sealed sub stage needing this much box or more gets the big built box (two 18s
+ * and the like): $20 more base and the box_options add_price_large add-ons
+ * (Brett, 2026-11-27; design/PRICES.md). */
+export const LARGE_BOX_FT3 = 4
+const LARGE_BOX_BASE_EXTRA = 20
+
+/** The add-on for a box material or finish, at the big-box rate when it applies. */
+export function boxOptionPrice(o: BoxOption | undefined, large: boolean): number {
+  if (!o) return 0
+  return Number((large && o.add_price_large != null ? o.add_price_large : o.add_price) ?? 0)
+}
 
 type VariantCatalog = {
   variants: VariantRow[]
@@ -665,7 +677,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
       const enclosures = installTypes.length
         ? await getItems<EnclosurePriceRow>('sub_enclosures', {
             filter: { install_type: { _in: installTypes.map((i) => i.id) } },
-            fields: ['install_type', 'size', 'driver_count', 'price'],
+            fields: ['install_type', 'size', 'driver_count', 'price', 'volume_cuft'],
             limit: 500,
           }).catch(() => [])
         : []
@@ -729,7 +741,7 @@ const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
 /** One way the sub stage can be installed in a given car, with its flat price. */
 /** One installation a car can take, at its base price (MDF and the cheapest
  * finish where the customer picks a material and finish). */
-export type InstallOption = { slug: string; title: string; price: number; takesBoxOptions: boolean }
+export type InstallOption = { slug: string; title: string; price: number; takesBoxOptions: boolean; largeBox?: boolean }
 
 type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'> &
   Partial<Pick<Vehicle, 'substage_lane' | 'substage_width_in' | 'substage_depth_in' | 'substage_height_in' | 'substage_pockets' |
@@ -825,6 +837,9 @@ function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts |
   const size = subRow?.driver_size
   if (size == null) return []
   const count = sub.quantity || 1
+  // smallest proper sealed box for the whole sub stage (null for infinite baffle)
+  const needFt3 = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
+  const largeBox = (v.bass_installation ?? 'sealed') === 'sealed' && needFt3 != null && needFt3 >= LARGE_BOX_FT3
   const out: InstallOption[] = []
   for (const slug of installSlugsFor(vehicle, v.bass_installation)) {
     const it = cat.installTypes.find((i) => i.slug === slug)
@@ -847,9 +862,15 @@ function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts |
     const takesBoxOptions = !!it.takes_box_options
     // a flat price is the same whatever the sub size; otherwise (the prefab box)
     // the price is the matching box's own
-    if (it.price != null) { out.push({ slug, title, price: Number(it.price), takesBoxOptions }); continue }
+    if (it.price != null) {
+      const large = takesBoxOptions && largeBox
+      out.push({ slug, title, price: Number(it.price) + (large ? LARGE_BOX_BASE_EXTRA : 0), takesBoxOptions, largeBox: large })
+      continue
+    }
+    // a ready-made box must hold at least the sub stage's smallest proper box
     const prices = cat.enclosures
       .filter((e) => e.install_type === it.id && Number(e.size) === Number(size) && Number(e.driver_count) === count && e.price != null)
+      .filter((e) => needFt3 == null || e.volume_cuft == null || Number(e.volume_cuft) >= needFt3)
       .map((e) => Number(e.price))
     if (prices.length) out.push({ slug, title, price: Math.min(...prices), takesBoxOptions })
   }
