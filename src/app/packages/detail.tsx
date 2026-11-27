@@ -224,7 +224,7 @@ export default function PackageDetailScreen() {
         if (typeof params.hu !== 'string') {
           const d = dr.find((x) => x.slug === p.dsp_id)
           const fr = factoryFullRange(v, fit)
-          setHu(d && !dspWorksWith(d, 'factory', fr) && dspWorksWith(d, 'phone', fr) ? 'phone' : 'factory')
+          setHu(d && !dspWorksWith(d, 'factory', fr, fit?.has_sub ?? null) && dspWorksWith(d, 'phone', fr) ? 'phone' : 'factory')
         }
         const remotes = dr.map((d) => d.remote).filter((r): r is string => !!r)
         setAccPrices(await fetchAccessoryPrices([...PHONE_ADAPTERS, ...remotes]).catch(() => ({})))
@@ -282,8 +282,8 @@ export default function PackageDetailScreen() {
   const fullRange = factoryFullRange(vehicle, sysFit)
   const dspRow = (slug: string | null | undefined) => dspRows.find((d) => d.slug === slug)
   const curDsp = dspRow(pkg?.dsp_id)
-  const dspOk = !dspRows.length || dspWorksWith(curDsp, huKind, fullRange)
-  const dspChoices = choices.dsp.filter((c) => !dspRows.length || dspWorksWith(dspRow(c.dsp), huKind, fullRange))
+  const dspOk = !dspRows.length || dspWorksWith(curDsp, huKind, fullRange, sysFit?.has_sub ?? null)
+  const dspChoices = choices.dsp.filter((c) => !dspRows.length || dspWorksWith(dspRow(c.dsp), huKind, fullRange, sysFit?.has_sub ?? null))
   const phoneLinesFor = (d: DspRow | undefined) => {
     const lines: { label: string; value: number }[] = []
     if (huKind !== 'phone' || !d) return lines
@@ -298,8 +298,8 @@ export default function PackageDetailScreen() {
   const pickHu = (slug: string) => {
     const kind = huOpts.find((o) => o.slug === slug)?.kind ?? 'factory'
     setHu(slug)
-    if (dspRows.length && !dspWorksWith(curDsp, kind, fullRange)) {
-      const alt = choices.dsp.find((c) => dspWorksWith(dspRow(c.dsp), kind, fullRange))
+    if (dspRows.length && !dspWorksWith(curDsp, kind, fullRange, sysFit?.has_sub ?? null)) {
+      const alt = choices.dsp.find((c) => dspWorksWith(dspRow(c.dsp), kind, fullRange, sysFit?.has_sub ?? null))
       if (alt) { goVariant(alt.sku, slug); return }
     }
     router.setParams({ hu: slug } as any)
@@ -544,7 +544,7 @@ export default function PackageDetailScreen() {
                     {dspChoices.length ? (
                       <FilterChipGroup
                         label={huKind === 'factory' || huKind === 'carplay'
-                          ? fullRange === false ? "DSP (this car's factory radio has no full-range signal, so a Helix rebuilds it)" : 'DSP'
+                          ? fullRange === false || (sysFit?.has_sub && fullRange !== true) ? "DSP (no full-range pair from this car's factory radio: a Helix corrects the signal, or a DSP with 8 inputs sums the factory feeds)" : 'DSP'
                           : huKind === 'phone' ? 'DSP (with a phone input)' : 'DSP'}
                         value={dspOk ? sku : ''}
                         options={dspChoices.map((c) => c.sku)}

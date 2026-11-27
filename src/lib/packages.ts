@@ -1013,27 +1013,33 @@ export function factoryFullRange(v: Pick<Vehicle, 'has_fullrange_output'> | null
   return null
 }
 
-/** Which DSPs work with a head unit choice. Phone: a DSP with a phone input
- * (Bluetooth or USB built in, or the Helix's optical input through an adapter).
- * Factory radio or CarPlay box: any DSP, unless the factory system has no
- * full-range signal, then only a Helix. New radio: any DSP. */
-export function dspWorksWith(dsp: DspRow | undefined, kind: HeadUnitKind, fullRange: boolean | null): boolean {
+/** Which DSPs work with a head unit choice (Brett, 2026-11-27).
+ * Phone: a DSP with a phone input (Bluetooth or USB built in, or the Helix's
+ * optical input through an adapter). New radio: any DSP; it gives one clean pair.
+ * Factory radio or CarPlay box as the source: any DSP when the factory system
+ * gives a full-range left/right pair. When it does not (processed outputs only,
+ * or a factory sub with no full-range pair known), the DSP has to take every
+ * factory feed and sum them - one with 8 high- or low-level inputs - or be a
+ * Helix, which corrects signals that are not full range. */
+export function dspWorksWith(dsp: DspRow | undefined, kind: HeadUnitKind, fullRange: boolean | null, factorySub: boolean | null = null): boolean {
   if (!dsp) return false
   const helix = dsp.slug.startsWith('helix-')
   if (kind === 'phone') return helix || /^yes/i.test(String(dsp.bluetooth_streaming ?? '')) || /^yes/i.test(String(dsp.usb_otg_in ?? ''))
-  if ((kind === 'factory' || kind === 'carplay') && fullRange === false) return helix
+  if (kind === 'radio') return true
+  const noFullPair = fullRange === false || (factorySub === true && fullRange !== true)
+  if (noFullPair) return helix || Number(dsp.inputs) >= 8
   return true
 }
 
 export type DspRow = {
   slug: string; brand?: string | null; model?: string | null; price?: number | string | null
-  bluetooth_streaming?: string | null; usb_otg_in?: string | null; optical_in?: string | null
+  bluetooth_streaming?: string | null; usb_otg_in?: string | null; optical_in?: string | null; inputs?: string | number | null
   remote?: string | null; remote_required_on_digital?: boolean | null
 }
 
 export async function fetchDspRows(): Promise<DspRow[]> {
   return getItems<DspRow>('dsp_processors', {
-    fields: ['slug', 'brand', 'model', 'price', 'bluetooth_streaming', 'usb_otg_in', 'optical_in', 'remote', 'remote_required_on_digital'],
+    fields: ['slug', 'brand', 'model', 'price', 'bluetooth_streaming', 'usb_otg_in', 'optical_in', 'inputs', 'remote', 'remote_required_on_digital'],
     limit: 50,
   }).catch(() => [] as DspRow[])
 }
