@@ -202,6 +202,7 @@ const DEMO_CARS: { car: string; text: string; photo?: string; year: string; make
   {
     car: '2014 BMW 328i xDrive',
     text: 'A processor, amplifiers and a subwoofer, playing through the factory speakers.',
+    photo: '/images/build-bmw-328i-1000.jpg',
     year: '2014', make: 'BMW', model: '3 Series',
   },
   {
