@@ -517,7 +517,7 @@ export default function PackageDetailScreen() {
                       media={<SafeMedia
                         key={c.slug}
                         srcs={productPhotoSrcs(c.slug, c.row?.image_filename)}
-                        standIn={standInPhoto(c.role)}
+                        standIn={standInPhoto(c.collection)}
                         alt={componentTitle(c)}
                       />}
                       title={componentTitle(c)}

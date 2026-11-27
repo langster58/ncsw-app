@@ -16,6 +16,13 @@ const STAND_IN: Record<string, string> = {
   mono_amp: '/images/products/vevor-bp-1500-1d.webp',
   multichannel_amp: '/images/products/vevor-mdx200-4.webp',
   dsp: '/images/products/helix-dsp-mini-mk2.webp',
+  // the same, keyed by the part's collection (the system page's rows carry it)
+  midbass_drivers: '/images/products/one-audio-mb8-e.jpg',
+  tweeters: '/images/products/seas-prestige-27tffnc-g-h1396.webp',
+  subwoofers: '/images/products/ct-sounds-tropo-10.webp',
+  mono_amps: '/images/products/vevor-bp-1500-1d.webp',
+  multichannel_amps: '/images/products/vevor-mdx200-4.webp',
+  dsp_processors: '/images/products/helix-dsp-mini-mk2.webp',
 }
 
 /** The part's own photo candidates, in the order to try them. */
