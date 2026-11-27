@@ -31,6 +31,8 @@ import {
   fetchBoxOptions,
   type BoxOption,
   type InstallOption,
+  fetchTweeterOptions,
+  type TweeterOption,
   fetchSystemFit,
   fetchPackageComponents,
   fetchVehicleById,
@@ -136,6 +138,8 @@ export default function PackageDetailScreen() {
   const [boxOptions, setBoxOptions] = useState<BoxOption[]>([])
   const [material, setMaterial] = useState('')
   const [finish, setFinish] = useState('')
+  const [tweeterOpts, setTweeterOpts] = useState<TweeterOption[]>([])
+  const [tweeterChosen, setTweeterChosen] = useState('')
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
   // Navigating from one package to another restarts the load. Adjusted during
@@ -185,6 +189,9 @@ export default function PackageDetailScreen() {
         const opts = await fetchInstallOptions(sku, v).catch(() => [] as InstallOption[])
         if (!live) return
         setOptions(opts); setChosen(opts[0]?.slug ?? '')
+        const tw = await fetchTweeterOptions(v).catch(() => [] as TweeterOption[])
+        if (!live) return
+        setTweeterOpts(tw); setTweeterChosen(tw[0]?.slug ?? '')
         const bo = await fetchBoxOptions().catch(() => [] as BoxOption[])
         if (!live) return
         setBoxOptions(bo)
@@ -232,7 +239,9 @@ export default function PackageDetailScreen() {
   const subStageLabel = option
     ? `Sub stage: ${option.title}${option.takesBoxOptions && material && finish ? ` (${material}, ${finish.toLowerCase()})` : ''}`
     : ''
-  const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN : null
+  const tweeter = tweeterOpts.find((t) => t.slug === tweeterChosen) ?? tweeterOpts[0] ?? null
+  const tweeterN = tweeter ? tweeter.price : 0
+  const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN + tweeterN : null
 
   // ---- generated copy (package grain + vehicle grain) -----------------------
   const sub = components.find((c) => c.collection === 'subwoofers')
@@ -448,6 +457,21 @@ export default function PackageDetailScreen() {
                   </View>
                 ) : null}
 
+                {tweeterOpts.length ? (
+                  <View style={{ marginTop: 8 }}>
+                    <FilterChipGroup
+                      label="Tweeter mounting"
+                      value={tweeter?.slug ?? ''}
+                      options={tweeterOpts.map((t) => t.slug)}
+                      onChange={setTweeterChosen}
+                      renderOption={(slug) => {
+                        const t = tweeterOpts.find((x) => x.slug === slug)
+                        return t ? `${t.title} · ${t.included ? 'Included' : `+${money(t.price)}`}` : slug
+                      }}
+                    />
+                  </View>
+                ) : null}
+
                 {option?.takesBoxOptions && materials.length && finishes.length ? (
                   <View style={{ marginTop: 8 }}>
                     <FilterChipGroup
@@ -480,6 +504,7 @@ export default function PackageDetailScreen() {
                           { label: 'Components', value: money(partsN) },
                           { label: 'Installation', value: money(baseInstallN) },
                           { label: subStageLabel, value: money(subStageN) },
+                          ...(tweeter && tweeter.price > 0 ? [{ label: `Tweeter mounting: ${tweeter.title}`, value: money(tweeter.price) }] : []),
                         ]
                       : [{ label: 'Components', value: money(partsN) }]}
                     total={installedN != null

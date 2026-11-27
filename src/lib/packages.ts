@@ -133,6 +133,9 @@ export type Vehicle = {
   // a front stage with a dash driver - a wideband or a three-way midrange - can
   // be offered (vehicleDashClass).
   dash?: string | null
+  // Factory sail panel / upper front door position (size or 'present'; 'none' or
+  // blank = no sail location). Decides where an included tweeter goes.
+  sail?: string | null
   // The factory sound system this car was most likely built with, and the
   // picker label(s) it could be ordered with ('Base: … | Bose: …'). A single
   // label means there was never a choice, so `factory_audio_system` IS the car's
@@ -150,7 +153,7 @@ const VEHICLE_FIELDS = [
   'substage_blowthrough_option', 'substage_ib_bed_option',
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
-  'dash', 'truck_rear_floor_ib_option',
+  'dash', 'sail', 'truck_rear_floor_ib_option',
   'rear_seat_fold', 'rear_seat_ski_pass',
   'factory_audio_system', 'branded_system_name',
 ]
@@ -901,6 +904,33 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
 }
 
 /** Material and finish choices for a box Brett builds, each kind cheapest first. */
+/** One way the tweeters can be mounted, with its price over the base install
+ * (0 = included). */
+export type TweeterOption = { slug: string; title: string; price: number; included: boolean }
+
+const hasSpot = (v: string | null | undefined) => v != null && v !== '' && v.toLowerCase() !== 'none'
+
+/** Tweeter mounting for a car (Brett, 2026-11-27). The base install includes the
+ * tweeters on a post or in a factory location, and the only factory locations
+ * used are a sail panel or a dash location firing into the windshield (an
+ * A-pillar location would mean flush mounting far off axis, so those cars get
+ * the post). Custom A-pillars are offered at their own price. */
+export async function fetchTweeterOptions(vehicle: Pick<Vehicle, 'sail' | 'dash'> | null): Promise<TweeterOption[]> {
+  const rows = await getItems<InstallTypeRow>('install_types', {
+    filter: { slug: { _in: ['post-mount', 'factory-location', 'custom-a-pillars'] } },
+    fields: ['id', 'slug', 'title', 'price'],
+    limit: 10,
+  }).catch(() => [] as InstallTypeRow[])
+  const out: TweeterOption[] = []
+  if (!vehicle) out.push({ slug: 'post-mount', title: 'Post mount or factory location', price: 0, included: true })
+  else if (hasSpot(vehicle.sail)) out.push({ slug: 'factory-location', title: 'Sail panel (factory location)', price: 0, included: true })
+  else if (hasSpot(vehicle.dash)) out.push({ slug: 'factory-location', title: 'Dash (factory location)', price: 0, included: true })
+  else out.push({ slug: 'post-mount', title: 'Post mount', price: 0, included: true })
+  const pillars = rows.find((r) => r.slug === 'custom-a-pillars')
+  if (pillars?.price != null) out.push({ slug: 'custom-a-pillars', title: pillars.title ?? 'Custom A-Pillars', price: Number(pillars.price), included: false })
+  return out
+}
+
 export async function fetchBoxOptions(): Promise<BoxOption[]> {
   const cat = await loadVariantCatalog()
   return cat.boxOptions
