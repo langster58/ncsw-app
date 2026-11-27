@@ -144,6 +144,9 @@ export type Vehicle = {
   dash_kit_price?: number | string | null
   factory_hu_upgrade?: string | null
   carplay_boxes?: string | null
+  // Factory front woofers under the front seats, door has only a small midrange
+  // (BMW, some Mini): the 6.5 in door two-way is not offered.
+  front_woofer_under_seat?: boolean | null
   has_fullrange_output?: string | boolean | null
   // The factory sound system this car was most likely built with, and the
   // picker label(s) it could be ordered with ('Base: … | Bose: …'). A single
@@ -163,7 +166,7 @@ const VEHICLE_FIELDS = [
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
   'dash', 'sail', 'truck_rear_floor_ib_option',
-  'head_unit_type', 'radio_opening', 'dash_kit_price', 'factory_hu_upgrade', 'carplay_boxes',
+  'head_unit_type', 'radio_opening', 'dash_kit_price', 'factory_hu_upgrade', 'carplay_boxes', 'front_woofer_under_seat',
   'rear_seat_fold', 'rear_seat_ski_pass',
   'factory_audio_system', 'branded_system_name',
 ]
@@ -515,9 +518,13 @@ export async function fetchPackagesForVehicle(
   filters: PackageFilters = {},
 ): Promise<PackageSummary[]> {
   const cat = await loadVariantCatalog()
+  // The two-way puts 6.5 in drivers in the doors; a car whose front woofers are
+  // under the seats has no door location for one (Brett, 2026-11-27).
+  const doorOk = (v: VariantRow) => !(vehicle.front_woofer_under_seat && v.front_stage === 'two-way')
   if (vehicle.vehicle_category === 'truck') {
     // a truck lists only the variants its sub space can take
     return cat.variants
+      .filter(doorOk)
       .filter((v) => installOptions(cat, v, vehicle).length > 0)
       .map((v) => variantSummary(v, cat, vehicle))
       .filter((p) => !filters.topology || p.topology === filters.topology)
@@ -530,6 +537,7 @@ export async function fetchPackagesForVehicle(
   const dims = [vehicle.boot_width_in, vehicle.boot_height_in, vehicle.boot_depth_in].map((d) => (d == null ? NaN : Number(d)))
   const space = dims.every((d) => d > 1.5) ? ((dims[0] - 1.5) * (dims[1] - 1.5) * (dims[2] - 1.5)) / 1728 : null
   return cat.variants
+    .filter(doorOk)
     .filter((v) => {
       const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
       return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
