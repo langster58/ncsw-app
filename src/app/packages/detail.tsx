@@ -219,6 +219,13 @@ export default function PackageDetailScreen() {
         ])
         if (!live) return
         setHuOpts(hus); setDspRows(dr); setSysFit(fit)
+        // No head unit chosen yet: start on the factory radio, unless this
+        // variant's DSP cannot take the factory signal; then start on the phone.
+        if (typeof params.hu !== 'string') {
+          const d = dr.find((x) => x.slug === p.dsp_id)
+          const fr = factoryFullRange(v, fit)
+          setHu(d && !dspWorksWith(d, 'factory', fr) && dspWorksWith(d, 'phone', fr) ? 'phone' : 'factory')
+        }
         const remotes = dr.map((d) => d.remote).filter((r): r is string => !!r)
         setAccPrices(await fetchAccessoryPrices([...PHONE_ADAPTERS, ...remotes]).catch(() => ({})))
         if (!live) return
