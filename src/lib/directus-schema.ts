@@ -178,8 +178,6 @@ export interface Subwoofers {
   effective_xmax_mm: number | null
   description: string | null
   gallery: unknown | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
   alignment: string | null
   driver_size: string | null
   tier: string | null
@@ -237,8 +235,6 @@ export interface MonoAmps {
   dyno_url: string | null
   price: number | null
   tier: string | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
   requires_big3: boolean | null
   requires_alternator_upgrade: boolean | null
   requires_battery_upgrade: boolean | null
@@ -263,8 +259,6 @@ export interface MultichannelAmps {
   dyno_url: string | null
   price: number | null
   tier: string | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
   watts_rms: number | null
   amp_class: string | null
   ncsw_pick: boolean | null
@@ -293,8 +287,6 @@ export interface DspProcessors {
   description: string | null
   tier: string | null
   gallery: unknown | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
   dsp_resolution: string | null
   requires_fullrange_input: boolean | null
   remote: string | null
@@ -323,8 +315,6 @@ export interface FrontSubs {
   description: string | null
   tier: string | null
   gallery: unknown | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
   sealed_net_ft3: number | null
   mounting_depth_in: number | null
   xmax_basis: string | null
@@ -364,8 +354,6 @@ export interface Batteries {
   image_filename: string | null
   description: string | null
   gallery: unknown | null
-  in_stock: boolean | null
-  coming_soon: boolean | null
 }
 
 export interface VehicleEditorial {
