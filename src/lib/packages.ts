@@ -22,8 +22,9 @@ import { getItems } from './directus'
 // time (nothing stored). Installed price = parts + the system's flat base install
 // (`systems.install_price`) + the sub stage price of an installation the car can
 // take (`sub_enclosures.price` for that installation, sub size and count).
-// Trucks take sealed variants in a box under the (lifted) rear seat where the
-// drivers and the box fit that space; no other truck installation yet.
+// Trucks take sealed variants under the (lifted) rear seat or as a blow-through
+// from the bed, and infinite baffle variants on the cab's back wall or in the
+// floor under the front seats, wherever the drivers fit that truck's space.
 
 // ------------------------------------------------------------- vehicle picker
 
@@ -577,7 +578,7 @@ type VariantCatalog = {
 const INSTALLATIONS = [
   'prefab-sealed', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
   'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib', 'true-ib-manifold',
-  'underseat',
+  'underseat', 'blow-through', 'truck-wall-ib-cab', 'truck-wall-ib-bed', 'truck-floor-ib',
 ]
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
@@ -596,7 +597,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
         getItems<InstallTypeRow>('install_types', {
           filter: { slug: { _in: INSTALLATIONS } },
           fields: ['id', 'slug', 'title', 'bass_installation', 'sort', 'price', 'takes_box_options'],
-          limit: 20,
+          limit: 30,
         }).catch(() => []),
       ])
       const boxOptions = await getItems<BoxOption>('box_options', { sort: ['kind', 'sort'], limit: 50 }).catch(() => [] as BoxOption[])
@@ -670,7 +671,30 @@ const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
 export type InstallOption = { slug: string; title: string; price: number; takesBoxOptions: boolean }
 
 type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'> &
-  Partial<Pick<Vehicle, 'substage_lane' | 'substage_width_in' | 'substage_depth_in' | 'substage_height_in' | 'substage_pockets'>>
+  Partial<Pick<Vehicle, 'substage_lane' | 'substage_width_in' | 'substage_depth_in' | 'substage_height_in' | 'substage_pockets' |
+    'substage_blowthrough_option' | 'substage_ib_bed_option' | 'truck_wall_width_in' | 'truck_wall_height_in' |
+    'truck_ib_wall_depth_in' | 'truck_floor_ib_height_in'>>
+
+/** Do `count` drivers of `size` in fit side by side on a steel plate on the
+ * cab's back wall? Motor in the cab also needs the wall depth (room between the
+ * wall and the seat) to clear the driver's mounting depth; motor in the bed
+ * needs only the wall. */
+function truckWallFits(v: SeatFacts, size: number, count: number, depthIn: number | null, motorInCab: boolean): boolean {
+  const w = Number(v.truck_wall_width_in) - 2
+  const h = Number(v.truck_wall_height_in) - 1
+  const frame = size + 0.8
+  if (!(w > 0 && h > 0) || frame > h || Math.floor(w / frame) < count) return false
+  if (!motorInCab) return true
+  const room = Number(v.truck_ib_wall_depth_in)
+  return room > 0 && (depthIn == null || depthIn <= room)
+}
+
+/** Floor IB: one driver under each front seat, motor in the cab, so at most two
+ * drivers of up to 15 in whose mounting depth clears the height under the seat. */
+function truckFloorFits(v: SeatFacts, size: number, count: number, depthIn: number | null): boolean {
+  const room = Number(v.truck_floor_ib_height_in)
+  return room > 0 && count <= 2 && size <= 15 && (depthIn == null || depthIn <= room)
+}
 
 /** Does a sealed box with `count` drivers of `size` in (mounting depth `depthIn`,
  * smallest proper box `minFt3` in all) fit the space under a truck's lifted rear
@@ -701,7 +725,16 @@ function underseatFits(v: SeatFacts, size: number, count: number, depthIn: numbe
  * kind is listed. */
 function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string[] {
   if (vehicle?.vehicle_category === 'truck') {
-    return bass !== 'infinite-baffle' && vehicle.substage_lane === 'under-seat-lifted' ? ['underseat'] : []
+    const out: string[] = []
+    if (bass === 'infinite-baffle') {
+      if (vehicle.truck_ib_wall_depth_in != null) out.push('truck-wall-ib-cab')
+      if (vehicle.substage_ib_bed_option) out.push('truck-wall-ib-bed')
+      if (vehicle.truck_floor_ib_height_in != null) out.push('truck-floor-ib')
+    } else {
+      if (vehicle.substage_lane === 'under-seat-lifted') out.push('underseat')
+      if (vehicle.substage_blowthrough_option) out.push('blow-through')
+    }
+    return out
   }
   const cargo = vehicle?.vehicle_category === 'cargo'
   const trunk = vehicle?.vehicle_category === 'trunk' && vehicle?.body_style !== 'Convertible'
@@ -739,6 +772,13 @@ function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts |
       const depth = subRow?.mounting_depth_in == null ? null : Number(subRow.mounting_depth_in)
       const minFt3 = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
       if (!underseatFits(vehicle, Number(size), count, depth, minFt3)) continue
+    }
+    if (vehicle && (slug === 'truck-wall-ib-cab' || slug === 'truck-wall-ib-bed' || slug === 'truck-floor-ib')) {
+      const depth = subRow?.mounting_depth_in == null ? null : Number(subRow.mounting_depth_in)
+      const ok = slug === 'truck-floor-ib'
+        ? truckFloorFits(vehicle, Number(size), count, depth)
+        : truckWallFits(vehicle, Number(size), count, depth, slug === 'truck-wall-ib-cab')
+      if (!ok) continue
     }
     // the manifold always carries two drivers
     if (slug === 'true-ib-manifold' && count !== 2) continue
