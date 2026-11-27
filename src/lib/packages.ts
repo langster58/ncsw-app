@@ -136,6 +136,15 @@ export type Vehicle = {
   // Factory sail panel / upper front door position (size or 'present'; 'none' or
   // blank = no sail location). Decides where an included tweeter goes.
   sail?: string | null
+  // Head unit facts (2026-11-12/13 dash-kit and CarPlay work): what the dash
+  // allows, the radio opening, the dash kit's price, the factory radio's CarPlay
+  // status and the CarPlay box(es) picked for its screen (accessories slugs).
+  head_unit_type?: string | null
+  radio_opening?: string | null
+  dash_kit_price?: number | string | null
+  factory_hu_upgrade?: string | null
+  carplay_boxes?: string | null
+  has_fullrange_output?: string | boolean | null
   // The factory sound system this car was most likely built with, and the
   // picker label(s) it could be ordered with ('Base: … | Bose: …'). A single
   // label means there was never a choice, so `factory_audio_system` IS the car's
@@ -154,6 +163,7 @@ const VEHICLE_FIELDS = [
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
   'dash', 'sail', 'truck_rear_floor_ib_option',
+  'head_unit_type', 'radio_opening', 'dash_kit_price', 'factory_hu_upgrade', 'carplay_boxes',
   'rear_seat_fold', 'rear_seat_ski_pass',
   'factory_audio_system', 'branded_system_name',
 ]
@@ -912,10 +922,10 @@ export type SystemChoice = { sku: string; label: string; price: number | null; c
  * bass and DSP, and the other bass stages with the same front speakers and DSP,
  * limited to what this vehicle can take. The DSP is not a choice; it follows the
  * car's factory system. */
-export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): Promise<{ front: SystemChoice[]; bass: SystemChoice[] }> {
+export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): Promise<{ front: SystemChoice[]; bass: SystemChoice[]; dsp: (SystemChoice & { dsp: string | null })[] }> {
   const cat = await loadVariantCatalog()
   const cur = cat.variants.find((x) => String(x.id) === sku)
-  if (!cur) return { front: [], bass: [] }
+  if (!cur) return { front: [], bass: [], dsp: [] }
   const allowed = vehicle ? new Set((await fetchPackagesForVehicle(vehicle)).map((p) => p.sku)) : null
   const slugs = (id: number, roles: string[]) =>
     variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${p.part_slug}x${p.quantity || 1}`).join('+')
@@ -923,7 +933,10 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
   const bassKey = (v: VariantRow) => `${v.bass_installation ?? 'sealed'}|${slugs(v.id, ['subwoofer'])}`
   const names = (id: number, roles: string[]) =>
     variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${(p.quantity || 1) > 1 && p.role === 'subwoofer' ? `${p.quantity} × ` : ''}${partName(cat, p)}`).join(' + ')
-  const siblings = cat.variants.filter((v) => v.system === cur.system && v.dsp === cur.dsp && (v.id === cur.id || !allowed || allowed.has(String(v.id))))
+  const ok = (v: VariantRow) => v.id === cur.id || !allowed || allowed.has(String(v.id))
+  const dspSiblings = cat.variants
+    .filter((v) => v.system === cur.system && ok(v) && frontKey(v.id) === frontKey(cur.id) && bassKey(v) === bassKey(cur))
+  const siblings = cat.variants.filter((v) => v.system === cur.system && v.dsp === cur.dsp && ok(v))
   const pick = (v: VariantRow, label: string): SystemChoice => ({
     sku: String(v.id), label, current: v.id === cur.id,
     price: vehicle ? variantInstalled(cat, v, vehicle) : variantPartsTotal(cat, v.id),
@@ -935,7 +948,106 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
     .filter((v) => frontKey(v.id) === frontKey(cur.id))
     .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : 'sealed'}`))
   const byPrice = (a: SystemChoice, b: SystemChoice) => Number(a.price ?? Infinity) - Number(b.price ?? Infinity)
-  return { front: front.sort(byPrice), bass: bass.sort(byPrice) }
+  const dsp = dspSiblings.map((v) => ({ ...pick(v, names(v.id, ['dsp'])), dsp: v.dsp }))
+  return { front: front.sort(byPrice), bass: bass.sort(byPrice), dsp: dsp.sort(byPrice) }
+}
+
+// ------------------------------------------------------------- head unit
+
+/** How the music gets to the DSP (Brett, 2026-11-27):
+ * - factory: keep the factory radio as the source;
+ * - phone: keep the factory radio for chimes and the car's own sounds, and play
+ *   the phone straight into the DSP (Bluetooth, or USB; on a Helix through a
+ *   USB-to-optical adapter into its optical input);
+ * - carplay: keep the factory radio and add the CarPlay box picked for its screen;
+ * - radio: replace the radio, only where any radio fits (head_unit_type 'any'),
+ *   with the pick for the opening plus the dash kit. */
+export type HeadUnitKind = 'factory' | 'phone' | 'carplay' | 'radio'
+export type HeadUnitOption = { slug: string; kind: HeadUnitKind; title: string; price: number }
+
+// The replacement radios picked 2026-11-13, by radio opening.
+const RADIOS_DOUBLE_DIN = ['hu-wepeculior-7in-wired-carplay', 'hu-atoto-a5l-7in']
+const RADIOS_SINGLE_DIN = ['hu-leadfan-1din-6-86in', 'hu-atoto-f7we-1din']
+
+type AccessoryRow = { slug: string; name: string | null; price: number | string | null; category?: string | null }
+
+export async function fetchHeadUnitOptions(v: Vehicle | null): Promise<HeadUnitOption[]> {
+  const out: HeadUnitOption[] = [
+    { slug: 'factory', kind: 'factory', title: 'Keep the factory radio', price: 0 },
+    { slug: 'phone', kind: 'phone', title: 'Use your phone, straight into the DSP', price: 0 },
+  ]
+  if (!v) return out
+  const boxSlugs = (v.carplay_boxes ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  const wantBoxes = (v.factory_hu_upgrade ?? '').startsWith('carplay-module') ? boxSlugs : []
+  const opening = v.radio_opening ?? ''
+  const radios = v.head_unit_type === 'any' && v.dash_kit_price != null
+    ? opening === 'double-din' ? RADIOS_DOUBLE_DIN
+      : opening === 'single-din' ? RADIOS_SINGLE_DIN
+        : opening === 'single-or-double-din' ? [...RADIOS_DOUBLE_DIN, ...RADIOS_SINGLE_DIN] : []
+    : []
+  const want = [...wantBoxes, ...radios]
+  if (!want.length) return out
+  const rows = await getItems<AccessoryRow>('accessories', {
+    filter: { slug: { _in: want } }, fields: ['slug', 'name', 'price'], limit: 50,
+  }).catch(() => [] as AccessoryRow[])
+  for (const s of wantBoxes) {
+    const r = rows.find((x) => x.slug === s)
+    if (r?.price != null) out.push({ slug: s, kind: 'carplay', title: `Add a CarPlay box: ${r.name ?? s}`, price: Number(r.price) })
+  }
+  const kit = Number(v.dash_kit_price)
+  for (const s of radios) {
+    const r = rows.find((x) => x.slug === s)
+    if (r?.price != null) out.push({ slug: s, kind: 'radio', title: `New radio: ${r.name ?? s} (with dash kit)`, price: Number(r.price) + kit })
+  }
+  return out
+}
+
+/** Does the factory system give the DSP a full-range signal? False when it only
+ * has processed outputs (then only a Helix, which can rebuild the signal, works
+ * with the factory radio as the source). Null = not known. */
+export function factoryFullRange(v: Pick<Vehicle, 'has_fullrange_output'> | null, fit: SystemFit | null): boolean | null {
+  if (fit?.signal_state) return fit.signal_state !== 'processed_outputs_only'
+  const fr = String(v?.has_fullrange_output ?? '')
+  if (fr === 'false' || fr === '0') return false
+  if (fr === 'true' || fr === '1') return true
+  return null
+}
+
+/** Which DSPs work with a head unit choice. Phone: a DSP with a phone input
+ * (Bluetooth or USB built in, or the Helix's optical input through an adapter).
+ * Factory radio or CarPlay box: any DSP, unless the factory system has no
+ * full-range signal, then only a Helix. New radio: any DSP. */
+export function dspWorksWith(dsp: DspRow | undefined, kind: HeadUnitKind, fullRange: boolean | null): boolean {
+  if (!dsp) return false
+  const helix = dsp.slug.startsWith('helix-')
+  if (kind === 'phone') return helix || /^yes/i.test(String(dsp.bluetooth_streaming ?? '')) || /^yes/i.test(String(dsp.usb_otg_in ?? ''))
+  if ((kind === 'factory' || kind === 'carplay') && fullRange === false) return helix
+  return true
+}
+
+export type DspRow = {
+  slug: string; brand?: string | null; model?: string | null; price?: number | string | null
+  bluetooth_streaming?: string | null; usb_otg_in?: string | null; optical_in?: string | null
+  remote?: string | null; remote_required_on_digital?: boolean | null
+}
+
+export async function fetchDspRows(): Promise<DspRow[]> {
+  return getItems<DspRow>('dsp_processors', {
+    fields: ['slug', 'brand', 'model', 'price', 'bluetooth_streaming', 'usb_otg_in', 'optical_in', 'remote', 'remote_required_on_digital'],
+    limit: 50,
+  }).catch(() => [] as DspRow[])
+}
+
+/** Extra parts the phone choice adds for a DSP: the USB-to-optical adapter on a
+ * Helix (the customer picks charging or not), and the DSP's remote where it is
+ * needed to set the volume of a phone source. */
+export const PHONE_ADAPTERS = ['acc-dsd-tech-sh-au02a', 'acc-cubilux-usbc-spdif-charging']
+export async function fetchAccessoryPrices(slugs: string[]): Promise<Record<string, { name: string; price: number }>> {
+  if (!slugs.length) return {}
+  const rows = await getItems<AccessoryRow>('accessories', { filter: { slug: { _in: slugs } }, fields: ['slug', 'name', 'price'], limit: 50 }).catch(() => [] as AccessoryRow[])
+  const out: Record<string, { name: string; price: number }> = {}
+  for (const r of rows) if (r.price != null) out[r.slug] = { name: r.name ?? r.slug, price: Number(r.price) }
+  return out
 }
 
 /** One way the tweeters can be mounted, with its price over the base install
@@ -1041,14 +1153,16 @@ export type SystemFit = {
   has_sub: boolean | null
   dsp: string | null
   helix_dsp: string | null
+  // full_range_at_speakers / full_range_at_amp_input / processed_outputs_only
+  signal_state?: string | null
 }
 
 // `dsp` / `helix_dsp` (the old per-tier DSP assignment) were removed from
 // factory_audio_systems on 2026-11-26; the DSP is now part of each variant.
-const FIT_FIELDS = ['id', 'has_subwoofer']
-type FitRow = { id?: string; has_subwoofer?: boolean | null; dsp?: string | null; helix_dsp?: string | null }
+const FIT_FIELDS = ['id', 'has_subwoofer', 'signal_state']
+type FitRow = { id?: string; has_subwoofer?: boolean | null; dsp?: string | null; helix_dsp?: string | null; signal_state?: string | null }
 const toFit = (r: FitRow | null | undefined): SystemFit | null =>
-  r ? { id: r.id ?? null, has_sub: r.has_subwoofer ?? null, dsp: r.dsp ?? null, helix_dsp: r.helix_dsp ?? null } : null
+  r ? { id: r.id ?? null, has_sub: r.has_subwoofer ?? null, dsp: r.dsp ?? null, helix_dsp: r.helix_dsp ?? null, signal_state: r.signal_state ?? null } : null
 
 /** The DSP a build takes once the car's factory system is known. Value keeps
  * the $69 budget DSP (four inputs) unless the system has a factory sub, which

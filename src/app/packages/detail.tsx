@@ -35,6 +35,15 @@ import {
   type TweeterOption,
   fetchSystemChoices,
   type SystemChoice,
+  fetchHeadUnitOptions,
+  type HeadUnitOption,
+  factoryFullRange,
+  dspWorksWith,
+  fetchDspRows,
+  type DspRow,
+  PHONE_ADAPTERS,
+  fetchAccessoryPrices,
+  type SystemFit,
   fetchSystemFit,
   fetchPackageComponents,
   fetchVehicleById,
@@ -125,7 +134,7 @@ function componentMeta(c: ResolvedComponent): string[] {
 }
 
 export default function PackageDetailScreen() {
-  const params = useLocalSearchParams<{ sku?: string; vid?: string; sys?: string }>()
+  const params = useLocalSearchParams<{ sku?: string; vid?: string; sys?: string; hu?: string; ad?: string }>()
   const sku = typeof params.sku === 'string' ? params.sku : ''
   const vid = typeof params.vid === 'string' ? params.vid : ''
   // The car's factory system, when the owner has said which: it decides the DSP.
@@ -142,7 +151,13 @@ export default function PackageDetailScreen() {
   const [finish, setFinish] = useState('')
   const [tweeterOpts, setTweeterOpts] = useState<TweeterOption[]>([])
   const [tweeterChosen, setTweeterChosen] = useState('')
-  const [choices, setChoices] = useState<{ front: SystemChoice[]; bass: SystemChoice[] }>({ front: [], bass: [] })
+  const [choices, setChoices] = useState<{ front: SystemChoice[]; bass: SystemChoice[]; dsp: (SystemChoice & { dsp: string | null })[] }>({ front: [], bass: [], dsp: [] })
+  const [huOpts, setHuOpts] = useState<HeadUnitOption[]>([])
+  const [hu, setHu] = useState(typeof params.hu === 'string' ? params.hu : 'factory')
+  const [adapter, setAdapter] = useState(typeof params.ad === 'string' ? params.ad : PHONE_ADAPTERS[0])
+  const [dspRows, setDspRows] = useState<DspRow[]>([])
+  const [accPrices, setAccPrices] = useState<Record<string, { name: string; price: number }>>({})
+  const [sysFit, setSysFit] = useState<SystemFit | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
   // Navigating from one package to another restarts the load. Adjusted during
@@ -195,9 +210,18 @@ export default function PackageDetailScreen() {
         const tw = await fetchTweeterOptions(v).catch(() => [] as TweeterOption[])
         if (!live) return
         setTweeterOpts(tw); setTweeterChosen(tw[0]?.slug ?? '')
-        const ch = await fetchSystemChoices(sku, v).catch(() => ({ front: [], bass: [] }))
+        const ch = await fetchSystemChoices(sku, v).catch(() => ({ front: [], bass: [], dsp: [] }))
         if (!live) return
         setChoices(ch)
+        const [hus, dr] = await Promise.all([
+          fetchHeadUnitOptions(v).catch(() => [] as HeadUnitOption[]),
+          fetchDspRows(),
+        ])
+        if (!live) return
+        setHuOpts(hus); setDspRows(dr); setSysFit(fit)
+        const remotes = dr.map((d) => d.remote).filter((r): r is string => !!r)
+        setAccPrices(await fetchAccessoryPrices([...PHONE_ADAPTERS, ...remotes]).catch(() => ({})))
+        if (!live) return
         const bo = await fetchBoxOptions().catch(() => [] as BoxOption[])
         if (!live) return
         setBoxOptions(bo)
@@ -245,9 +269,35 @@ export default function PackageDetailScreen() {
   const subStageLabel = option
     ? `Sub stage: ${option.title}${option.takesBoxOptions && material && finish ? ` (${material}, ${finish.toLowerCase()})` : ''}`
     : ''
+  // ---- head unit and DSP ---------------------------------------------------
+  const huOpt = huOpts.find((o) => o.slug === hu) ?? huOpts[0] ?? null
+  const huKind = huOpt?.kind ?? 'factory'
+  const fullRange = factoryFullRange(vehicle, sysFit)
+  const dspRow = (slug: string | null | undefined) => dspRows.find((d) => d.slug === slug)
+  const curDsp = dspRow(pkg?.dsp_id)
+  const dspOk = !dspRows.length || dspWorksWith(curDsp, huKind, fullRange)
+  const dspChoices = choices.dsp.filter((c) => !dspRows.length || dspWorksWith(dspRow(c.dsp), huKind, fullRange))
+  const phoneLines: { label: string; value: number }[] = []
+  if (huKind === 'phone' && curDsp) {
+    if (curDsp.slug.startsWith('helix-') && accPrices[adapter]) phoneLines.push({ label: `Phone adapter: ${accPrices[adapter].name}`, value: accPrices[adapter].price })
+    if (curDsp.remote_required_on_digital && curDsp.remote && accPrices[curDsp.remote]) phoneLines.push({ label: `DSP remote (phone volume): ${accPrices[curDsp.remote].name}`, value: accPrices[curDsp.remote].price })
+  }
+  const huN = (huOpt?.price ?? 0) + phoneLines.reduce((a, l) => a + l.value, 0)
+  const goVariant = (next: string, nextHu = hu) =>
+    router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}&hu=${nextHu}${adapter ? `&ad=${adapter}` : ''}` as any)
+  const pickHu = (slug: string) => {
+    const kind = huOpts.find((o) => o.slug === slug)?.kind ?? 'factory'
+    setHu(slug)
+    if (dspRows.length && !dspWorksWith(curDsp, kind, fullRange)) {
+      const alt = choices.dsp.find((c) => dspWorksWith(dspRow(c.dsp), kind, fullRange))
+      if (alt) { goVariant(alt.sku, slug); return }
+    }
+    router.setParams({ hu: slug } as any)
+  }
+
   const tweeter = tweeterOpts.find((t) => t.slug === tweeterChosen) ?? tweeterOpts[0] ?? null
   const tweeterN = tweeter ? tweeter.price : 0
-  const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN + tweeterN : null
+  const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN + tweeterN + huN : null
 
   // ---- generated copy (package grain + vehicle grain) -----------------------
   const sub = components.find((c) => c.collection === 'subwoofers')
@@ -448,6 +498,47 @@ export default function PackageDetailScreen() {
                   </View>
                 ) : null}
 
+                {huOpts.length ? (
+                  <View style={{ marginTop: tableTop as any }}>
+                    <FilterChipGroup
+                      label="Head unit"
+                      value={huOpt?.slug ?? ''}
+                      options={huOpts.map((o) => o.slug)}
+                      onChange={pickHu}
+                      renderOption={(s) => {
+                        const o = huOpts.find((x) => x.slug === s)
+                        return o ? `${o.title} · ${o.price > 0 ? `+${money(o.price)}` : 'Included'}` : s
+                      }}
+                    />
+                    {huKind === 'phone' && curDsp?.slug.startsWith('helix-') ? (
+                      <FilterChipGroup
+                        label="Phone adapter (USB to the Helix's optical input)"
+                        value={adapter}
+                        options={PHONE_ADAPTERS.filter((a) => accPrices[a])}
+                        onChange={(a) => { setAdapter(a); router.setParams({ ad: a } as any) }}
+                        renderOption={(a) => {
+                          const p = accPrices[a]
+                          return p ? `${p.name}${a.includes('charging') ? ' (charges the phone)' : ' (no charging)'} · +${money(p.price)}` : a
+                        }}
+                      />
+                    ) : null}
+                    {dspChoices.length ? (
+                      <FilterChipGroup
+                        label={huKind === 'factory' || huKind === 'carplay'
+                          ? fullRange === false ? "DSP (this car's factory radio has no full-range signal, so a Helix rebuilds it)" : 'DSP'
+                          : huKind === 'phone' ? 'DSP (with a phone input)' : 'DSP'}
+                        value={dspOk ? sku : ''}
+                        options={dspChoices.map((c) => c.sku)}
+                        onChange={(next) => { if (next !== sku) goVariant(next) }}
+                        renderOption={(s) => {
+                          const c = dspChoices.find((x) => x.sku === s)
+                          return c ? `${c.label}${c.price != null ? ` · ${money(c.price)}` : ''}` : s
+                        }}
+                      />
+                    ) : null}
+                  </View>
+                ) : null}
+
                 {choices.front.length > 1 || choices.bass.length > 1 ? (
                   <View style={{ marginTop: tableTop as any }}>
                     {([['Front speakers', choices.front], ['Bass', choices.bass]] as const).map(([label, list]) =>
@@ -459,7 +550,7 @@ export default function PackageDetailScreen() {
                           options={list.map((c) => c.sku)}
                           onChange={(next) => {
                             if (next === sku) return
-                            router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}` as any)
+                            goVariant(next)
                           }}
                           renderOption={(s) => {
                             const c = list.find((x) => x.sku === s)
@@ -534,6 +625,8 @@ export default function PackageDetailScreen() {
                           { label: 'Installation', value: money(baseInstallN) },
                           { label: subStageLabel, value: money(subStageN) },
                           ...(tweeter && tweeter.price > 0 ? [{ label: `Tweeter mounting: ${tweeter.title}`, value: money(tweeter.price) }] : []),
+                          ...(huOpt && huOpt.price > 0 ? [{ label: huOpt.title, value: money(huOpt.price) }] : []),
+                          ...phoneLines.map((l) => ({ label: l.label, value: money(l.value) })),
                         ]
                       : [{ label: 'Components', value: money(partsN) }]}
                     total={installedN != null
