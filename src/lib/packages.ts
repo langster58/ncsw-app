@@ -520,7 +520,9 @@ export async function fetchPackagesForVehicle(
   const cat = await loadVariantCatalog()
   // The two-way puts 6.5 in drivers in the doors; a car with no door location
   // for one does not get it (Brett, 2026-11-27).
-  const doorOk = (v: VariantRow) => !(vehicle.no_door_woofer_location && v.front_stage === 'two-way')
+  // The under-seat system is the one for those cars, and only for them.
+  const doorOk = (v: VariantRow) =>
+    v.front_stage === 'under-seat' ? !!vehicle.no_door_woofer_location : !(vehicle.no_door_woofer_location && v.front_stage === 'two-way')
   if (vehicle.vehicle_category === 'truck') {
     // a truck lists only the variants its sub space can take
     return cat.variants
@@ -659,7 +661,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
   return variantCatalog
 }
 
-const ROLE_ORDER = ['midbass', 'tweeter', 'wideband', 'subwoofer', 'multichannel_amp', 'mono_amp', 'dsp', 'dsp_remote']
+const ROLE_ORDER = ['midbass', 'midrange', 'tweeter', 'wideband', 'subwoofer', 'multichannel_amp', 'mono_amp', 'dsp', 'dsp_remote']
 const roleRank = (role: string) => { const i = ROLE_ORDER.indexOf(role); return i < 0 ? ROLE_ORDER.length : i }
 
 function partName(cat: VariantCatalog, p: VariantPart): string {
@@ -830,7 +832,7 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts |
   const parts = variantParts(cat, v.id)
   const named = (role: string) => parts.filter((p) => p.role === role).map((p) => partName(cat, p))
   const sub = parts.find((p) => p.role === 'subwoofer')
-  const front = [...named('midbass'), ...named('wideband'), ...named('tweeter')].join(' + ')
+  const front = [...named('midbass'), ...named('midrange'), ...named('wideband'), ...named('tweeter')].join(' + ')
   const subs = sub ? `${sub.quantity > 1 ? `${sub.quantity} × ` : ''}${partName(cat, sub)}` : ''
   const dsp = named('dsp')[0] ?? ''
   const bass = v.bass_installation ?? null
@@ -937,7 +939,7 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
   const allowed = vehicle ? new Set((await fetchPackagesForVehicle(vehicle)).map((p) => p.sku)) : null
   const slugs = (id: number, roles: string[]) =>
     variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${p.part_slug}x${p.quantity || 1}`).join('+')
-  const frontKey = (id: number) => slugs(id, ['midbass', 'wideband', 'tweeter'])
+  const frontKey = (id: number) => slugs(id, ['midbass', 'midrange', 'wideband', 'tweeter'])
   const bassKey = (v: VariantRow) => `${v.bass_installation ?? 'sealed'}|${slugs(v.id, ['subwoofer'])}`
   const names = (id: number, roles: string[]) =>
     variantParts(cat, id).filter((p) => roles.includes(p.role)).map((p) => `${(p.quantity || 1) > 1 && p.role === 'subwoofer' ? `${p.quantity} × ` : ''}${partName(cat, p)}`).join(' + ')
@@ -951,7 +953,7 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
   })
   const front = siblings
     .filter((v) => bassKey(v) === bassKey(cur))
-    .map((v) => pick(v, names(v.id, ['midbass', 'wideband', 'tweeter'])))
+    .map((v) => pick(v, names(v.id, ['midbass', 'midrange', 'wideband', 'tweeter'])))
   const bass = siblings
     .filter((v) => frontKey(v.id) === frontKey(cur.id))
     .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : 'sealed'}`))
@@ -1280,6 +1282,7 @@ const SLOT_ROLES: [keyof PackageDetail, string, string][] = [
 // system_variant_parts.role -> the label a detail row carries
 const PART_ROLE_LABEL: Record<string, string> = {
   midbass: 'Front stage',
+  midrange: 'Front stage door midrange',
   wideband: 'Front stage wideband',
   tweeter: 'Front stage tweeter',
   subwoofer: 'Sub stage',
