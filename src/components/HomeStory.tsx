@@ -6,8 +6,10 @@
 import React from 'react'
 import { Platform, Text, View, useWindowDimensions } from 'react-native'
 import {
+  Card,
   Container,
   Heading,
+  IconArrow,
   Lead,
   Link,
   Section,
@@ -193,36 +195,43 @@ export function HowItWorksSteps() {
 
 // ── 05 / Demo cars ──────────────────────────────────────────────────────────
 // The demo cars are the build cards until customer builds exist (approved
-// homepage story, section 6): photo, vehicle, one line on the result. A car
-// without a photo of its own build shows text only, never a
-// stock photo of a different generation.
-const DEMO_CARS: { car: string; text: string; photo?: string }[] = [
+// homepage story, section 6): photo, car, one line on the build. Each card opens
+// the systems we design for that car. A car without a photo of its own build
+// shows text only, never a stock photo of a different generation.
+const DEMO_CARS: { car: string; text: string; photo?: string; year: string; make: string; model: string }[] = [
   {
     car: '2014 BMW 328i xDrive',
-    text: 'The factory speakers kept, with a processor, amplifiers and a subwoofer added.',
+    text: 'A processor, amplifiers and a subwoofer, playing through the factory speakers.',
+    year: '2014', make: 'BMW', model: '3 Series',
   },
   {
     car: '2008 Mini Cooper S',
-    text: 'Affordable front speakers and electronics, with an 18-inch subwoofer where the back seat was.',
+    text: 'An 18-inch subwoofer where the back seat was.',
+    year: '2008', make: 'Mini', model: 'Hardtop 2 Door',
   },
   {
     car: '2018 Volkswagen Golf Alltrack',
-    text: 'Two 18-inch subwoofers built into the cargo floor, with high-end front speakers.',
+    text: 'Two 18-inch subwoofers built into the cargo floor.',
     photo: '/images/build-golf-alltrack-1200.jpg',
+    year: '2018', make: 'Volkswagen', model: 'Golf Alltrack',
   },
   {
     car: '2015 Honda CR-V',
-    text: 'Two 15-inch subwoofers built into the cargo floor, a smaller subwoofer under the passenger seat, and a lithium battery to power it.',
+    text: 'Two 15-inch subwoofers in the cargo floor, and one more under the passenger seat.',
     photo: '/images/build-honda-crv-1000.jpg',
+    year: '2015', make: 'Honda', model: 'CR-V',
   },
 ]
 
-function BuildPhoto({ src, alt }: { src?: string; alt: string }) {
+function carHref(c: { year: string; make: string; model: string }) {
+  return `/packages?${new URLSearchParams({ year: c.year, make: c.make, model: c.model }).toString()}`
+}
+
+function BuildPhoto({ src, alt }: { src: string; alt: string }) {
+  if (!IS_WEB) return null
   return (
-    <View style={{ aspectRatio: 4 / 3, backgroundColor: colors.surface, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' } as any}>
-      {src && IS_WEB
-        ? React.createElement('img', { src, alt, loading: 'lazy', style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' } })
-        : <Text style={{ fontFamily: fonts.body, fontSize: 13, color: colors.gray } as any}>Build photo coming</Text>}
+    <View style={{ aspectRatio: 4 / 3, backgroundColor: colors.surface, overflow: 'hidden' } as any}>
+      {React.createElement('img', { src, alt, loading: 'lazy', style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' } })}
     </View>
   )
 }
@@ -236,29 +245,34 @@ export function DemoCars() {
           <SectionIntro
             index="05"
             label="Demo cars"
-            heading="Hear our systems before you decide."
-            body="Four demo cars live at the shop. Sit in them and listen:"
+            heading="Hear it before you buy."
+            body="Four of our builds live at the shop. Come sit in them and listen."
           />
           <Grid cols={4}>
-            {DEMO_CARS.map(({ car, text, photo }) => (
-              <View key={car} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, overflow: 'hidden', flex: 1, minWidth: 0 } as any}>
-                {photo ? <BuildPhoto src={photo} alt={car} /> : null}
-                <View style={{ padding: 22, gap: 10 } as any}>
+            {DEMO_CARS.map((d) => (
+              <Card key={d.car} href={carHref(d)}>
+                {d.photo ? <Card.Media><BuildPhoto src={d.photo} alt={d.car} /></Card.Media> : null}
+                <Card.Body gap={8}>
                   <Heading level="h5" as={3}>
-                    {car}
+                    {d.car}
                   </Heading>
-                  <BodyText>{text}</BodyText>
-                </View>
-              </View>
+                  <BodyText>{d.text}</BodyText>
+                </Card.Body>
+                <Card.Footer>
+                  <Link variant="door" href={carHref(d)} icon={<IconArrow size={15} />}>
+                    Systems for this car
+                  </Link>
+                </Card.Footer>
+              </Card>
             ))}
           </Grid>
           <View style={{ marginTop: 24 } as any}>
             {call ? (
               <Link variant="cta" href={call}>
-                {`${callLabel} to set a time to sit in them and listen.`}
+                {`${callLabel} to set a time to listen.`}
               </Link>
             ) : (
-              <P>Call to set a time to sit in them and listen.</P>
+              <P>Call to set a time to listen.</P>
             )}
           </View>
         </View>

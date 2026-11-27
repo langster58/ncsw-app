@@ -50,16 +50,18 @@ Loaner line held back until Brett offers one: "Coming from a distance? Ask about
 
 ## 5. Demo cars — accepted 2026-11-04
 
-**Hear our systems before you decide.**
+**Hear it before you buy.** (rewritten 2026-11-27)
 
-Four demo cars live at the shop. Sit in them and listen:
+Four of our builds live at the shop. Come sit in them and listen.
 
-- **2014 BMW 328i xDrive.** The factory speakers kept, with a processor, amplifiers and a subwoofer added.
-- **2008 Mini Cooper S.** Affordable front speakers and electronics, with an 18-inch subwoofer where the back seat was.
-- **2018 Volkswagen Golf Alltrack.** Two 18-inch subwoofers built into the cargo floor, with high-end front speakers.
-- **2015 Honda CR-V.** Two 15-inch subwoofers built into the cargo floor, a smaller subwoofer under the passenger seat, and a lithium battery to power it.
+Cards, each opening the systems for that car ("Systems for this car"):
 
-Call to set a time to sit in them and listen.
+- **2014 BMW 328i xDrive.** A processor, amplifiers and a subwoofer, playing through the factory speakers.
+- **2008 Mini Cooper S.** An 18-inch subwoofer where the back seat was.
+- **2018 Volkswagen Golf Alltrack.** Two 18-inch subwoofers built into the cargo floor.
+- **2015 Honda CR-V.** Two 15-inch subwoofers in the cargo floor, and one more under the passenger seat.
+
+Call to set a time to listen.
 
 ## 6. Builds and reviews — agreed 2026-11-04
 
