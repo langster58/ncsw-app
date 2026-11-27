@@ -601,7 +601,7 @@ type VariantCatalog = {
 const INSTALLATIONS = [
   'prefab-sealed', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
   'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib', 'true-ib-manifold',
-  'underseat', 'blow-through', 'truck-wall-ib-cab', 'truck-wall-ib-bed', 'truck-floor-ib',
+  'quarter-panel-ib', 'underseat', 'blow-through', 'truck-wall-ib-cab', 'truck-wall-ib-bed', 'truck-floor-ib',
 ]
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
@@ -762,8 +762,8 @@ function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string
   const cargo = vehicle?.vehicle_category === 'cargo'
   const trunk = vehicle?.vehicle_category === 'trunk' && vehicle?.body_style !== 'Convertible'
   if (bass === 'infinite-baffle') {
-    if (!vehicle) return ['trunk-ib', 'fabricated-ib', 'true-ib-manifold']
-    if (cargo) return ['fabricated-ib', 'true-ib-manifold']
+    if (!vehicle) return ['trunk-ib', 'fabricated-ib', 'quarter-panel-ib', 'true-ib-manifold']
+    if (cargo) return ['fabricated-ib', 'quarter-panel-ib', 'true-ib-manifold']
     if (trunk && vehicle.rear_seat_fold === 'folds') return ['trunk-ib']
     return []
   }
