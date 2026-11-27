@@ -150,8 +150,9 @@ export function VehicleFinder({ nativeID }: { nativeID?: string }) {
             <Button variant="primary" size="field" fill onPress={go}>
               {`See systems for ${year} ${make} ${model}`}
             </Button>
-            <Pressable onPress={() => setPickerOpen(true)} accessibilityRole="button" hitSlop={8} style={{ alignSelf: 'flex-start', paddingVertical: 6 } as any}>
-              <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.accent, textDecorationLine: 'underline' } as any}>Change car</Text>
+            {/* Reset clears the saved car; the button goes back to "Select your car". */}
+            <Pressable onPress={reset} accessibilityRole="button" accessibilityLabel="Reset vehicle" hitSlop={8} style={{ alignSelf: 'flex-start', paddingVertical: 6 } as any}>
+              <Text style={{ fontFamily: fonts.body, fontSize: 15, color: colors.accent, textDecorationLine: 'underline' } as any}>Reset</Text>
             </Pressable>
           </>
         ) : (
