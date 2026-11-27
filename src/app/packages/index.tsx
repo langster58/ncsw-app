@@ -44,6 +44,7 @@ import {
   type PackageSummary,
   type Vehicle,
 } from '@/lib/packages'
+import { productPhotoSrcs, standInPhoto } from '@/lib/media'
 
 // PLP — the package listing experience. Vehicle-first: year -> make -> model
 // -> series -> body -> cab -> trim -> engine resolves the vehicle, then the
@@ -80,6 +81,25 @@ const SYSTEM_COPY: Record<number, { name: string; blurb: string }> = {
   3: { name: 'Two-way with a front sub', blurb: 'The two-way system plus a 10 in sub under a front seat, so the bass sits up front with the music.' },
   4: { name: 'Two-way with two front subs', blurb: 'The two-way system plus two 8 in subs through the floor under the front seats, for centered bass up front.' },
   5: { name: 'Two-way with two sealed front subs', blurb: 'The two-way system plus two 8 in subs in sealed boxes under the front seats, no cutting into the floor.' },
+}
+
+// A small square photo of one part on a system card: its own photo, else a
+// photo of the same kind of part (lib/media), else nothing.
+function CardPhoto({ role, slug, name }: { role: string; slug: string; name: string }) {
+  const srcs = [...productPhotoSrcs(slug), ...(standInPhoto(role) ? [standInPhoto(role) as string] : [])]
+  const [tries, setTries] = useState(0)
+  if (!IS_WEB || !srcs[tries]) return null
+  return (
+    <View style={{ width: 88, height: 88, borderRadius: 6, overflow: 'hidden', backgroundColor: '#111' }}>
+      {React.createElement('img', {
+        src: srcs[tries],
+        alt: name,
+        title: name,
+        onError: () => setTries((n) => n + 1),
+        style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },
+      })}
+    </View>
+  )
 }
 
 export default function PackagesScreen() {
@@ -540,6 +560,11 @@ export default function PackagesScreen() {
                             <Pressable>
                               <Card>
                                 <Card.Body gap={8}>
+                                  {p.photos?.length ? (
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                      {p.photos.map((ph) => <CardPhoto key={`${ph.role}/${ph.slug}`} {...ph} />)}
+                                    </View>
+                                  ) : null}
                                   <Text style={{ fontFamily: fonts.display, fontSize: 20, color: colors.ink }}>
                                     {copy?.name ?? `System ${g.system ?? ''}`}
                                   </Text>

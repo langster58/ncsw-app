@@ -350,6 +350,8 @@ export type PackageSummary = {
   front_name?: string
   bass_name?: string
   dsp_name?: string
+  // the parts worth a photo on a system card, in display order
+  photos?: { role: string; slug: string; name: string }[]
 }
 
 export type PackageFilters = {
@@ -861,6 +863,9 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts |
     front_name: front,
     bass_name: subs,
     dsp_name: dsp,
+    photos: ['midbass', 'tweeter', 'front_sub', 'subwoofer']
+      .flatMap((r) => parts.filter((p) => p.role === r))
+      .map((p) => ({ role: p.role, slug: p.part_slug, name: partName(cat, p) })),
   }
 }
 

@@ -55,6 +55,7 @@ import {
   vehicleName as formatVehicleName,
   vehicleVariant,
 } from '@/lib/packages'
+import { installArt, productPhotoSrcs, standInPhoto } from '@/lib/media'
 
 // The WIRED product-detail page: /packages/detail?sku=...&vid=...
 // Renders a real package row — component slots resolved to their product
@@ -87,15 +88,16 @@ function money(v: number | string | null | undefined): string {
   return `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// Product photo. Tries each candidate in turn (the catalog's image_filename,
-// then /images/products/<slug>.webp|.png|.jpg, so a photo named after the part
-// shows without a database column) and degrades to the pending-photo slot when
-// none has a file behind it (the library is still being shot).
-function SafeMedia({ srcs, alt }: { srcs: string[]; alt: string }) {
+// Product photo. Tries the part's own photos in turn (lib/media), then a photo
+// of the same kind of part marked "Representative photo", then the
+// pending-photo slot.
+function SafeMedia({ srcs, standIn, alt }: { srcs: string[]; standIn?: string | null; alt: string }) {
+  const all = standIn ? [...srcs, standIn] : srcs
   const [tries, setTries] = useState(0)
-  const src = srcs[tries]
+  const src = all[tries]
   const setFailed = () => setTries((n) => n + 1)
   if (!src || !IS_WEB) return <PhotoSlot label={'Product photo\npending'} />
+  const representative = !!standIn && tries >= srcs.length
   return (
     <View
       style={{
@@ -105,6 +107,7 @@ function SafeMedia({ srcs, alt }: { srcs: string[]; alt: string }) {
         borderRadius: 8,
         backgroundColor: colors.figBg,
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
       {React.createElement('img', {
@@ -112,6 +115,26 @@ function SafeMedia({ srcs, alt }: { srcs: string[]; alt: string }) {
         alt,
         onError: setFailed,
         style: { display: 'block', width: '100%', height: '100%', objectFit: 'cover' },
+      })}
+      {representative ? (
+        <View style={{ position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 3 }}>
+          <Text style={{ fontFamily: fonts.body, fontSize: 11, color: '#fff' }}>Representative photo</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+// Line drawing of the chosen installation, under its choice row.
+function InstallArt({ slug, title }: { slug: string | null | undefined; title: string }) {
+  const src = installArt(slug)
+  if (!src || !IS_WEB) return null
+  return (
+    <View style={{ maxWidth: 520, aspectRatio: 1168 / 880, borderWidth: 1, borderColor: colors.line, borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff', marginTop: 4, marginBottom: 12 }}>
+      {React.createElement('img', {
+        src,
+        alt: title,
+        style: { display: 'block', width: '100%', height: '100%', objectFit: 'contain' },
       })}
     </View>
   )
@@ -493,10 +516,8 @@ export default function PackageDetailScreen() {
                       key={`${c.collection}/${c.slug}`}
                       media={<SafeMedia
                         key={c.slug}
-                        srcs={[
-                          ...(c.row?.image_filename ? [`/images/products/${c.row.image_filename}`] : []),
-                          ...['webp', 'png', 'jpg'].map((x) => `/images/products/${c.slug}.${x}`),
-                        ]}
+                        srcs={productPhotoSrcs(c.slug, c.row?.image_filename)}
+                        standIn={standInPhoto(c.role)}
                         alt={componentTitle(c)}
                       />}
                       title={componentTitle(c)}
@@ -612,6 +633,7 @@ export default function PackageDetailScreen() {
                     />
                   </View>
                 ) : null}
+                <InstallArt slug={option?.slug} title={option?.title ?? ''} />
 
                 {tweeterOpts.length ? (
                   <View style={{ marginTop: 8 }}>
@@ -625,6 +647,7 @@ export default function PackageDetailScreen() {
                         return t ? `${t.title} · ${t.included ? 'Included' : `+${money(t.price)}`}` : slug
                       }}
                     />
+                    <InstallArt slug={tweeter?.slug} title={tweeter?.title ?? ''} />
                   </View>
                 ) : null}
 
