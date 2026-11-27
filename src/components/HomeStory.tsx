@@ -194,7 +194,7 @@ export function HowItWorksSteps() {
 // ── 05 / Demo cars ──────────────────────────────────────────────────────────
 // The demo cars are the build cards until customer builds exist (approved
 // homepage story, section 6): photo, vehicle, one line on the result. A car
-// without a photo of its own build shows a "Build photo coming" slot, never a
+// without a photo of its own build shows text only, never a
 // stock photo of a different generation.
 const DEMO_CARS: { car: string; text: string; photo?: string }[] = [
   {
@@ -241,7 +241,7 @@ export function DemoCars() {
           <Grid cols={4}>
             {DEMO_CARS.map(({ car, text, photo }) => (
               <View key={car} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, overflow: 'hidden', flex: 1, minWidth: 0 } as any}>
-                <BuildPhoto src={photo} alt={car} />
+                {photo ? <BuildPhoto src={photo} alt={car} /> : null}
                 <View style={{ padding: 22, gap: 10 } as any}>
                   <Heading level="h5" as={3}>
                     {car}
