@@ -79,7 +79,7 @@ const outerStyle: any = IS_WEB
   : { flex: 1, flexDirection: 'column' }
 
 const ALIGNMENT_LABEL: Record<string, string> = {
-  sealed: 'Sealed', ported: 'Ported', trunk_ib: 'Trunk IB', true_ib: 'True IB',
+  sealed: 'sealed box', ported: 'ported box', trunk_ib: 'no box (infinite baffle)', true_ib: 'no box (infinite baffle)',
 }
 
 function money(v: number | string | null | undefined): string {
@@ -274,7 +274,7 @@ export default function PackageDetailScreen() {
     : 0
   const subStageN = option ? option.price + boxExtra : null
   const subStageLabel = option
-    ? `Sub stage: ${option.title}${option.takesBoxOptions && material && finish ? ` (${material}, ${finish.toLowerCase()})` : ''}`
+    ? `Bass installed: ${option.title}${option.takesBoxOptions && material && finish ? ` (${material}, ${finish.toLowerCase()})` : ''}`
     : ''
   // ---- head unit and DSP ---------------------------------------------------
   const huOpt = huOpts.find((o) => o.slug === hu) ?? huOpts[0] ?? null
@@ -326,7 +326,7 @@ export default function PackageDetailScreen() {
 
   const p1 = pkg
     ? `The ${title} is a complete, engineered ${pkg.topology ?? ''} system${vehicleName ? ` for the ${vehicleName}` : ''}: ` +
-      `${sub ? componentTitle(sub) + (sub.qty > 1 ? ` ×${sub.qty}` : '') : 'the sub stage'} in a ${alignmentLabel.toLowerCase()} enclosure, ` +
+      `${sub ? componentTitle(sub) + (sub.qty > 1 ? ` ×${sub.qty}` : '') : 'the sub stage'} ${pkg.bass_alignment === 'sealed' ? 'in a sealed box' : pkg.bass_alignment === 'ported' ? 'in a ported box' : 'mounted with no box (infinite baffle)'}, ` +
       `${fstage ? `the ${componentTitle(fstage)} front stage` : pkg.set_collection === 'factory' ? 'the factory front speakers, kept and high-passed above a front sub' : 'a matched front stage'}, amplification sized to both, ` +
       `and ${dsp ? `the ${componentTitle(dsp)}` : 'DSP'} tuned in the car.`
     : ''
@@ -382,8 +382,8 @@ export default function PackageDetailScreen() {
   if (pkg?.bass_alignment && sub) {
     const enc = components.find((c) => c.collection === 'sub_enclosures')
     cells.push({
-      label: 'Substage',
-      value: `${sub.qty}×${sub.row?.size ?? ''} ${alignmentLabel}`.replace('  ', ' '),
+      label: 'Bass',
+      value: `${sub.qty} sub${sub.qty > 1 ? 's' : ''}, ${alignmentLabel}`,
       sub: enc?.row?.volume_cuft ? `${enc.row.volume_cuft} ft³ enclosure` : undefined,
     })
   }
@@ -586,7 +586,7 @@ export default function PackageDetailScreen() {
                 {options.length > 1 ? (
                   <View style={{ marginTop: tableTop as any }}>
                     <FilterChipGroup
-                      label="Sub stage installation"
+                      label="How the bass is installed"
                       value={option?.slug ?? ''}
                       options={options.map((o) => o.slug)}
                       onChange={setChosen}

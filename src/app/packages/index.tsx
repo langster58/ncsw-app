@@ -76,7 +76,7 @@ const TOPOLOGY_VALUE: Record<string, string> = {
 }
 const ALIGNMENTS = ['all', 'sealed', 'ported', 'trunk_ib', 'true_ib']
 const ALIGNMENT_LABEL: Record<string, string> = {
-  all: 'All', sealed: 'Sealed', ported: 'Ported', trunk_ib: 'Trunk IB', true_ib: 'True IB',
+  all: 'All', sealed: 'Sealed box', ported: 'Ported box', trunk_ib: 'No box (infinite baffle)', true_ib: 'No box (infinite baffle)',
 }
 
 export default function PackagesScreen() {
