@@ -574,6 +574,9 @@ export async function fetchPackagesForVehicle(
 
 // ------------------------------------------------------- systems and variants
 
+/** Where a wideband system's wideband goes, said on its front-speaker choice. */
+const MOUNT_NOTE: Record<string, string> = { 'wideband-post': ', on a post', 'wideband-dash': ', in the factory dash spot' }
+
 /** Smallest factory dash opening (inches) each dash wideband fits (Brett,
  * 2026-11-24): the 3FE25 needs 3", the 3FE22's 106 mm flange 3.5", the Karma
  * Inspire 2 fits every dash spot from 2.5". */
@@ -997,7 +1000,7 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
   })
   const front = siblings
     .filter((v) => bassKey(v) === bassKey(cur))
-    .map((v) => pick(v, names(v.id, ['midbass', 'midrange', 'wideband', 'tweeter'])))
+    .map((v) => pick(v, `${names(v.id, ['midbass', 'midrange', 'wideband', 'tweeter'])}${MOUNT_NOTE[v.front_stage ?? ''] ?? ''}`))
   const bass = siblings
     .filter((v) => frontKey(v.id) === frontKey(cur.id))
     .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : 'sealed'}`))
