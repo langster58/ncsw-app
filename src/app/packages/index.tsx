@@ -473,6 +473,15 @@ export default function PackagesScreen() {
                         </Text>
                       </View>
                     </Card>
+                  ) : needAudio && !chosenAudio ? (
+                    // The car's factory system decides the DSP and head unit
+                    // choices, so a system is not shown until the owner says
+                    // which one the car has.
+                    <Card>
+                      <Text style={{ fontFamily: fonts.body, fontSize: 14, color: colors.gray }}>
+                        Choose your factory sound system above to see the systems for your {vehicleLabel}.
+                      </Text>
+                    </Card>
                   ) : loading ? (
                     <ActivityIndicator color={colors.ink} />
                   ) : items && items.length > 0 ? (
