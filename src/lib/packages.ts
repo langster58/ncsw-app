@@ -144,9 +144,9 @@ export type Vehicle = {
   dash_kit_price?: number | string | null
   factory_hu_upgrade?: string | null
   carplay_boxes?: string | null
-  // Factory front woofers under the front seats, door has only a small midrange
-  // (BMW, some Mini): the 6.5 in door two-way is not offered.
-  front_woofer_under_seat?: boolean | null
+  // No front door location for a 6.5 in woofer (woofers under the seats or in
+  // the kick panels, or only a 100 mm door spot): the door two-way is not offered.
+  no_door_woofer_location?: boolean | null
   has_fullrange_output?: string | boolean | null
   // The factory sound system this car was most likely built with, and the
   // picker label(s) it could be ordered with ('Base: … | Bose: …'). A single
@@ -166,7 +166,7 @@ const VEHICLE_FIELDS = [
   'truck_wall_width_in', 'truck_wall_height_in', 'truck_ib_wall_depth_in', 'truck_floor_ib_height_in',
   'substage_lane', 'substage_width_in', 'substage_depth_in', 'substage_height_in', 'substage_pockets', 'cab_format',
   'dash', 'sail', 'truck_rear_floor_ib_option',
-  'head_unit_type', 'radio_opening', 'dash_kit_price', 'factory_hu_upgrade', 'carplay_boxes', 'front_woofer_under_seat',
+  'head_unit_type', 'radio_opening', 'dash_kit_price', 'factory_hu_upgrade', 'carplay_boxes', 'no_door_woofer_location',
   'rear_seat_fold', 'rear_seat_ski_pass',
   'factory_audio_system', 'branded_system_name',
 ]
@@ -518,9 +518,9 @@ export async function fetchPackagesForVehicle(
   filters: PackageFilters = {},
 ): Promise<PackageSummary[]> {
   const cat = await loadVariantCatalog()
-  // The two-way puts 6.5 in drivers in the doors; a car whose front woofers are
-  // under the seats has no door location for one (Brett, 2026-11-27).
-  const doorOk = (v: VariantRow) => !(vehicle.front_woofer_under_seat && v.front_stage === 'two-way')
+  // The two-way puts 6.5 in drivers in the doors; a car with no door location
+  // for one does not get it (Brett, 2026-11-27).
+  const doorOk = (v: VariantRow) => !(vehicle.no_door_woofer_location && v.front_stage === 'two-way')
   if (vehicle.vehicle_category === 'truck') {
     // a truck lists only the variants its sub space can take
     return cat.variants
