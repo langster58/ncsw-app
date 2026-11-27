@@ -80,6 +80,7 @@ const SYSTEM_COPY: Record<number, { name: string; blurb: string }> = {
   2: { name: 'Under-seat system', blurb: '8 in woofers under the front seats, 4 in speakers in the doors, tweeters up front, subwoofers in the trunk.' },
   3: { name: 'Two-way with a front sub', blurb: 'The two-way system plus a 10 in sub under a front seat, so the bass sits up front with the music.' },
   4: { name: 'Two-way with two front subs', blurb: 'The two-way system plus two 8 in subs through the floor under the front seats, for centered bass up front.' },
+  6: { name: 'Wideband system', blurb: 'A small full-range speaker up high plays the voice, on a post or in the factory dash spot; 6.5 in speakers in the doors play the midbass; subwoofers in the trunk.' },
   5: { name: 'Two-way with two sealed front subs', blurb: 'The two-way system plus two 8 in subs in sealed boxes under the front seats, no cutting into the floor.' },
 }
 

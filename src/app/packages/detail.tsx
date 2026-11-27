@@ -635,7 +635,7 @@ export default function PackageDetailScreen() {
                 ) : null}
                 <InstallArt slug={option?.slug} title={option?.title ?? ''} />
 
-                {tweeterOpts.length ? (
+                {tweeterOpts.length && !String(pkg?.topology ?? '').startsWith('wideband') ? (
                   <View style={{ marginTop: 8 }}>
                     <FilterChipGroup
                       label="Tweeter mounting"

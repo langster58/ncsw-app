@@ -528,13 +528,23 @@ export async function fetchPackagesForVehicle(
   // The two-way puts 6.5 in drivers in the doors; a car with no door location
   // for one does not get it (Brett, 2026-11-27).
   // The under-seat system is the one for those cars, and only for them.
+  const sixFiveInDoors = (fs: string | null) => fs === 'two-way' || fs === 'two-way-front-sub' || fs === 'wideband-post' || fs === 'wideband-dash'
   const doorOk = (v: VariantRow) =>
     v.front_stage === 'under-seat' ? !!vehicle.no_door_woofer_location
-      : !(vehicle.no_door_woofer_location && (v.front_stage === 'two-way' || v.front_stage === 'two-way-front-sub'))
+      : !(vehicle.no_door_woofer_location && sixFiveInDoors(v.front_stage))
+  // A dash wideband goes only into a factory dash opening it fits (Brett,
+  // 2026-11-24/27); the post wideband goes into every car.
+  const dashOk = (v: VariantRow) => {
+    if (v.front_stage !== 'wideband-dash') return true
+    const wb = variantParts(cat, v.id).find((p) => p.role === 'wideband')?.part_slug ?? ''
+    const need = DASH_WIDEBAND_MIN_IN[wb]
+    return need != null && dashOpeningIn(vehicle.dash) >= need
+  }
   if (vehicle.vehicle_category === 'truck') {
     // a truck lists only the variants its sub space can take
     return cat.variants
       .filter(doorOk)
+      .filter(dashOk)
       .filter((v) => installOptions(cat, v, vehicle).length > 0)
       .map((v) => variantSummary(v, cat, vehicle))
       .filter((p) => !filters.topology || p.topology === filters.topology)
@@ -548,6 +558,7 @@ export async function fetchPackagesForVehicle(
   const space = dims.every((d) => d > 1.5) ? ((dims[0] - 1.5) * (dims[1] - 1.5) * (dims[2] - 1.5)) / 1728 : null
   return cat.variants
     .filter(doorOk)
+    .filter(dashOk)
     .filter((v) => {
       const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
       return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
@@ -562,6 +573,22 @@ export async function fetchPackagesForVehicle(
 }
 
 // ------------------------------------------------------- systems and variants
+
+/** Smallest factory dash opening (inches) each dash wideband fits (Brett,
+ * 2026-11-24): the 3FE25 needs 3", the 3FE22's 106 mm flange 3.5", the Karma
+ * Inspire 2 fits every dash spot from 2.5". */
+const DASH_WIDEBAND_MIN_IN: Record<string, number> = {
+  'faitalpro-3fe25-4': 3,
+  'faitalpro-3fe22': 3.5,
+  'karma-inspire-2': 2.5,
+}
+
+/** A car's factory dash opening in inches from `vehicles.dash` ('3.5', '4x6',
+ * '2.75'); 0 where there is none or its size is not on record ('present'). */
+function dashOpeningIn(dash: string | null | undefined): number {
+  const m = /^(\d+(?:\.\d+)?)/.exec(String(dash ?? '').trim())
+  return m ? Number(m[1]) : 0
+}
 
 type VariantRow = {
   id: number
@@ -863,7 +890,7 @@ function variantSummary(v: VariantRow, cat: VariantCatalog, vehicle: SeatFacts |
     front_name: front,
     bass_name: subs,
     dsp_name: dsp,
-    photos: ['midbass', 'tweeter', 'front_sub', 'subwoofer']
+    photos: ['midbass', 'wideband', 'tweeter', 'front_sub', 'subwoofer']
       .flatMap((r) => parts.filter((p) => p.role === r))
       .map((p) => ({ role: p.role, slug: p.part_slug, name: partName(cat, p) })),
   }
