@@ -546,7 +546,10 @@ export type VariantPart = {
 
 type PartRow = { slug: string; brand?: string | null; model?: string | null; name?: string | null; price?: number | string | null; driver_size?: number | string | null }
 
-type InstallTypeRow = { id: string; slug: string; title: string | null; bass_installation: string | null; sort: number | null }
+type InstallTypeRow = { id: string; slug: string; title: string | null; bass_installation: string | null; sort: number | null; price: number | string | null; takes_box_options: boolean | null }
+
+/** A material or finish choice for a box Brett builds (box_options). */
+export type BoxOption = { id: number; kind: 'material' | 'finish' | string; label: string; add_price: number | string; sort: number | null }
 type EnclosurePriceRow = { install_type: string | null; size: string | null; driver_count: number | null; price: number | string | null }
 
 type VariantCatalog = {
@@ -555,13 +558,17 @@ type VariantCatalog = {
   rows: Map<string, PartRow>
   installPrice: Map<number, number>
   installTypes: InstallTypeRow[]
+  boxOptions: BoxOption[]
   enclosures: EnclosurePriceRow[]
 }
 
 // The installations a sealed sub stage in a car can be sold in. The prefab
 // sealed box (priced at what the box costs to buy; fitting it is part of the
 // base install) fits any car; the other two are for fixed rear seats.
-const CAR_INSTALLATIONS = ['prefab-sealed', 'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib']
+const CAR_INSTALLATIONS = [
+  'prefab-sealed', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
+  'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib', 'true-ib-manifold',
+]
 
 const partKey = (collection: string, slug: string) => `${collection}/${slug}`
 
@@ -578,10 +585,11 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
         getItems<{ id: number; install_price: number | string | null }>('systems', { limit: 100 }).catch(() => []),
         getItems<InstallTypeRow>('install_types', {
           filter: { slug: { _in: CAR_INSTALLATIONS } },
-          fields: ['id', 'slug', 'title', 'bass_installation', 'sort'],
+          fields: ['id', 'slug', 'title', 'bass_installation', 'sort', 'price', 'takes_box_options'],
           limit: 20,
         }).catch(() => []),
       ])
+      const boxOptions = await getItems<BoxOption>('box_options', { sort: ['kind', 'sort'], limit: 50 }).catch(() => [] as BoxOption[])
       const enclosures = installTypes.length
         ? await getItems<EnclosurePriceRow>('sub_enclosures', {
             filter: { install_type: { _in: installTypes.map((i) => i.id) } },
@@ -612,7 +620,7 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
           }
         }),
       )
-      return { variants, parts: byVariant, rows, installPrice, installTypes, enclosures }
+      return { variants, parts: byVariant, rows, installPrice, installTypes, boxOptions, enclosures }
     })()
     variantCatalog.catch(() => { variantCatalog = null })
   }
@@ -647,29 +655,41 @@ function variantPartsTotal(cat: VariantCatalog, id: number): number | null {
 const BASS_ALIGNMENT: Record<string, string> = { 'infinite-baffle': 'true_ib' }
 
 /** One way the sub stage can be installed in a given car, with its flat price. */
-export type InstallOption = { slug: string; title: string; price: number }
+/** One installation a car can take, at its base price (MDF and the cheapest
+ * finish where the customer picks a material and finish). */
+export type InstallOption = { slug: string; title: string; price: number; takesBoxOptions: boolean }
 
 type SeatFacts = Pick<Vehicle, 'vehicle_category' | 'body_style' | 'rear_seat_fold' | 'rear_seat_ski_pass'>
 
 /** Which installations this car can take for a sealed or an infinite baffle sub
- * stage. Sealed: every car takes the prefab box; a fixed rear seat adds the
- * pass-through (seat has a ski opening) or the rear-deck enclosure (it has
- * none); convertibles are prefab only. Infinite baffle: trunk IB behind a rear
- * seat that folds (sedans and coupes, never convertibles), or true IB through
- * the floor in a cargo-area car. Other cars take no infinite baffle. With no
- * car chosen, every installation of that kind is listed. */
+ * stage.
+ * Sealed: every car takes the prefab box and a box Brett builds; a cargo-area
+ * car (SUV, wagon, hatchback) adds the integrated box and the stealth tub; a
+ * sedan or coupe whose rear seat folds adds baffle sealed; a fixed rear seat
+ * adds the pass-through (seat has a ski opening) or the rear-deck enclosure (it
+ * has none). Convertibles take the prefab and built boxes only.
+ * Infinite baffle: trunk IB behind a folding rear seat (sedans and coupes, not
+ * convertibles); true IB or the true IB manifold in a cargo-area car. Other
+ * cars take no infinite baffle. With no car chosen, every installation of that
+ * kind is listed. */
 function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string[] {
+  const cargo = vehicle?.vehicle_category === 'cargo'
+  const trunk = vehicle?.vehicle_category === 'trunk' && vehicle?.body_style !== 'Convertible'
   if (bass === 'infinite-baffle') {
-    if (!vehicle) return ['trunk-ib', 'fabricated-ib']
-    if (vehicle.vehicle_category === 'cargo') return ['fabricated-ib']
-    if (vehicle.vehicle_category === 'trunk' && vehicle.body_style !== 'Convertible' && vehicle.rear_seat_fold === 'folds') return ['trunk-ib']
+    if (!vehicle) return ['trunk-ib', 'fabricated-ib', 'true-ib-manifold']
+    if (cargo) return ['fabricated-ib', 'true-ib-manifold']
+    if (trunk && vehicle.rear_seat_fold === 'folds') return ['trunk-ib']
     return []
   }
-  const slugs = ['prefab-sealed']
-  if (!vehicle || vehicle.vehicle_category !== 'trunk' || vehicle.body_style === 'Convertible') return slugs
-  if (vehicle.rear_seat_fold === 'fixed') {
-    if (vehicle.rear_seat_ski_pass === true) slugs.push('sealed-pass-through')
-    else if (vehicle.rear_seat_ski_pass === false) slugs.push('sealed-rear-deck')
+  const slugs = ['prefab-sealed', 'fabricated-sealed']
+  if (!vehicle) return [...slugs, 'integrated', 'stealth', 'baffle-sealed', 'sealed-pass-through', 'sealed-rear-deck']
+  if (cargo) slugs.push('integrated', 'stealth')
+  if (trunk) {
+    if (vehicle.rear_seat_fold === 'folds') slugs.push('baffle-sealed')
+    if (vehicle.rear_seat_fold === 'fixed') {
+      if (vehicle.rear_seat_ski_pass === true) slugs.push('sealed-pass-through')
+      else if (vehicle.rear_seat_ski_pass === false) slugs.push('sealed-rear-deck')
+    }
   }
   return slugs
 }
@@ -684,10 +704,17 @@ function installOptions(cat: VariantCatalog, v: VariantRow, vehicle: SeatFacts |
   for (const slug of installSlugsFor(vehicle, v.bass_installation)) {
     const it = cat.installTypes.find((i) => i.slug === slug)
     if (!it || (it.bass_installation ?? 'sealed') !== (v.bass_installation ?? 'sealed')) continue
+    // the manifold always carries two drivers
+    if (slug === 'true-ib-manifold' && count !== 2) continue
+    const title = it.title ?? slug
+    const takesBoxOptions = !!it.takes_box_options
+    // a flat price is the same whatever the sub size; otherwise (the prefab box)
+    // the price is the matching box's own
+    if (it.price != null) { out.push({ slug, title, price: Number(it.price), takesBoxOptions }); continue }
     const prices = cat.enclosures
       .filter((e) => e.install_type === it.id && Number(e.size) === Number(size) && Number(e.driver_count) === count && e.price != null)
       .map((e) => Number(e.price))
-    if (prices.length) out.push({ slug, title: it.title ?? slug, price: Math.min(...prices) })
+    if (prices.length) out.push({ slug, title, price: Math.min(...prices), takesBoxOptions })
   }
   return out
 }
@@ -795,6 +822,12 @@ export async function fetchPackageBySku(sku: string): Promise<PackageDetail | nu
     },
     parts,
   }
+}
+
+/** Material and finish choices for a box Brett builds, each kind cheapest first. */
+export async function fetchBoxOptions(): Promise<BoxOption[]> {
+  const cat = await loadVariantCatalog()
+  return cat.boxOptions
 }
 
 /** The installations one variant can be sold in for one car, cheapest first. */

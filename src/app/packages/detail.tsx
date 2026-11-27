@@ -28,6 +28,8 @@ import {
   fetchInstallationRows,
   fetchPackageBySku,
   fetchInstallOptions,
+  fetchBoxOptions,
+  type BoxOption,
   type InstallOption,
   fetchSystemFit,
   fetchPackageComponents,
@@ -131,6 +133,9 @@ export default function PackageDetailScreen() {
   const [install, setInstall] = useState<InstallationRow[]>([])
   const [options, setOptions] = useState<InstallOption[]>([])
   const [chosen, setChosen] = useState('')
+  const [boxOptions, setBoxOptions] = useState<BoxOption[]>([])
+  const [material, setMaterial] = useState('')
+  const [finish, setFinish] = useState('')
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
 
   // Navigating from one package to another restarts the load. Adjusted during
@@ -180,6 +185,11 @@ export default function PackageDetailScreen() {
         const opts = await fetchInstallOptions(sku, v).catch(() => [] as InstallOption[])
         if (!live) return
         setOptions(opts); setChosen(opts[0]?.slug ?? '')
+        const bo = await fetchBoxOptions().catch(() => [] as BoxOption[])
+        if (!live) return
+        setBoxOptions(bo)
+        setMaterial(bo.find((b) => b.kind === 'material')?.label ?? '')
+        setFinish(bo.find((b) => b.kind === 'finish')?.label ?? '')
         const comps = await fetchPackageComponents(p)
         if (!live) return
         setComponents(comps)
@@ -213,7 +223,16 @@ export default function PackageDetailScreen() {
   const partsN = pkg?.price_total != null ? Number(pkg.price_total) : null
   const baseInstallN = pkg?.install_price != null ? Number(pkg.install_price) : null
   const option = options.find((o) => o.slug === chosen) ?? options[0] ?? null
-  const installedN = partsN != null && baseInstallN != null && option ? partsN + baseInstallN + option.price : null
+  const materials = boxOptions.filter((b) => b.kind === 'material')
+  const finishes = boxOptions.filter((b) => b.kind === 'finish')
+  const boxExtra = option?.takesBoxOptions
+    ? Number(materials.find((m) => m.label === material)?.add_price ?? 0) + Number(finishes.find((f) => f.label === finish)?.add_price ?? 0)
+    : 0
+  const subStageN = option ? option.price + boxExtra : null
+  const subStageLabel = option
+    ? `Sub stage: ${option.title}${option.takesBoxOptions && material && finish ? ` (${material}, ${finish.toLowerCase()})` : ''}`
+    : ''
+  const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN : null
 
   // ---- generated copy (package grain + vehicle grain) -----------------------
   const sub = components.find((c) => c.collection === 'subwoofers')
@@ -429,13 +448,38 @@ export default function PackageDetailScreen() {
                   </View>
                 ) : null}
 
+                {option?.takesBoxOptions && materials.length && finishes.length ? (
+                  <View style={{ marginTop: 8 }}>
+                    <FilterChipGroup
+                      label="Box material"
+                      value={material}
+                      options={materials.map((m) => m.label)}
+                      onChange={setMaterial}
+                      renderOption={(l) => {
+                        const m = materials.find((x) => x.label === l)
+                        return m && Number(m.add_price) > 0 ? `${l} · +${money(m.add_price)}` : l
+                      }}
+                    />
+                    <FilterChipGroup
+                      label="Box finish"
+                      value={finish}
+                      options={finishes.map((f) => f.label)}
+                      onChange={setFinish}
+                      renderOption={(l) => {
+                        const f = finishes.find((x) => x.label === l)
+                        return f && Number(f.add_price) > 0 ? `${l} · +${money(f.add_price)}` : l
+                      }}
+                    />
+                  </View>
+                ) : null}
+
                 <View style={{ marginTop: tableTop as any }}>
                   <PriceSummary
                     lines={installedN != null && option
                       ? [
                           { label: 'Components', value: money(partsN) },
                           { label: 'Installation', value: money(baseInstallN) },
-                          { label: `Sub stage: ${option.title}`, value: money(option.price) },
+                          { label: subStageLabel, value: money(subStageN) },
                         ]
                       : [{ label: 'Components', value: money(partsN) }]}
                     total={installedN != null
