@@ -25,6 +25,7 @@ import {
 } from '@/ui'
 import { SITE, callLabel, telHref } from '@/lib/site'
 import { JsonLd } from '@/components/JsonLd'
+import { BUILDS } from '@/lib/builds'
 
 const IS_WEB = Platform.OS === 'web'
 
@@ -196,38 +197,9 @@ export function HowItWorksSteps() {
 // ── 05 / Demo cars ──────────────────────────────────────────────────────────
 // The demo cars are the build cards until customer builds exist (approved
 // homepage story, section 6): photo, car, one line on the build. Each card opens
-// the systems we design for that car. A car without a photo of its own build
-// shows text only, never a stock photo of a different generation.
-const DEMO_CARS: { car: string; text: string; photo?: string; year: string; make: string; model: string }[] = [
-  {
-    car: '2014 BMW 328i xDrive',
-    text: 'A processor, amplifiers and a subwoofer, playing through the factory speakers.',
-    photo: '/images/build-bmw-328i-1000.jpg',
-    year: '2014', make: 'BMW', model: '3 Series',
-  },
-  {
-    car: '2008 Mini Cooper S',
-    text: 'An 18-inch subwoofer where the back seat was.',
-    photo: '/images/build-mini-cooper-1000.jpg',
-    year: '2008', make: 'Mini', model: 'Hardtop 2 Door',
-  },
-  {
-    car: '2018 Volkswagen Golf Alltrack',
-    text: 'Two 18-inch subwoofers built into the cargo floor.',
-    photo: '/images/build-golf-alltrack-1200.jpg',
-    year: '2018', make: 'Volkswagen', model: 'Golf Alltrack',
-  },
-  {
-    car: '2015 Honda CR-V',
-    text: 'Two 15-inch subwoofers in the cargo floor, and one more under the passenger seat.',
-    photo: '/images/build-honda-crv-1000.jpg',
-    year: '2015', make: 'Honda', model: 'CR-V',
-  },
-]
-
-function carHref(c: { year: string; make: string; model: string }) {
-  return `/packages?${new URLSearchParams({ year: c.year, make: c.make, model: c.model }).toString()}`
-}
+// that car's build documentation (/build?car=<slug>, content in lib/builds.ts),
+// not the systems page (Brett, 2026-11-27).
+const DEMO_CARS = BUILDS.map((b) => ({ car: b.car, text: b.summary, photo: b.photo, href: `/build?car=${b.slug}` }))
 
 function BuildPhoto({ src, alt }: { src: string; alt: string }) {
   if (!IS_WEB) return null
@@ -252,7 +224,7 @@ export function DemoCars() {
           />
           <Grid cols={4}>
             {DEMO_CARS.map((d) => (
-              <Card key={d.car} href={carHref(d)}>
+              <Card key={d.car} href={d.href}>
                 {d.photo ? <Card.Media><BuildPhoto src={d.photo} alt={d.car} /></Card.Media> : null}
                 <Card.Body gap={8}>
                   <Heading level="h5" as={3}>
@@ -261,8 +233,8 @@ export function DemoCars() {
                   <BodyText>{d.text}</BodyText>
                 </Card.Body>
                 <Card.Footer>
-                  <Link variant="door" href={carHref(d)} icon={<IconArrow size={15} />}>
-                    Systems for this car
+                  <Link variant="door" href={d.href} icon={<IconArrow size={15} />}>
+                    See the build
                   </Link>
                 </Card.Footer>
               </Card>

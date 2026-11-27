@@ -54,12 +54,7 @@ Loaner line held back until Brett offers one: "Coming from a distance? Ask about
 
 Four of our builds live at the shop. Come sit in them and listen.
 
-Cards, each opening the systems for that car ("Systems for this car"):
-
-- **2014 BMW 328i xDrive.** A processor, amplifiers and a subwoofer, playing through the factory speakers.
-- **2008 Mini Cooper S.** An 18-inch subwoofer where the back seat was.
-- **2018 Volkswagen Golf Alltrack.** Two 18-inch subwoofers built into the cargo floor.
-- **2015 Honda CR-V.** Two 15-inch subwoofers in the cargo floor, and one more under the passenger seat.
+Cards, each opening that car's build page (/build?car=..., content in src/lib/builds.ts); the card line is the build's summary there.
 
 Call to set a time to listen.
 
