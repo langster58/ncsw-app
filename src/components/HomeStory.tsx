@@ -207,6 +207,7 @@ const DEMO_CARS: { car: string; text: string; photo?: string; year: string; make
   {
     car: '2008 Mini Cooper S',
     text: 'An 18-inch subwoofer where the back seat was.',
+    photo: '/images/build-mini-cooper-1000.jpg',
     year: '2008', make: 'Mini', model: 'Hardtop 2 Door',
   },
   {
