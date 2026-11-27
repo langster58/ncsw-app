@@ -284,11 +284,14 @@ export default function PackageDetailScreen() {
   const curDsp = dspRow(pkg?.dsp_id)
   const dspOk = !dspRows.length || dspWorksWith(curDsp, huKind, fullRange)
   const dspChoices = choices.dsp.filter((c) => !dspRows.length || dspWorksWith(dspRow(c.dsp), huKind, fullRange))
-  const phoneLines: { label: string; value: number }[] = []
-  if (huKind === 'phone' && curDsp) {
-    if (curDsp.slug.startsWith('helix-') && accPrices[adapter]) phoneLines.push({ label: `Phone adapter: ${accPrices[adapter].name}`, value: accPrices[adapter].price })
-    if (curDsp.remote_required_on_digital && curDsp.remote && accPrices[curDsp.remote]) phoneLines.push({ label: `DSP remote (phone volume): ${accPrices[curDsp.remote].name}`, value: accPrices[curDsp.remote].price })
+  const phoneLinesFor = (d: DspRow | undefined) => {
+    const lines: { label: string; value: number }[] = []
+    if (huKind !== 'phone' || !d) return lines
+    if (d.slug.startsWith('helix-') && accPrices[adapter]) lines.push({ label: `Phone adapter: ${accPrices[adapter].name}`, value: accPrices[adapter].price })
+    if (d.remote_required_on_digital && d.remote && accPrices[d.remote]) lines.push({ label: `DSP remote (phone volume): ${accPrices[d.remote].name}`, value: accPrices[d.remote].price })
+    return lines
   }
+  const phoneLines = phoneLinesFor(curDsp)
   const huN = (huOpt?.price ?? 0) + phoneLines.reduce((a, l) => a + l.value, 0)
   const goVariant = (next: string, nextHu = hu) =>
     router.replace(`/packages/detail?sku=${next}${vid ? `&vid=${vid}` : ''}${sys ? `&sys=${sys}` : ''}&hu=${nextHu}${adapter ? `&ad=${adapter}` : ''}` as any)
@@ -305,6 +308,15 @@ export default function PackageDetailScreen() {
   const tweeter = tweeterOpts.find((t) => t.slug === tweeterChosen) ?? tweeterOpts[0] ?? null
   const tweeterN = tweeter ? tweeter.price : 0
   const installedN = partsN != null && baseInstallN != null && subStageN != null ? partsN + baseInstallN + subStageN + tweeterN + huN : null
+  // A choice button shows the total the page would show after picking it: that
+  // variant's price (parts + install + its cheapest sub installation) plus the
+  // head unit, the phone parts for its DSP, the tweeter mounting, and - where the
+  // bass stays the same - the installation and box options picked here.
+  const cheapestInstall = options.length ? Math.min(...options.map((o) => o.price)) : 0
+  const pickedInstallExtra = subStageN != null ? subStageN - cheapestInstall : 0
+  const choiceTotal = (price: number | null, dspSlug: string | null | undefined, sameBass: boolean) =>
+    price == null ? null
+      : price + tweeterN + (huOpt?.price ?? 0) + phoneLinesFor(dspRow(dspSlug)).reduce((a, l) => a + l.value, 0) + (sameBass ? pickedInstallExtra : 0)
 
   // ---- generated copy (package grain + vehicle grain) -----------------------
   const sub = components.find((c) => c.collection === 'subwoofers')
@@ -539,7 +551,8 @@ export default function PackageDetailScreen() {
                         onChange={(next) => { if (next !== sku) goVariant(next) }}
                         renderOption={(s) => {
                           const c = dspChoices.find((x) => x.sku === s)
-                          return c ? `${c.label}${c.price != null ? ` · ${money(c.price)}` : ''}` : s
+                          const t = c ? choiceTotal(c.price, c.dsp, true) : null
+                          return c ? `${c.label}${t != null ? ` · ${money(t)}` : ''}` : s
                         }}
                       />
                     ) : null}
@@ -561,7 +574,8 @@ export default function PackageDetailScreen() {
                           }}
                           renderOption={(s) => {
                             const c = list.find((x) => x.sku === s)
-                            return c ? `${c.label}${c.price != null ? ` · ${money(c.price)}` : ''}` : s
+                            const t = c ? choiceTotal(c.price, pkg?.dsp_id, label === 'Front speakers') : null
+                            return c ? `${c.label}${t != null ? ` · ${money(t)}` : ''}` : s
                           }}
                         />
                       ) : null,
