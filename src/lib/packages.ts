@@ -650,7 +650,7 @@ type VariantCatalog = {
 // a given vehicle takes). The prefab sealed box is priced at what the box costs
 // to buy; fitting it is part of the base install.
 const INSTALLATIONS = [
-  'prefab-sealed', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
+  'prefab-sealed', 'prefab-ported', 'fabricated-sealed', 'integrated', 'stealth', 'baffle-sealed',
   'sealed-pass-through', 'sealed-rear-deck', 'trunk-ib', 'fabricated-ib', 'true-ib-manifold',
   'quarter-panel-ib', 'underseat', 'blow-through', 'truck-wall-ib-cab', 'truck-wall-ib-bed', 'truck-floor-ib',
 ]
