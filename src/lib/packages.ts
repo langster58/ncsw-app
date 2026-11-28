@@ -664,8 +664,9 @@ function loadVariantCatalog(): Promise<VariantCatalog> {
   if (!variantCatalog) {
     variantCatalog = (async () => {
       const [variants, parts, systems, installTypes] = await Promise.all([
-        getItems<VariantRow>('system_variants', { sort: ['sort', 'id'], limit: 500 }),
-        getItems<VariantPart>('system_variant_parts', { limit: 5000 }),
+        // every variant and part: a cap here silently drops systems once the catalog grows
+        getItems<VariantRow>('system_variants', { sort: ['sort', 'id'], limit: -1 }),
+        getItems<VariantPart>('system_variant_parts', { limit: -1 }),
         getItems<{ id: number; install_price: number | string | null }>('systems', { limit: 100 }).catch(() => []),
         getItems<InstallTypeRow>('install_types', {
           filter: { slug: { _in: INSTALLATIONS } },
