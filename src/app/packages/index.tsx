@@ -82,6 +82,9 @@ const SYSTEM_COPY: Record<number, { name: string; blurb: string }> = {
   4: { name: 'Two-way with two front subs', blurb: 'The two-way system plus two 8 in subs through the floor under the front seats, for centered bass up front.' },
   6: { name: 'Wideband system', blurb: 'A small full-range speaker up high plays the voice, on a post or in the factory dash spot; 6.5 in speakers in the doors play the midbass; subwoofers in the trunk.' },
   5: { name: 'Two-way with two sealed front subs', blurb: 'The two-way system plus two 8 in subs in sealed boxes under the front seats, no cutting into the floor.' },
+  7: { name: 'Wideband system with a front sub', blurb: 'The wideband system plus a 10 in sub under a front seat, so the bass sits up front with the music.' },
+  8: { name: 'Wideband system with two front subs', blurb: 'The wideband system plus two 8 in subs through the floor under the front seats, for centered bass up front.' },
+  9: { name: 'Wideband system with two sealed front subs', blurb: 'The wideband system plus two 8 in subs in sealed boxes under the front seats, no cutting into the floor.' },
 }
 
 // A small square photo of one part on a system card: its own photo, else a
