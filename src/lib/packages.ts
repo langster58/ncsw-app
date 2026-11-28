@@ -561,7 +561,8 @@ export async function fetchPackagesForVehicle(
     .filter(dashOk)
     .filter((v) => {
       const need = v.sealed_box_min_ft3 == null ? null : Number(v.sealed_box_min_ft3)
-      return space == null || need == null || v.bass_installation !== 'sealed' || need <= space
+      const boxed = v.bass_installation === 'sealed' || v.bass_installation === 'ported'
+      return space == null || need == null || !boxed || need <= space
     })
     // an infinite baffle variant is listed only where the car can take one
     .filter((v) => v.bass_installation !== 'infinite-baffle' || installSlugsFor(vehicle, v.bass_installation).length > 0)
@@ -798,6 +799,8 @@ function underseatFits(v: SeatFacts, size: number, count: number, depthIn: numbe
  * cars take no infinite baffle. With no car chosen, every installation of that
  * kind is listed. */
 function installSlugsFor(vehicle: SeatFacts | null, bass: string | null): string[] {
+  // Ported: a ready-made ported box, in any car or SUV with room for it (not trucks yet)
+  if (bass === 'ported') return vehicle?.vehicle_category === 'truck' ? [] : ['prefab-ported']
   if (vehicle?.vehicle_category === 'truck') {
     const out: string[] = []
     if (bass === 'infinite-baffle') {
@@ -1025,7 +1028,7 @@ export async function fetchSystemChoices(sku: string, vehicle: Vehicle | null): 
     .map((v) => pick(v, `${names(v.id, ['midbass', 'midrange', 'wideband', 'tweeter'])}${MOUNT_NOTE[v.front_stage ?? ''] ?? ''}`))
   const bass = siblings
     .filter((v) => frontKey(v.id) === frontKey(cur.id))
-    .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : 'sealed'}`))
+    .map((v) => pick(v, `${names(v.id, ['subwoofer'])}, ${v.bass_installation === 'infinite-baffle' ? 'infinite baffle' : v.bass_installation === 'ported' ? 'ported' : 'sealed'}`))
   const byPrice = (a: SystemChoice, b: SystemChoice) => Number(a.price ?? Infinity) - Number(b.price ?? Infinity)
   const dsp = dspSiblings.map((v) => ({ ...pick(v, names(v.id, ['dsp'])), dsp: v.dsp }))
   return { front: front.sort(byPrice), bass: bass.sort(byPrice), dsp: dsp.sort(byPrice) }
